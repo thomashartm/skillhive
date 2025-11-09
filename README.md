@@ -1,8 +1,9 @@
-# TrainHive 
+# SkillHive 
 
-TrainHive is your onestop shop to organize your personal knowledge 
+SkillHive is your onestop shop to organize your personal knowledge 
 path or your training curriculum around existing public media, enriched by your ideas.
-Bring structure into your BJJ training
+Bring structure into your martial arts training e.g. let's pick BJJ.
+SkillHive gives you the tools to organize your BJJ Curriculum around existing videos tutorials.
 
 * build and organize complete training blocks
 * keep track of your schedule
