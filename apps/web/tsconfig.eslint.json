@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@app/*": ["./app/*"],
+      "@trainhive/shared": ["../../packages/shared/src"],
+      "@trainhive/shared/*": ["../../packages/shared/src/*"],
+      "@trainhive/db": ["../../packages/db/dist"],
+      "@trainhive/auth": ["../../packages/auth/src"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".eslintrc.json",
+    "next-env.d.ts",
+    "middleware.ts",
+    "../../packages/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}
+
