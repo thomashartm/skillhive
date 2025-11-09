@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@trainhive/shared": ["../shared/src"],
+      "@trainhive/shared/*": ["../shared/src/*"]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "*.ts",
+    ".eslintrc.json"
+  ],
+  "exclude": ["node_modules", "dist"]
+}
+

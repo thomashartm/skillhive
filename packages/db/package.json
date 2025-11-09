@@ -1,0 +1,27 @@
+{
+  "name": "@trainhive/db",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint . --ext .ts",
+    "migration:generate": "typeorm-ts-node-commonjs migration:generate -d data-source.ts",
+    "migration:run": "tsx run-migrations.ts",
+    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d data-source.ts"
+  },
+  "dependencies": {
+    "@trainhive/shared": "*",
+    "mysql2": "^3.9.0",
+    "typeorm": "^0.3.20"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
+    "typescript": "*"
+  }
+}
