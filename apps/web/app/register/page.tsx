@@ -50,7 +50,7 @@ export default function RegisterPage() {
             Create an account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Sign up for TrainHive
+            Sign up for SkillHive
           </p>
         </div>
 

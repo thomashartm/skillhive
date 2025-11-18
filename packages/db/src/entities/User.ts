@@ -4,14 +4,13 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  Index,
 } from 'typeorm';
 import { UserRole } from '@trainhive/shared';
 
 @Entity('users')
 export class User {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+  @PrimaryGeneratedColumn('increment')
+  id!: number;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   handle!: string | null;
@@ -19,7 +18,6 @@ export class User {
   @Column({ type: 'varchar', length: 255 })
   name!: string;
 
-  @Index()
   @Column({ type: 'varchar', length: 255, unique: true })
   email!: string;
 

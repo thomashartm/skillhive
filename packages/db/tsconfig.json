@@ -6,10 +6,15 @@
     "composite": true,
     "declaration": true,
     "declarationMap": true,
+    "noEmit": false,
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "node",
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false,
+    "esModuleInterop": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
-

@@ -9,12 +9,12 @@ import {
 
 @Entity('techniques')
 export class Technique {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+  @PrimaryGeneratedColumn('increment')
+  id!: number;
 
   @Index()
-  @Column({ type: 'varchar', length: 36, nullable: false })
-  disciplineId!: string;
+  @Column({ type: 'bigint', nullable: false })
+  disciplineId!: number;
 
   @Column({ type: 'varchar', length: 255, nullable: false })
   name!: string;
@@ -27,6 +27,10 @@ export class Technique {
 
   @Column({ type: 'json', nullable: true })
   taxonomy!: any | null;
+
+  @Index()
+  @Column({ type: 'bigint', nullable: true })
+  createdBy!: number | null;
 
   @CreateDateColumn()
   createdAt!: Date;

@@ -2,6 +2,7 @@
 
 import React, { ReactNode } from 'react';
 import { SessionProvider } from 'next-auth/react';
+import { NotificationProvider } from './components/common/NotificationProvider';
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -9,7 +10,9 @@ export function Providers({ children }: { children: ReactNode }) {
       refetchInterval={0}
       refetchOnWindowFocus={false}
     >
-      {children}
+      <NotificationProvider>
+        {children}
+      </NotificationProvider>
     </SessionProvider>
   );
 }

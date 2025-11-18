@@ -9,13 +9,12 @@
     "dev": "tsc --watch",
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext .ts",
-    "migration:generate": "typeorm-ts-node-commonjs migration:generate -d data-source.ts",
-    "migration:run": "tsx run-migrations.ts",
-    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d data-source.ts"
+    "reset": "tsx reset-db.ts"
   },
   "dependencies": {
     "@trainhive/shared": "*",
     "mysql2": "^3.9.0",
+    "reflect-metadata": "^0.2.2",
     "typeorm": "^0.3.20"
   },
   "devDependencies": {

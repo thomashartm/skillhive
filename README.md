@@ -15,9 +15,7 @@ SkillHive gives you the tools to organize your BJJ Curriculum around existing vi
 
 This project uses a monorepo structure with npm workspaces:
 
-- **apps/web** - Next.js web application
-- **apps/pwa** - Progressive Web App for mobile devices
-- **apps/api** - REST API backend
+- **apps/web** - Next.js web application (includes both frontend and API routes)
 - **packages/shared** - Shared utilities, types, and constants
 - **packages/db** - Database entities, migrations, and TypeORM configuration
 - **packages/auth** - Authentication utilities and shared auth logic

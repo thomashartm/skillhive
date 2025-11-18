@@ -1,5 +1,6 @@
 #!/usr/bin/env ts-node
 // Use compiled version to avoid decorator issues
+import 'reflect-metadata';
 import { AppDataSource } from '../../packages/db/dist/data-source';
 
 async function installSchema() {
@@ -10,7 +11,7 @@ async function installSchema() {
 
     console.log('Running migrations...');
     const migrations = await AppDataSource.runMigrations();
-    
+
     if (migrations.length === 0) {
       console.log('No pending migrations. Database schema is up to date.');
     } else {
@@ -33,4 +34,3 @@ async function installSchema() {
 }
 
 void installSchema();
-

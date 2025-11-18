@@ -12,11 +12,11 @@ import { Category } from './Category';
 @Entity('technique_categories')
 @Index(['techniqueId', 'categoryId'], { unique: true })
 export class TechniqueCategory {
-  @PrimaryColumn({ type: 'varchar', length: 36 })
-  techniqueId!: string;
+  @PrimaryColumn({ type: 'bigint' })
+  techniqueId!: number;
 
-  @PrimaryColumn({ type: 'varchar', length: 36 })
-  categoryId!: string;
+  @PrimaryColumn({ type: 'bigint' })
+  categoryId!: number;
 
   @Column({ type: 'boolean', default: false })
   primary!: boolean;

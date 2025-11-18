@@ -1,20 +1,37 @@
+import 'reflect-metadata';
 import { DataSource } from 'typeorm';
-import path from 'path';
 import { User } from './entities/User';
+import { Discipline } from './entities/Discipline';
 import { Category } from './entities/Category';
 import { Technique } from './entities/Technique';
 import { TechniqueCategory } from './entities/TechniqueCategory';
-// Account entity is optional for now - can be added back when needed for OAuth
-// import { Account } from './entities/Account';
+import { Account } from './entities/Account';
+import { Tag } from './entities/Tag';
+import { TechniqueTag } from './entities/TechniqueTag';
+import { ReferenceAsset } from './entities/ReferenceAsset';
+import { ReferenceAssetTag } from './entities/ReferenceAssetTag';
+import { Curriculum } from './entities/Curriculum';
+import { CurriculumElement } from './entities/CurriculumElement';
 
 export const AppDataSource = new DataSource({
   type: 'mysql',
   url: process.env.DATABASE_URL || 'mysql://trainhive_user:trainhive_password@localhost:3306/trainhive',
-  synchronize: false, // Use migrations instead
+  synchronize: true, // Auto-create schema from entities (dev only)
   logging: process.env.NODE_ENV === 'development',
-  entities: [User, Category, Technique, TechniqueCategory], // Core entities
-  migrations: [path.join(__dirname, 'migrations/**/*.{ts,js}')],
-  migrationsTableName: 'migrations',
+  entities: [
+    User,
+    Discipline,
+    Category,
+    Technique,
+    TechniqueCategory,
+    Account,
+    Tag,
+    TechniqueTag,
+    ReferenceAsset,
+    ReferenceAssetTag,
+    Curriculum,
+    CurriculumElement,
+  ],
   extra: {
     connectionLimit: 10,
   },

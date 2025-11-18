@@ -6,11 +6,20 @@ type RouteContext = {
 
 // DELETE /api/v1/techniques/:techniqueId/categories/:categoryId - Remove association
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   context: RouteContext,
 ) {
   try {
-    const { techniqueId, categoryId } = await context.params;
+    const { techniqueId: techIdParam, categoryId: catIdParam } = await context.params;
+    const techniqueId = parseInt(techIdParam, 10);
+    const categoryId = parseInt(catIdParam, 10);
+
+    if (isNaN(techniqueId) || isNaN(categoryId)) {
+      return NextResponse.json(
+        { error: 'Invalid technique or category ID' },
+        { status: 400 },
+      );
+    }
 
     const dbModule = await import('@trainhive/db');
     const { AppDataSource, TechniqueCategory } = dbModule;

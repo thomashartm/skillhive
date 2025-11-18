@@ -1,24 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { generateSlug } from '@trainhive/shared';
 import { CategoryNode } from './CategoryTreeNode';
 
 interface CategoryFormProps {
   category?: CategoryNode | null;
   parentCategory?: CategoryNode | null;
-  disciplineId: string;
+  disciplineId: number;
   onSubmit: (data: CategoryFormData) => void;
   onCancel: () => void;
 }
 
 export interface CategoryFormData {
-  disciplineId: string;
+  disciplineId: number;
   name: string;
-  slug: string;
-  parentId: string | null;
-  description: string;
-  ord: number;
+  slug?: string;
+  parentId: number | null;
+  description?: string | null;
+  ord?: number;
 }
 
 export function CategoryForm({
@@ -33,11 +33,64 @@ export function CategoryForm({
     name: category?.name || '',
     slug: category?.slug || '',
     parentId: category?.parentId || parentCategory?.id || null,
-    description: category?.description || '',
-    ord: category?.ord || 0,
+    description: category?.description || null,
+    ord: category?.ord ?? 0,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [allCategories, setAllCategories] = useState<CategoryNode[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+
+  // Fetch all categories for parent selection when editing
+  useEffect(() => {
+    if (category) {
+      // Only fetch categories when editing
+      setLoadingCategories(true);
+      fetch(`/api/v1/categories?disciplineId=${disciplineId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setAllCategories(data as CategoryNode[]);
+        })
+        .catch((err) => {
+          console.error('Failed to load categories:', err);
+        })
+        .finally(() => {
+          setLoadingCategories(false);
+        });
+    }
+  }, [category, disciplineId]);
+
+  // Flatten category tree and filter out current category and its descendants
+  const getValidParentCategories = (): CategoryNode[] => {
+    if (!category) return [];
+
+    const flattenCategories = (cats: CategoryNode[], result: CategoryNode[] = []): CategoryNode[] => {
+      cats.forEach((cat) => {
+        result.push(cat);
+        if (cat.children && cat.children.length > 0) {
+          flattenCategories(cat.children, result);
+        }
+      });
+      return result;
+    };
+
+    // Get all descendants of current category
+    const getDescendantIds = (cat: CategoryNode): Set<number> => {
+      const ids = new Set<number>([cat.id]);
+      if (cat.children) {
+        cat.children.forEach((child) => {
+          getDescendantIds(child).forEach((id) => ids.add(id));
+        });
+      }
+      return ids;
+    };
+
+    const allFlat = flattenCategories(allCategories);
+    const currentCat = allFlat.find((c) => c.id === category.id);
+    const excludeIds = currentCat ? getDescendantIds(currentCat) : new Set([category.id]);
+
+    return allFlat.filter((cat) => !excludeIds.has(cat.id));
+  };
 
   const handleChange = (field: keyof CategoryFormData, value: string | number | null) => {
     setFormData((prev) => ({
@@ -46,7 +99,7 @@ export function CategoryForm({
     }));
 
     // Auto-generate slug from name
-    if (field === 'name') {
+    if (field === 'name' && value !== null) {
       const slug = generateSlug(value.toString());
       setFormData((prev) => ({ ...prev, slug }));
     }
@@ -67,8 +120,9 @@ export function CategoryForm({
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
     }
-    if (!formData.slug.trim()) {
-      newErrors.slug = 'Slug is required';
+    // Slug is optional, only validate if provided
+    if (formData.slug && !formData.slug.trim()) {
+      newErrors.slug = 'Slug cannot be empty if provided';
     }
 
     setErrors(newErrors);
@@ -78,7 +132,27 @@ export function CategoryForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      onSubmit(formData);
+      // Clean up the data before sending
+      const submitData: CategoryFormData = {
+        disciplineId: formData.disciplineId,
+        name: formData.name.trim(),
+        parentId: formData.parentId,
+      };
+
+      // Only include optional fields if they have values
+      if (formData.slug && formData.slug.trim()) {
+        submitData.slug = formData.slug.trim();
+      }
+
+      if (formData.description && formData.description.trim()) {
+        submitData.description = formData.description.trim();
+      }
+
+      if (formData.ord !== undefined && !isNaN(formData.ord)) {
+        submitData.ord = formData.ord;
+      }
+
+      onSubmit(submitData);
     }
   };
 
@@ -122,35 +196,50 @@ export function CategoryForm({
         </label>
         <textarea
           id="description"
-          value={formData.description}
-          onChange={(e) => handleChange('description', e.target.value)}
+          value={formData.description || ''}
+          onChange={(e) => handleChange('description', e.target.value || null)}
           className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           placeholder="Description of this category"
           rows={3}
         />
       </div>
 
-      <div>
-        <label htmlFor="ord" className="block text-sm font-medium text-foreground mb-1">
-          Order
-        </label>
-        <input
-          type="number"
-          id="ord"
-          value={formData.ord}
-          onChange={(e) => handleChange('ord', parseInt(e.target.value, 10))}
-          className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          placeholder="0"
-        />
-      </div>
-
-      {parentCategory && (
+      {/* Parent Category Selector - shown when editing or has fixed parent */}
+      {category ? (
+        <div>
+          <label htmlFor="parentId" className="block text-sm font-medium text-foreground mb-1">
+            Parent Category
+          </label>
+          {loadingCategories ? (
+            <div className="px-3 py-2 border border-border rounded-md bg-muted text-muted-foreground">
+              Loading categories...
+            </div>
+          ) : (
+            <select
+              id="parentId"
+              value={formData.parentId || ''}
+              onChange={(e) => handleChange('parentId', e.target.value ? Number(e.target.value) : null)}
+              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">No Parent (Root Category)</option>
+              {getValidParentCategories().map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <p className="mt-1 text-xs text-muted-foreground">
+            Change the parent category to move this category
+          </p>
+        </div>
+      ) : parentCategory ? (
         <div className="p-3 bg-accent/50 rounded-md">
           <p className="text-sm text-muted-foreground">
             Parent Category: <span className="font-medium text-foreground">{parentCategory.name}</span>
           </p>
         </div>
-      )}
+      ) : null}
 
       <div className="flex gap-2 pt-4">
         <button

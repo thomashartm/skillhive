@@ -2,8 +2,8 @@
 
 ## 1. Purpose, Mission & Principles
 
-**Purpose** 
-One‑stop application platform to organize your BJJ training and personal knowledge path around public media (esp. YouTube), enriched by training ideas and custom metadata. 
+**Purpose**
+One‑stop application platform to organize your BJJ training and personal knowledge path around public media (esp. YouTube), enriched by training ideas and custom metadata.
 * Build reusable training blocks
 * Map techniques and their metadata such as athlete, name, situation, position and others to videos
 * Tag & search techniques and videos
@@ -226,7 +226,3 @@ The application project is structured in three main components
 * **Skill:** Canonical definition of a technical skill, a reflex behaviour, a habit to develop, muscle memory, reusable.
 * **Asset:** External media resource (YouTube video, PDF, image, link).
 * **Attachment:** Link between a Technique/Unit and an Asset (+timestamps).
-
-
-
-

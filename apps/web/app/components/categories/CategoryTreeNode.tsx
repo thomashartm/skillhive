@@ -3,12 +3,12 @@
 import { useState } from 'react';
 
 export interface CategoryNode {
-  id: string;
+  id: number;
   name: string;
   slug: string;
   description: string | null;
-  parentId: string | null;
-  disciplineId: string;
+  parentId: number | null;
+  disciplineId: number;
   ord: number;
   children?: CategoryNode[];
 }
@@ -20,6 +20,8 @@ interface CategoryTreeNodeProps {
   onEdit?: (category: CategoryNode) => void;
   onDelete?: (category: CategoryNode) => void;
   onAddChild?: (parentCategory: CategoryNode) => void;
+  onSelect?: (category: CategoryNode) => void;
+  selectedId?: number | null;
 }
 
 export function CategoryTreeNode({
@@ -29,15 +31,20 @@ export function CategoryTreeNode({
   onEdit,
   onDelete,
   onAddChild,
+  onSelect,
+  selectedId,
 }: CategoryTreeNodeProps) {
   const [isExpanded, setIsExpanded] = useState(level < 2); // Auto-expand first 2 levels
   const hasChildren = category.children && category.children.length > 0;
   const canAddChildren = level < maxLevel;
+  const isSelected = selectedId === category.id;
 
   return (
     <div className="select-none">
       <div
-        className="flex items-center gap-2 py-2 px-3 hover:bg-accent/50 rounded-md group"
+        className={`flex items-center gap-2 py-2 px-3 hover:bg-accent/50 rounded-md group ${
+          isSelected ? 'bg-accent' : ''
+        }`}
         style={{ paddingLeft: `${level * 1.5 + 0.75}rem` }}
       >
         {/* Expand/Collapse Button */}
@@ -75,7 +82,13 @@ export function CategoryTreeNode({
         </div>
 
         {/* Category Name */}
-        <span className="flex-1 text-sm font-medium text-foreground">{category.name}</span>
+        <button
+          type="button"
+          onClick={() => onSelect?.(category)}
+          className="flex-1 text-left text-sm font-medium text-foreground hover:text-primary transition-colors"
+        >
+          {category.name}
+        </button>
 
         {/* Action Buttons (shown on hover) */}
         <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -139,6 +152,8 @@ export function CategoryTreeNode({
               onEdit={onEdit}
               onDelete={onDelete}
               onAddChild={onAddChild}
+              onSelect={onSelect}
+              selectedId={selectedId}
             />
           ))}
         </div>
