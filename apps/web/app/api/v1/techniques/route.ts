@@ -50,14 +50,14 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const querySchema = z.object({
-      disciplineId: z.coerce.number().int().positive(),
+      disciplineId: z.coerce.number().int().positive().default(1), // Default to BJJ (disciplineId 1)
       categoryId: z.coerce.number().int().positive().optional(),
       tagId: z.coerce.number().int().positive().optional(),
       search: z.string().min(1).max(255).optional(),
       ids: z.string().optional(),
     });
     const raw = {
-      disciplineId: searchParams.get('disciplineId'),
+      disciplineId: searchParams.get('disciplineId') ?? undefined,
       categoryId: searchParams.get('categoryId') ?? undefined,
       tagId: searchParams.get('tagId') ?? undefined,
       search: searchParams.get('search') ?? undefined,

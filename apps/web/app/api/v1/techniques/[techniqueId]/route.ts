@@ -111,7 +111,7 @@ export async function GET(
 
 // PATCH /api/v1/techniques/:techniqueId
 export async function PATCH(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ techniqueId: string }> }
 ) {
   try {
@@ -147,8 +147,7 @@ export async function PATCH(
       const technique = await techniqueRepo.findOne({ where: { id: Number(techniqueId) } });
 
       if (!technique) {
-        await queryRunner.rollbackTransaction();
-        return NextResponse.json({ error: 'Technique not found' }, { status: 404 });
+        throw new Error('Technique not found');
       }
 
       // Update basic fields
@@ -243,8 +242,11 @@ export async function PATCH(
     } finally {
       await queryRunner.release();
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating technique:', error);
+    if (error.message === 'Technique not found') {
+      return NextResponse.json({ error: 'Technique not found' }, { status: 404 });
+    }
     return NextResponse.json({ error: 'Failed to update technique' }, { status: 500 });
   }
 }

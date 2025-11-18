@@ -11,33 +11,13 @@ import { isAdmin } from '@trainhive/shared';
 
 const authOptions = getAuthOptions();
 
-const createElementSchema = z
-  .object({
-    type: z.enum(['technique', 'asset', 'text']),
-    techniqueId: z.number().nullable().optional(),
-    assetId: z.number().nullable().optional(),
-    title: z.string().max(255).nullable().optional(),
-    details: z.string().nullable().optional(),
-  })
-  .refine(
-    (data) => {
-      // Validate based on type
-      if (data.type === 'text') {
-        return data.title && data.title.trim().length > 0;
-      }
-      if (data.type === 'technique') {
-        return data.techniqueId !== null && data.techniqueId !== undefined;
-      }
-      if (data.type === 'asset') {
-        return data.assetId !== null && data.assetId !== undefined;
-      }
-      return true;
-    },
-    {
-      message:
-        'Text elements must have a title, technique elements must have techniqueId, and asset elements must have assetId',
-    }
-  );
+const createElementSchema = z.object({
+  type: z.enum(['technique', 'asset', 'text']),
+  techniqueId: z.number().nullable().optional(),
+  assetId: z.number().nullable().optional(),
+  title: z.string().max(255).nullable().optional(),
+  details: z.string().nullable().optional(),
+});
 
 // GET /api/v1/curricula/[id]/elements - List all elements for a curriculum
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -75,14 +55,80 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Get elements
+    // Get elements with technique and asset details
+    const { Technique, ReferenceAsset } = await import('@trainhive/db');
     const elementRepo = AppDataSource.getRepository(CurriculumElement);
+    const techniqueRepo = AppDataSource.getRepository(Technique);
+    const assetRepo = AppDataSource.getRepository(ReferenceAsset);
+
     const elements = await elementRepo.find({
       where: { curriculumId },
       order: { ord: 'ASC' },
     });
 
-    return NextResponse.json({ elements });
+    // Enrich elements with technique and asset details
+    const enrichedElements = await Promise.all(
+      elements.map(async (element) => {
+        const baseElement = {
+          id: element.id,
+          curriculumId: element.curriculumId,
+          type: element.type,
+          ord: element.ord,
+          techniqueId: element.techniqueId,
+          assetId: element.assetId,
+          title: element.title,
+          details: element.details,
+          createdAt: element.createdAt,
+          updatedAt: element.updatedAt,
+        };
+
+        // Add technique details if this is a technique element
+        if (element.type === 'technique' && element.techniqueId) {
+          const technique = await techniqueRepo.findOne({
+            where: { id: element.techniqueId },
+          });
+          if (technique) {
+            return {
+              ...baseElement,
+              technique: {
+                id: technique.id,
+                name: technique.name,
+                slug: technique.slug,
+                description: technique.description,
+                disciplineId: technique.disciplineId,
+              },
+            };
+          }
+        }
+
+        // Add asset details if this is an asset element
+        if (element.type === 'asset' && element.assetId) {
+          const asset = await assetRepo.findOne({
+            where: { id: element.assetId },
+          });
+          if (asset) {
+            return {
+              ...baseElement,
+              asset: {
+                id: asset.id,
+                url: asset.url,
+                title: asset.title,
+                description: asset.description,
+                type: asset.type,
+                videoType: asset.videoType,
+                originator: asset.originator,
+                thumbnailUrl: asset.thumbnailUrl,
+                durationSeconds: asset.durationSeconds,
+              },
+            };
+          }
+        }
+
+        return baseElement;
+      })
+    );
+
+    return NextResponse.json({ elements: enrichedElements });
   } catch (error: any) {
     console.error('Error fetching curriculum elements:', error);
     return NextResponse.json(

@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AppLayout } from '../../components/layout/AppLayout';
+import { HiEye, HiPencil, HiTrash } from 'react-icons/hi';
+import { HiGlobeAlt, HiEyeSlash } from 'react-icons/hi2';
 
 interface Curriculum {
   id: number;
@@ -146,7 +148,7 @@ export default function MyCurriculaPage() {
                 {curricula.map((curriculum) => (
                   <div
                     key={curriculum.id}
-                    className="bg-card border border-border rounded-lg p-6 hover:shadow-lg transition-shadow"
+                    className="bg-card border border-border rounded-lg p-6 hover:shadow-lg transition-shadow flex flex-col"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <h2 className="text-xl font-semibold text-foreground flex-1">
@@ -173,30 +175,39 @@ export default function MyCurriculaPage() {
                       Updated {new Date(curriculum.updatedAt).toLocaleDateString()}
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    {/* Icon action bar at bottom */}
+                    <div className="flex items-center justify-end gap-2 mt-auto pt-4 border-t border-border">
                       <Link
                         href={`/curricula/${curriculum.id}`}
-                        className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                        className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
+                        title="View curriculum"
                       >
-                        View
+                        <HiEye className="w-5 h-5" />
                       </Link>
                       <Link
                         href={`/curricula/${curriculum.id}/edit`}
-                        className="px-3 py-1.5 text-sm bg-secondary text-secondary-foreground rounded hover:bg-secondary/80"
+                        className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
+                        title="Edit curriculum"
                       >
-                        Edit
+                        <HiPencil className="w-5 h-5" />
                       </Link>
                       <button
                         onClick={() => handleTogglePublic(curriculum)}
-                        className="px-3 py-1.5 text-sm border border-border rounded hover:bg-muted"
+                        className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
+                        title={curriculum.isPublic ? 'Make private' : 'Make public'}
                       >
-                        {curriculum.isPublic ? 'Make Private' : 'Make Public'}
+                        {curriculum.isPublic ? (
+                          <HiEyeSlash className="w-5 h-5" />
+                        ) : (
+                          <HiGlobeAlt className="w-5 h-5" />
+                        )}
                       </button>
                       <button
                         onClick={() => handleDelete(curriculum.id)}
-                        className="px-3 py-1.5 text-sm text-destructive border border-destructive rounded hover:bg-destructive/10"
+                        className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                        title="Delete curriculum"
                       >
-                        Delete
+                        <HiTrash className="w-5 h-5" />
                       </button>
                     </div>
                   </div>

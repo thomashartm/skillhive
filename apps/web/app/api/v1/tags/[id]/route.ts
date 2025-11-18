@@ -11,7 +11,7 @@ const updateTagSchema = z.object({
 
 // PATCH /api/v1/tags/:id
 export async function PATCH(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

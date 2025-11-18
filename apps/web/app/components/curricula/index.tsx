@@ -199,22 +199,26 @@ export interface ElementActionsProps {
 export function ElementActions({ onEdit, onDelete }: ElementActionsProps) {
   return (
     <div className="flex items-center gap-2">
-      <button
-        type="button"
-        aria-label="Edit element"
-        onClick={onEdit}
-        className="p-1 rounded hover:bg-gray-100"
-      >
-        <IconEdit />
-      </button>
-      <button
-        type="button"
-        aria-label="Delete element"
-        onClick={onDelete}
-        className="p-1 rounded hover:bg-red-100 text-red-700"
-      >
-        <IconTrash />
-      </button>
+      {onEdit && (
+        <button
+          type="button"
+          aria-label="Edit element"
+          onClick={onEdit}
+          className="p-1 rounded hover:bg-gray-100"
+        >
+          <IconEdit />
+        </button>
+      )}
+      {onDelete && (
+        <button
+          type="button"
+          aria-label="Delete element"
+          onClick={onDelete}
+          className="p-1 rounded hover:bg-red-100 text-red-700"
+        >
+          <IconTrash />
+        </button>
+      )}
     </div>
   );
 }
@@ -263,13 +267,7 @@ export function ElementContent({
             ) : null}
           </div>
         ) : (
-          <button
-            type="button"
-            className="px-2 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700"
-            onClick={onStartTechniquePick}
-          >
-            Select technique
-          </button>
+          <div className="text-sm text-gray-400 italic">No technique selected</div>
         )}
       </div>
     );
@@ -300,13 +298,7 @@ export function ElementContent({
           </div>
         </div>
       ) : (
-        <button
-          type="button"
-          className="px-2 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700"
-          onClick={onStartAssetPick}
-        >
-          Select asset
-        </button>
+        <div className="text-sm text-gray-400 italic">No asset selected</div>
       )}
     </div>
   );
@@ -547,6 +539,39 @@ export function ElementList({
     );
   }
 
+  // Show empty state if no elements
+  if (ids.length === 0) {
+    return (
+      <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
+        <div className="text-gray-400 mb-2">
+          <svg
+            className="mx-auto h-12 w-12 mb-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+        </div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No elements yet</h3>
+        <p className="text-sm text-gray-500 mb-4">
+          Get started by adding your first element using the buttons above.
+        </p>
+        <div className="text-xs text-gray-400">
+          <p>• Add an <strong>Instruction</strong> for text notes</p>
+          <p>• Add a <strong>Technique</strong> to reference a training technique</p>
+          <p>• Add a <strong>Reference Asset</strong> to include a video</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
@@ -630,6 +655,7 @@ export interface TechniqueSelectionModalProps {
   onSearch?(q: string): void;
   results?: TechniqueSummary[];
   loading?: boolean;
+  currentTechnique?: TechniqueSummary | null;
 }
 
 export function TechniqueSelectionModal({
@@ -639,6 +665,7 @@ export function TechniqueSelectionModal({
   onSearch,
   results = [],
   loading = false,
+  currentTechnique,
 }: TechniqueSelectionModalProps) {
   const [query, setQuery] = useState('');
   const debouncedSearch = useMemo(
@@ -672,6 +699,18 @@ export function TechniqueSelectionModal({
           </button>
         </div>
 
+        {currentTechnique && (
+          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded">
+            <div className="text-xs text-blue-600 mb-1">Currently Selected:</div>
+            <div className="font-medium text-blue-900">{currentTechnique.name}</div>
+            {currentTechnique.description && (
+              <div className="text-xs text-blue-700 mt-1 line-clamp-2">
+                {currentTechnique.description}
+              </div>
+            )}
+          </div>
+        )}
+
         <input
           type="search"
           placeholder="Search techniques…"
@@ -687,20 +726,32 @@ export function TechniqueSelectionModal({
             <div className="p-3 text-sm text-gray-500">No results</div>
           ) : (
             <ul>
-              {results.map((t) => (
-                <li key={t.id}>
-                  <button
-                    type="button"
-                    className="w-full text-left px-3 py-2 hover:bg-gray-50"
-                    onClick={() => onSelect(t.id)}
-                  >
-                    <div className="font-medium">{t.name}</div>
-                    {t.description ? (
-                      <div className="text-xs text-gray-600 line-clamp-2">{t.description}</div>
-                    ) : null}
-                  </button>
-                </li>
-              ))}
+              {results.map((t) => {
+                const isSelected = currentTechnique?.id === t.id;
+                return (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${
+                        isSelected ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                      }`}
+                      onClick={() => onSelect(t.id)}
+                    >
+                      <div className={`font-medium ${isSelected ? 'text-blue-900' : ''}`}>
+                        {t.name}
+                        {isSelected && (
+                          <span className="ml-2 text-xs text-blue-600">(Selected)</span>
+                        )}
+                      </div>
+                      {t.description ? (
+                        <div className={`text-xs line-clamp-2 ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}>
+                          {t.description}
+                        </div>
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -722,6 +773,7 @@ export interface AssetSelectionModalProps {
   onSearch?(q: string): void;
   results?: VideoSummary[];
   loading?: boolean;
+  currentAsset?: VideoSummary | null;
 }
 
 export function AssetSelectionModal({
@@ -731,6 +783,7 @@ export function AssetSelectionModal({
   onSearch,
   results = [],
   loading = false,
+  currentAsset,
 }: AssetSelectionModalProps) {
   const [query, setQuery] = useState('');
   const debouncedSearch = useMemo(
@@ -764,6 +817,30 @@ export function AssetSelectionModal({
           </button>
         </div>
 
+        {currentAsset && (
+          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded">
+            <div className="text-xs text-blue-600 mb-1">Currently Selected:</div>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-8 bg-gray-200 rounded overflow-hidden flex items-center justify-center">
+                {currentAsset.thumbnailUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={currentAsset.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <IconVideo />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-blue-900 truncate">{currentAsset.title}</div>
+                {typeof currentAsset.durationSeconds === 'number' && (
+                  <div className="text-xs text-blue-700">
+                    {formatDuration(currentAsset.durationSeconds)}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <input
           type="search"
           placeholder="Search assets…"
@@ -779,32 +856,42 @@ export function AssetSelectionModal({
             <div className="p-3 text-sm text-gray-500">No results</div>
           ) : (
             <ul>
-              {results.map((v) => (
-                <li key={v.id}>
-                  <button
-                    type="button"
-                    className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-3"
-                    onClick={() => onSelect(v.id)}
-                  >
-                    <div className="w-12 h-8 bg-gray-200 rounded overflow-hidden flex items-center justify-center">
-                      {v.thumbnailUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={v.thumbnailUrl} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <IconVideo />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{v.title}</div>
-                      {typeof v.durationSeconds === 'number' ? (
-                        <div className="text-xs text-gray-600">
-                          {formatDuration(v.durationSeconds)}
+              {results.map((v) => {
+                const isSelected = currentAsset?.id === v.id;
+                return (
+                  <li key={v.id}>
+                    <button
+                      type="button"
+                      className={`w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-3 ${
+                        isSelected ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                      }`}
+                      onClick={() => onSelect(v.id)}
+                    >
+                      <div className="w-12 h-8 bg-gray-200 rounded overflow-hidden flex items-center justify-center">
+                        {v.thumbnailUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={v.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <IconVideo />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className={`font-medium truncate ${isSelected ? 'text-blue-900' : ''}`}>
+                          {v.title}
+                          {isSelected && (
+                            <span className="ml-2 text-xs text-blue-600">(Selected)</span>
+                          )}
                         </div>
-                      ) : null}
-                    </div>
-                  </button>
-                </li>
-              ))}
+                        {typeof v.durationSeconds === 'number' ? (
+                          <div className={`text-xs ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}>
+                            {formatDuration(v.durationSeconds)}
+                          </div>
+                        ) : null}
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

@@ -32,7 +32,15 @@ export const AppDataSource = new DataSource({
     Curriculum,
     CurriculumElement,
   ],
+  poolSize: 20, // Maximum number of connections in the pool
   extra: {
-    connectionLimit: 10,
+    connectionLimit: 20, // MySQL-specific connection limit
+    waitForConnections: true, // Wait for available connection instead of erroring
+    queueLimit: 0, // Unlimited queue for waiting connections
+    connectTimeout: 60000, // 60 seconds connection timeout
+    acquireTimeout: 60000, // 60 seconds to acquire connection from pool
+    idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+    enableKeepAlive: true, // Keep connections alive
+    keepAliveInitialDelay: 0,
   },
 });

@@ -5,7 +5,7 @@ import { generateSlug } from '@trainhive/shared';
 const updateCategorySchema = z.object({
   name: z.string().min(1).max(255).optional(),
   slug: z.string().min(1).max(255).optional(),
-  parentId: z.string().uuid().nullable().optional(),
+  parentId: z.coerce.number().int().positive().nullable().optional(),
   description: z.string().nullable().optional(),
   ord: z.number().int().optional(),
 });
@@ -16,11 +16,19 @@ type RouteContext = {
 
 // GET /api/v1/categories/:id - Get a single category by ID
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   context: RouteContext,
 ) {
   try {
     const { id } = await context.params;
+    const categoryId = Number(id);
+
+    if (isNaN(categoryId)) {
+      return NextResponse.json(
+        { error: 'Invalid category ID' },
+        { status: 400 },
+      );
+    }
 
     const dbModule = await import('@trainhive/db');
     const { AppDataSource, Category } = dbModule;
@@ -31,7 +39,7 @@ export async function GET(
 
     const categoryRepo = AppDataSource.getRepository(Category);
     const category = await categoryRepo.findOne({
-      where: { id },
+      where: { id: categoryId },
     });
 
     if (!category) {
@@ -60,6 +68,15 @@ export async function PATCH(
 ) {
   try {
     const { id } = await context.params;
+    const categoryId = Number(id);
+
+    if (isNaN(categoryId)) {
+      return NextResponse.json(
+        { error: 'Invalid category ID' },
+        { status: 400 },
+      );
+    }
+
     const body = await request.json();
     const validationResult = updateCategorySchema.safeParse(body);
 
@@ -83,7 +100,7 @@ export async function PATCH(
 
     // Find the category to update
     const category = await categoryRepo.findOne({
-      where: { id },
+      where: { id: categoryId },
     });
 
     if (!category) {
@@ -115,7 +132,7 @@ export async function PATCH(
     // If parentId is being updated, verify it exists
     if (data.parentId !== undefined && data.parentId !== null) {
       // Prevent self-reference
-      if (data.parentId === id) {
+      if (data.parentId === categoryId) {
         return NextResponse.json(
           { error: 'Category cannot be its own parent' },
           { status: 400 },
@@ -160,11 +177,19 @@ export async function PATCH(
 
 // DELETE /api/v1/categories/:id - Delete a category
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   context: RouteContext,
 ) {
   try {
     const { id } = await context.params;
+    const categoryId = Number(id);
+
+    if (isNaN(categoryId)) {
+      return NextResponse.json(
+        { error: 'Invalid category ID' },
+        { status: 400 },
+      );
+    }
 
     const dbModule = await import('@trainhive/db');
     const { AppDataSource, Category } = dbModule;
@@ -177,7 +202,7 @@ export async function DELETE(
 
     // Find the category
     const category = await categoryRepo.findOne({
-      where: { id },
+      where: { id: categoryId },
     });
 
     if (!category) {
@@ -189,7 +214,7 @@ export async function DELETE(
 
     // Check if category has children
     const childrenCount = await categoryRepo.count({
-      where: { parentId: id },
+      where: { parentId: categoryId },
     });
 
     if (childrenCount > 0) {
