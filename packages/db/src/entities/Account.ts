@@ -7,12 +7,13 @@ import {
   Index,
   Unique,
 } from 'typeorm';
+import { User } from './User';
 
 @Entity('accounts')
 @Unique(['provider', 'providerAccountId'])
 export class Account {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+  @PrimaryGeneratedColumn('increment')
+  id!: number;
 
   @Column({ type: 'varchar', length: 255 })
   type!: string; // 'oauth' or 'oidc'
@@ -46,15 +47,10 @@ export class Account {
   @Column({ type: 'text', nullable: true })
   sessionState!: string | null;
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, global-require
-  @ManyToOne(
-    () => require('./User').User,
-    { onDelete: 'CASCADE' },
-  )
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  user!: any;
+  user!: User;
 
-  @Column({ type: 'uuid' })
-  userId!: string;
+  @Column({ type: 'bigint' })
+  userId!: number;
 }

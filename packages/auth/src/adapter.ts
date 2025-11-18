@@ -44,7 +44,7 @@ export function TypeORMAdapter(): Adapter {
       const savedUser = await userRepository.save(newUser);
 
       return {
-        id: savedUser.id,
+        id: savedUser.id.toString(),
         name: savedUser.name,
         email: savedUser.email,
         emailVerified: savedUser.emailVerified,
@@ -56,12 +56,15 @@ export function TypeORMAdapter(): Adapter {
     async getUser(id: string): Promise<TypeORMAdapterUser | null> {
       const { AppDataSource, User: UserEntity } = await getEntities();
       const userRepository = AppDataSource.getRepository(UserEntity);
-      const user = await userRepository.findOne({ where: { id } });
+      const numId = parseInt(id, 10);
+      if (isNaN(numId)) return null;
+
+      const user = await userRepository.findOne({ where: { id: numId } });
 
       if (!user) return null;
 
       return {
-        id: user.id,
+        id: user.id.toString(),
         name: user.name,
         email: user.email,
         emailVerified: user.emailVerified,
@@ -78,7 +81,7 @@ export function TypeORMAdapter(): Adapter {
       if (!user) return null;
 
       return {
-        id: user.id,
+        id: user.id.toString(),
         name: user.name,
         email: user.email,
         emailVerified: user.emailVerified,
@@ -106,7 +109,7 @@ export function TypeORMAdapter(): Adapter {
       // eslint-disable-next-line max-len
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       interface UserType {
-        id: string;
+        id: number;
         name: string;
         email: string;
         emailVerified: Date | null;
@@ -115,7 +118,7 @@ export function TypeORMAdapter(): Adapter {
       }
       const typedUser = user as UserType;
       return {
-        id: typedUser.id,
+        id: typedUser.id.toString(),
         name: typedUser.name,
         email: typedUser.email,
         emailVerified: typedUser.emailVerified,
@@ -127,7 +130,12 @@ export function TypeORMAdapter(): Adapter {
     async updateUser(user: Partial<AdapterUser> & Pick<AdapterUser, 'id'>): Promise<TypeORMAdapterUser> {
       const { AppDataSource, User: UserEntity } = await getEntities();
       const userRepository = AppDataSource.getRepository(UserEntity);
-      const existingUser = await userRepository.findOne({ where: { id: user.id } });
+      const numId = parseInt(user.id, 10);
+      if (isNaN(numId)) {
+        throw new Error('Invalid user ID');
+      }
+
+      const existingUser = await userRepository.findOne({ where: { id: numId } });
 
       if (!existingUser) {
         throw new Error('User not found');
@@ -143,7 +151,7 @@ export function TypeORMAdapter(): Adapter {
       const updatedUser = await userRepository.save(existingUser);
 
       return {
-        id: updatedUser.id,
+        id: updatedUser.id.toString(),
         name: updatedUser.name,
         email: updatedUser.email,
         emailVerified: updatedUser.emailVerified,
@@ -156,8 +164,13 @@ export function TypeORMAdapter(): Adapter {
       const { AppDataSource, Account: AccountEntity } = await getEntities();
       const accountRepository = AppDataSource.getRepository(AccountEntity);
 
+      const userId = parseInt(account.userId, 10);
+      if (isNaN(userId)) {
+        throw new Error('Invalid user ID');
+      }
+
       const newAccount = accountRepository.create({
-        userId: account.userId,
+        userId,
         type: account.type,
         provider: account.provider,
         providerAccountId: account.providerAccountId,

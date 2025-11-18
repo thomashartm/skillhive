@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react';
 import { CategoryTreeNode, CategoryNode } from './CategoryTreeNode';
 
 interface CategoryTreeProps {
-  disciplineId?: string;
+  disciplineId?: number;
   maxLevel?: number;
   onEdit?: (category: CategoryNode) => void;
   onDelete?: (category: CategoryNode) => void;
   onAddChild?: (parentCategory: CategoryNode) => void;
+  onSelect?: (category: CategoryNode) => void;
+  selectedId?: number | null;
 }
 
 export function CategoryTree({
@@ -17,6 +19,8 @@ export function CategoryTree({
   onEdit,
   onDelete,
   onAddChild,
+  onSelect,
+  selectedId,
 }: CategoryTreeProps) {
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +32,7 @@ export function CategoryTree({
         setLoading(true);
         const params = new URLSearchParams({ tree: 'true' });
         if (disciplineId) {
-          params.append('disciplineId', disciplineId);
+          params.append('disciplineId', disciplineId.toString());
         }
 
         const response = await fetch(`/api/v1/categories?${params.toString()}`);
@@ -89,6 +93,8 @@ export function CategoryTree({
           onEdit={onEdit}
           onDelete={onDelete}
           onAddChild={onAddChild}
+          onSelect={onSelect}
+          selectedId={selectedId}
         />
       ))}
     </div>

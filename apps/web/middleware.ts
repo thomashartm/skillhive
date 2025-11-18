@@ -7,13 +7,12 @@ export async function middleware(request: NextRequest) {
 
   // Allow public routes
   if (
-    pathname.startsWith('/api/auth')
-    || pathname.startsWith('/api/register')
-    || pathname === '/login'
-    || pathname === '/register'
-    || pathname.startsWith('/_next')
-    || pathname.startsWith('/favicon.ico')
-    || /\.(svg|png|jpg|jpeg|gif|webp)$/.test(pathname)
+    pathname.startsWith('/api') ||
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon.ico') ||
+    /\.(svg|png|jpg|jpeg|gif|webp)$/.test(pathname)
   ) {
     return NextResponse.next();
   }
@@ -52,6 +51,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public folder
      */
-    '/((?!api/auth|api/register|login|register|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api|login|register|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

@@ -13,12 +13,12 @@ import {
 @Entity('categories')
 @Index(['disciplineId', 'slug'], { unique: true })
 export class Category {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+  @PrimaryGeneratedColumn('increment')
+  id!: number;
 
   @Index()
-  @Column({ type: 'varchar', length: 36, nullable: false })
-  disciplineId!: string;
+  @Column({ type: 'bigint', nullable: false })
+  disciplineId!: number;
 
   @Column({ type: 'varchar', length: 255, nullable: false })
   name!: string;
@@ -27,14 +27,18 @@ export class Category {
   slug!: string;
 
   @Index()
-  @Column({ type: 'varchar', length: 36, nullable: true })
-  parentId!: string | null;
+  @Column({ type: 'bigint', nullable: true })
+  parentId!: number | null;
 
   @Column({ type: 'text', nullable: true })
   description!: string | null;
 
   @Column({ type: 'int', default: 0 })
   ord!: number;
+
+  @Index()
+  @Column({ type: 'bigint', nullable: true })
+  createdBy!: number | null;
 
   @CreateDateColumn()
   createdAt!: Date;

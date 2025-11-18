@@ -3,7 +3,7 @@ import { AppLayout } from '../components/layout/AppLayout';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Curricula - TrainHive',
+  title: 'Curricula - SkillHive',
   description: 'Create and organize your training curricula',
 };
 
