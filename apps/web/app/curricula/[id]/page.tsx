@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AppLayout } from '../../components/layout/AppLayout';
+import { sidebarItems } from '../components';
 
 interface Curriculum {
   id: number;
@@ -26,11 +27,6 @@ interface CurriculumElement {
   createdAt: string;
   updatedAt: string;
 }
-
-const sidebarItems = [
-  { href: '/curricula/create', label: 'Create Curriculum' },
-  { href: '/curricula/my-curricula', label: 'My Curricula' },
-];
 
 export default function CurriculumDetailPage() {
   const params = useParams();
@@ -101,9 +97,7 @@ export default function CurriculumDetailPage() {
     if (element.type === 'technique') {
       return (
         <div>
-          <div className="font-medium text-foreground">
-            Technique ID: {element.techniqueId}
-          </div>
+          <div className="font-medium text-foreground">Technique ID: {element.techniqueId}</div>
           {element.details && (
             <div className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
               {element.details}
@@ -116,9 +110,7 @@ export default function CurriculumDetailPage() {
     if (element.type === 'asset') {
       return (
         <div>
-          <div className="font-medium text-foreground">
-            Asset ID: {element.assetId}
-          </div>
+          <div className="font-medium text-foreground">Asset ID: {element.assetId}</div>
           {element.details && (
             <div className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
               {element.details}
@@ -232,8 +224,8 @@ export default function CurriculumDetailPage() {
                           element.type === 'technique'
                             ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
                             : element.type === 'asset'
-                            ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
                         }`}
                       >
                         {element.type}
@@ -249,10 +241,7 @@ export default function CurriculumDetailPage() {
 
         {/* Back button */}
         <div className="mt-8">
-          <Link
-            href="/curricula/my-curricula"
-            className="text-primary hover:underline"
-          >
+          <Link href="/curricula/my-curricula" className="text-primary hover:underline">
             ← Back to My Curricula
           </Link>
         </div>

@@ -4,11 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { CurriculumElementsSection } from '../../components/curricula';
-
-const sidebarItems = [
-  { href: '/curricula/create', label: 'Create Curriculum' },
-  { href: '/curricula/my-curricula', label: 'My Curricula' },
-];
+import { sidebarItems } from '../components';
 
 export default function CreateCurriculumPage() {
   const router = useRouter();

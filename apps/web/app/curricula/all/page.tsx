@@ -7,16 +7,7 @@ import { HiEye, HiPencil, HiTrash } from 'react-icons/hi';
 import { HiGlobeAlt, HiEyeSlash } from 'react-icons/hi2';
 import { sidebarItems } from '../components';
 
-interface Curriculum {
-  id: number;
-  title: string;
-  description: string | null;
-  isPublic: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export default function MyCurriculaPage() {
+export default function AllCurriculaPage() {
   const [curricula, setCurricula] = useState<Curriculum[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +21,7 @@ export default function MyCurriculaPage() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/v1/curricula?onlyMine=true');
+      const response = await fetch('/api/v1/curricula');
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));

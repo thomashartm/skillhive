@@ -9,6 +9,7 @@ import {
   TechniqueSelectionModal,
   AssetSelectionModal,
 } from '../../../components/curricula';
+import { sidebarItems } from '../components';
 
 interface Curriculum {
   id: number;
@@ -31,11 +32,6 @@ interface CurriculumElement {
   createdAt: string;
   updatedAt: string;
 }
-
-const sidebarItems = [
-  { href: '/curricula/create', label: 'Create Curriculum' },
-  { href: '/curricula/my-curricula', label: 'My Curricula' },
-];
 
 export default function EditCurriculumPage() {
   const params = useParams();
@@ -565,11 +561,14 @@ export default function EditCurriculumPage() {
               const numId = Number(techniqueModal.elementId);
               console.log('Updating element', numId, 'with techniqueId', techId);
               try {
-                const response = await fetch(`/api/v1/curricula/${curriculumId}/elements/${numId}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ techniqueId: techId }),
-                });
+                const response = await fetch(
+                  `/api/v1/curricula/${curriculumId}/elements/${numId}`,
+                  {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ techniqueId: techId }),
+                  }
+                );
 
                 const result = await response.json();
                 console.log('Update response:', response.status, result);
