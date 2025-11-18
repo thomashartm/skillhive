@@ -12,7 +12,7 @@ type RouteContext = {
 
 // POST /api/v1/techniques/:techniqueId/categories - Associate technique with category
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   context: RouteContext,
 ) {
   try {

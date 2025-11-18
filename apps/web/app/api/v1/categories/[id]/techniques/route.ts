@@ -6,11 +6,19 @@ type RouteContext = {
 
 // GET /api/v1/categories/:id/techniques - Get all techniques for a category
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   context: RouteContext,
 ) {
   try {
-    const { id: categoryId } = await context.params;
+    const { id } = await context.params;
+    const categoryId = Number(id);
+
+    if (isNaN(categoryId)) {
+      return NextResponse.json(
+        { error: 'Invalid category ID' },
+        { status: 400 },
+      );
+    }
 
     const dbModule = await import('@trainhive/db');
     const { AppDataSource, Category, TechniqueCategory } = dbModule;

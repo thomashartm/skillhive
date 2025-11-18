@@ -16,7 +16,7 @@ const updateElementSchema = z.object({
 
 // PUT /api/v1/curricula/[id]/elements/[id] - Update an element
 export async function PUT(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string; elementId: string }> }
 ) {
   try {

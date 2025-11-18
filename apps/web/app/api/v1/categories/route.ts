@@ -3,10 +3,10 @@ import { z } from 'zod';
 import { generateSlug } from '@trainhive/shared';
 
 const createCategorySchema = z.object({
-  disciplineId: z.string().uuid(),
+  disciplineId: z.coerce.number().int().positive(),
   name: z.string().min(1).max(255),
   slug: z.string().min(1).max(255).optional(),
-  parentId: z.string().uuid().nullable().optional(),
+  parentId: z.coerce.number().int().positive().nullable().optional(),
   description: z.string().nullable().optional(),
   ord: z.number().int().default(0),
 });

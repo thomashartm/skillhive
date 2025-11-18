@@ -56,7 +56,6 @@ export default function EditCurriculumPage() {
     isPublic: false,
   });
 
-
   // Preview maps and selection modal state
   const [techniqueMap, setTechniqueMap] = useState<Record<number, any>>({});
   const [videoMap, setVideoMap] = useState<Record<number, any>>({});
@@ -77,6 +76,20 @@ export default function EditCurriculumPage() {
   const [assetResults, setAssetResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
+  // Notification banner state
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+
+  // Confirmation state for delete action
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ elementId: number } | null>(null);
+
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 5000); // Auto-dismiss after 5 seconds
+  };
+
   useEffect(() => {
     if (curriculumId) {
       fetchCurriculum();
@@ -84,62 +97,29 @@ export default function EditCurriculumPage() {
     }
   }, [curriculumId]);
 
-  // Load previews for techniques and assets whenever the element list changes
+  // Build technique and asset maps from elements (they now include the data)
   useEffect(() => {
-    const tIds = Array.from(
-      new Set(elements.map((e) => e.techniqueId).filter((x): x is number => typeof x === 'number'))
-    );
-    const aIds = Array.from(
-      new Set(elements.map((e) => e.assetId).filter((x): x is number => typeof x === 'number'))
-    );
+    const tmap: Record<number, any> = {};
+    const vmap: Record<number, any> = {};
 
-    async function loadPreviews() {
-      try {
-        // Batch load assets (videos)
-        if (aIds.length > 0) {
-          const res = await fetch(`/api/v1/videos?ids=${aIds.join(',')}`);
-          if (res.ok) {
-            const vids = await res.json();
-            const vmap: Record<number, any> = {};
-            vids.forEach((v: any) => {
-              vmap[v.id] = v;
-            });
-            setVideoMap(vmap);
-          } else {
-            setVideoMap({});
-          }
-        } else {
-          setVideoMap({});
+    elements.forEach((el: any) => {
+      // Extract technique data if present
+      if (el.technique) {
+        tmap[el.technique.id] = el.technique;
+        if (disciplineId == null && typeof el.technique.disciplineId === 'number') {
+          setDisciplineId(el.technique.disciplineId);
         }
-
-        // Load techniques individually (disciplineId not known here)
-        if (tIds.length > 0) {
-          const tmap: Record<number, any> = {};
-          for (const id of tIds) {
-            const tr = await fetch(`/api/v1/techniques/${id}`);
-            if (tr.ok) {
-              const t = await tr.json();
-              tmap[t.id] = t;
-              if (disciplineId == null && typeof t.disciplineId === 'number') {
-                setDisciplineId(t.disciplineId);
-              }
-            }
-          }
-          setTechniqueMap(tmap);
-        } else {
-          setTechniqueMap({});
-        }
-      } catch (e) {
-        console.error('Error loading previews:', e);
       }
-    }
+      // Extract asset data if present
+      if (el.asset) {
+        vmap[el.asset.id] = el.asset;
+      }
+    });
 
-    if (elements.length > 0) {
-      loadPreviews();
-    } else {
-      setTechniqueMap({});
-      setVideoMap({});
-    }
+    console.log('Built technique map from elements:', tmap);
+    console.log('Built video map from elements:', vmap);
+    setTechniqueMap(tmap);
+    setVideoMap(vmap);
   }, [elements]);
 
   const fetchCurriculum = async () => {
@@ -176,6 +156,7 @@ export default function EditCurriculumPage() {
       }
 
       const data = await response.json();
+      console.log('Fetched elements:', data.elements);
       setElements(data.elements || []);
     } catch (err: any) {
       console.error('Error fetching elements:', err);
@@ -201,9 +182,9 @@ export default function EditCurriculumPage() {
 
       await fetchCurriculum();
       setEditingCurriculum(false);
-      alert('Curriculum updated successfully');
+      showNotification('success', 'Curriculum updated successfully');
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showNotification('error', `Error: ${err.message}`);
     } finally {
       setSaving(false);
     }
@@ -211,7 +192,7 @@ export default function EditCurriculumPage() {
 
   const handleAddElement = async (kind: 'text' | 'technique' | 'asset') => {
     if (elements.length >= 50) {
-      alert('Maximum 50 elements allowed per curriculum');
+      showNotification('error', 'Maximum 50 elements allowed per curriculum');
       return;
     }
 
@@ -256,29 +237,41 @@ export default function EditCurriculumPage() {
         setAssetResults([]);
       }
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showNotification('error', `Error: ${err.message}`);
     }
   };
 
-
   const handleDeleteElement = async (elementId: number) => {
-    if (!confirm('Are you sure you want to delete this element?')) {
-      return;
-    }
+    // Show confirmation banner instead of browser confirm
+    setDeleteConfirmation({ elementId });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmation) return;
 
     try {
-      const response = await fetch(`/api/v1/curricula/${curriculumId}/elements/${elementId}`, {
-        method: 'DELETE',
-      });
+      const response = await fetch(
+        `/api/v1/curricula/${curriculumId}/elements/${deleteConfirmation.elementId}`,
+        {
+          method: 'DELETE',
+        }
+      );
 
       if (!response.ok) {
         throw new Error('Failed to delete element');
       }
 
+      setDeleteConfirmation(null);
       await fetchElements();
+      showNotification('success', 'Element deleted successfully');
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      setDeleteConfirmation(null);
+      showNotification('error', `Error: ${err.message}`);
     }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmation(null);
   };
 
   const handleReorderElements = async (newOrder: CurriculumElement[]) => {
@@ -297,10 +290,9 @@ export default function EditCurriculumPage() {
 
       await fetchElements();
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showNotification('error', `Error: ${err.message}`);
     }
   };
-
 
   if (loading) {
     return (
@@ -332,131 +324,53 @@ export default function EditCurriculumPage() {
 
   return (
     <AppLayout sidebarItems={sidebarItems} sidebarTitle="Curricula">
-      <div className="container mx-auto py-8 px-4 max-w-5xl">
-        {/* Enhanced Elements UI with previews and selection modals */}
-        <div className="mb-6">
-          <CurriculumElementsSection
-            elements={elements.map((el) => ({
-              id: String(el.id),
-              ord: el.ord,
-              kind: el.type as 'text' | 'technique' | 'asset',
-              techniqueId: el.techniqueId ?? undefined,
-              assetId: el.assetId ?? undefined,
-              text: el.type === 'text' ? el.title || '' : undefined,
-            }))}
-            techniqueMap={techniqueMap}
-            videoMap={videoMap}
-            onAddElement={handleAddElement}
-            onDeleteElement={(id) => {
-              const numId = Number(id);
-              if (Number.isFinite(numId)) handleDeleteElement(numId);
-            }}
-            onReorderElements={(payload) => {
-              const ordered = payload.orderedIds
-                .map((id) => elements.find((e) => String(e.id) === id))
-                .filter(Boolean) as typeof elements;
-              handleReorderElements(ordered);
-            }}
-            onPickTechnique={(elementId) => {
-              setTechniqueModal({ open: true, elementId });
-              setTechniqueResults([]);
-            }}
-            onPickAsset={(elementId) => {
-              setAssetModal({ open: true, elementId });
-              setAssetResults([]);
-            }}
-            onTextChange={async (elementId, text) => {
-              const numId = Number(elementId);
-              if (!Number.isFinite(numId)) return;
-              try {
-                await fetch(`/api/v1/curricula/${curriculumId}/elements/${numId}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ title: text }),
-                });
-                await fetchElements();
-              } catch (e) {
-                console.error('Failed to update text element:', e);
-              }
-            }}
-          />
-          <TechniqueSelectionModal
-            open={techniqueModal.open}
-            onClose={() => setTechniqueModal({ open: false, elementId: null })}
-            onSelect={async (techId) => {
-              if (!techniqueModal.elementId) return;
-              const numId = Number(techniqueModal.elementId);
-              try {
-                await fetch(`/api/v1/curricula/${curriculumId}/elements/${numId}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ techniqueId: techId }),
-                });
-                setTechniqueModal({ open: false, elementId: null });
-                await fetchElements();
-              } catch (e) {
-                console.error('Failed to set technique on element:', e);
-              }
-            }}
-            onSearch={async (q) => {
-              if (!disciplineId) return;
-              setSearchLoading(true);
-              try {
-                const res = await fetch(
-                  `/api/v1/techniques?disciplineId=${disciplineId}&search=${encodeURIComponent(q)}`
-                );
-                if (res.ok) {
-                  const json = await res.json();
-                  setTechniqueResults(json);
-                } else {
-                  setTechniqueResults([]);
-                }
-              } finally {
-                setSearchLoading(false);
-              }
-            }}
-            results={techniqueResults}
-            loading={searchLoading}
-          />
-          <AssetSelectionModal
-            open={assetModal.open}
-            onClose={() => setAssetModal({ open: false, elementId: null })}
-            onSelect={async (assetId) => {
-              if (!assetModal.elementId) return;
-              const numId = Number(assetModal.elementId);
-              try {
-                await fetch(`/api/v1/curricula/${curriculumId}/elements/${numId}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ assetId }),
-                });
-                setAssetModal({ open: false, elementId: null });
-                await fetchElements();
-              } catch (e) {
-                console.error('Failed to set asset on element:', e);
-              }
-            }}
-            onSearch={async (q) => {
-              setSearchLoading(true);
-              try {
-                const res = await fetch(`/api/v1/videos?search=${encodeURIComponent(q)}`);
-                if (res.ok) {
-                  const json = await res.json();
-                  setAssetResults(json);
-                } else {
-                  setAssetResults([]);
-                }
-              } finally {
-                setSearchLoading(false);
-              }
-            }}
-            results={assetResults}
-            loading={searchLoading}
-          />
+      {/* Delete Confirmation Banner */}
+      {deleteConfirmation && (
+        <div className="fixed top-0 left-0 right-0 z-50 px-4 py-3 bg-yellow-500 text-white">
+          <div className="container mx-auto flex items-center justify-between max-w-5xl">
+            <span>Are you sure you want to delete this element?</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={confirmDelete}
+                className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Delete
+              </button>
+              <button
+                onClick={cancelDelete}
+                className="px-3 py-1 bg-white text-gray-800 rounded hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
-        {/* Curriculum Info */}
+      )}
+
+      {/* Notification Banner */}
+      {notification && (
+        <div
+          className={`fixed top-0 left-0 right-0 z-50 px-4 py-3 ${
+            notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+          }`}
+        >
+          <div className="container mx-auto flex items-center justify-between max-w-5xl">
+            <span>{notification.message}</span>
+            <button
+              onClick={() => setNotification(null)}
+              className="ml-4 text-white hover:text-gray-200"
+              aria-label="Close notification"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="container mx-auto py-8 px-4 max-w-5xl">
+        {/* Page Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-foreground">Curriculum Details</h2>
+          <h2 className="text-2xl font-bold text-foreground">Edit Curriculum</h2>
           <Link
             href={`/curricula/${curriculum.id}`}
             className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80"
@@ -464,9 +378,11 @@ export default function EditCurriculumPage() {
             View Mode
           </Link>
         </div>
+
+        {/* Curriculum Information */}
         <div className="bg-card border border-border rounded-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">Curriculum Information</h2>
+            <h4 className="text-lg font-semibold text-foreground">Curriculum Information</h4>
             {!editingCurriculum && (
               <button
                 onClick={() => setEditingCurriculum(true)}
@@ -543,17 +459,14 @@ export default function EditCurriculumPage() {
           ) : (
             <div>
               <div className="mb-3">
-                <span className="text-sm text-muted-foreground">Title: </span>
                 <span className="text-foreground font-medium">{curriculum.title}</span>
               </div>
               {curriculum.description && (
                 <div className="mb-3">
-                  <span className="text-sm text-muted-foreground">Description: </span>
                   <p className="text-foreground mt-1">{curriculum.description}</p>
                 </div>
               )}
               <div>
-                <span className="text-sm text-muted-foreground">Visibility: </span>
                 <span
                   className={`px-2 py-1 rounded text-xs ${
                     curriculum.isPublic
@@ -566,6 +479,187 @@ export default function EditCurriculumPage() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Enhanced Elements UI with previews and selection modals */}
+        <div className="mb-6">
+          <CurriculumElementsSection
+            elements={(() => {
+              const mapped = elements.map((el) => ({
+                id: String(el.id),
+                ord: el.ord,
+                kind: el.type as 'text' | 'technique' | 'asset',
+                techniqueId: el.techniqueId ?? undefined,
+                assetId: el.assetId ?? undefined,
+                text: el.type === 'text' ? el.title || '' : undefined,
+              }));
+              console.log('Passing elements to component:', mapped);
+              console.log('Technique map:', techniqueMap);
+              console.log('Video map:', videoMap);
+              return mapped;
+            })()}
+            techniqueMap={techniqueMap}
+            videoMap={videoMap}
+            onAddElement={handleAddElement}
+            onEditElement={(elementId) => {
+              // Find the element to determine its type
+              const element = elements.find((e) => String(e.id) === elementId);
+              if (!element) return;
+
+              // Open appropriate modal based on element type
+              if (element.type === 'technique') {
+                setTechniqueModal({ open: true, elementId });
+                setTechniqueResults([]);
+              } else if (element.type === 'asset') {
+                setAssetModal({ open: true, elementId });
+                setAssetResults([]);
+              }
+              // Text elements are edited inline, no modal needed
+            }}
+            onDeleteElement={(id) => {
+              const numId = Number(id);
+              if (Number.isFinite(numId)) handleDeleteElement(numId);
+            }}
+            onReorderElements={(payload) => {
+              const ordered = payload.orderedIds
+                .map((id) => elements.find((e) => String(e.id) === id))
+                .filter(Boolean) as typeof elements;
+              handleReorderElements(ordered);
+            }}
+            onPickTechnique={(elementId) => {
+              setTechniqueModal({ open: true, elementId });
+              setTechniqueResults([]);
+            }}
+            onPickAsset={(elementId) => {
+              setAssetModal({ open: true, elementId });
+              setAssetResults([]);
+            }}
+            onTextChange={async (elementId, text) => {
+              const numId = Number(elementId);
+              if (!Number.isFinite(numId)) return;
+              try {
+                await fetch(`/api/v1/curricula/${curriculumId}/elements/${numId}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ title: text }),
+                });
+                await fetchElements();
+              } catch (e) {
+                console.error('Failed to update text element:', e);
+              }
+            }}
+          />
+          <TechniqueSelectionModal
+            open={techniqueModal.open}
+            currentTechnique={
+              techniqueModal.elementId
+                ? (() => {
+                    const element = elements.find((e) => String(e.id) === techniqueModal.elementId);
+                    return element?.techniqueId ? techniqueMap[element.techniqueId] : null;
+                  })()
+                : null
+            }
+            onClose={() => setTechniqueModal({ open: false, elementId: null })}
+            onSelect={async (techId) => {
+              if (!techniqueModal.elementId) return;
+              const numId = Number(techniqueModal.elementId);
+              console.log('Updating element', numId, 'with techniqueId', techId);
+              try {
+                const response = await fetch(`/api/v1/curricula/${curriculumId}/elements/${numId}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ techniqueId: techId }),
+                });
+
+                const result = await response.json();
+                console.log('Update response:', response.status, result);
+
+                if (!response.ok) {
+                  throw new Error(result.error || 'Failed to update element');
+                }
+
+                setTechniqueModal({ open: false, elementId: null });
+                await fetchElements();
+                console.log('Elements refreshed');
+              } catch (e) {
+                console.error('Failed to set technique on element:', e);
+                alert(`Error: ${e.message}`);
+              }
+            }}
+            onSearch={async (q) => {
+              // Don't search if query is empty or too short
+              if (!q || q.trim().length === 0) {
+                setTechniqueResults([]);
+                return;
+              }
+
+              setSearchLoading(true);
+              try {
+                // Build URL with proper parameters
+                const params = new URLSearchParams();
+                if (disciplineId) {
+                  params.set('disciplineId', String(disciplineId));
+                }
+                params.set('search', q.trim());
+
+                const url = `/api/v1/techniques?${params.toString()}`;
+                const res = await fetch(url);
+                if (res.ok) {
+                  const json = await res.json();
+                  setTechniqueResults(json);
+                } else {
+                  setTechniqueResults([]);
+                }
+              } finally {
+                setSearchLoading(false);
+              }
+            }}
+            results={techniqueResults}
+            loading={searchLoading}
+          />
+          <AssetSelectionModal
+            open={assetModal.open}
+            currentAsset={
+              assetModal.elementId
+                ? (() => {
+                    const element = elements.find((e) => String(e.id) === assetModal.elementId);
+                    return element?.assetId ? videoMap[element.assetId] : null;
+                  })()
+                : null
+            }
+            onClose={() => setAssetModal({ open: false, elementId: null })}
+            onSelect={async (assetId) => {
+              if (!assetModal.elementId) return;
+              const numId = Number(assetModal.elementId);
+              try {
+                await fetch(`/api/v1/curricula/${curriculumId}/elements/${numId}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ assetId }),
+                });
+                setAssetModal({ open: false, elementId: null });
+                await fetchElements();
+              } catch (e) {
+                console.error('Failed to set asset on element:', e);
+              }
+            }}
+            onSearch={async (q) => {
+              setSearchLoading(true);
+              try {
+                const res = await fetch(`/api/v1/videos?search=${encodeURIComponent(q)}`);
+                if (res.ok) {
+                  const json = await res.json();
+                  setAssetResults(json);
+                } else {
+                  setAssetResults([]);
+                }
+              } finally {
+                setSearchLoading(false);
+              }
+            }}
+            results={assetResults}
+            loading={searchLoading}
+          />
         </div>
 
         {/* Back button */}
