@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { HiEye, HiPencil, HiTrash } from 'react-icons/hi';
 import { HiGlobeAlt, HiEyeSlash } from 'react-icons/hi2';
+import { sidebarItems } from '../components';
 
 interface Curriculum {
   id: number;
@@ -14,11 +15,6 @@ interface Curriculum {
   createdAt: string;
   updatedAt: string;
 }
-
-const sidebarItems = [
-  { href: '/curricula/create', label: 'Create Curriculum' },
-  { href: '/curricula/my-curricula', label: 'My Curricula' },
-];
 
 export default function MyCurriculaPage() {
   const [curricula, setCurricula] = useState<Curriculum[]>([]);
@@ -133,9 +129,7 @@ export default function MyCurriculaPage() {
           <>
             {curricula.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">
-                  You haven't created any curricula yet.
-                </p>
+                <p className="text-muted-foreground mb-4">You haven't created any curricula yet.</p>
                 <Link
                   href="/curricula/create"
                   className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
