@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { CurriculumElementsSection } from '../../components/curricula';
-import { sidebarItems } from '../components';
+import { sidebarItems } from '../../components/curricula';
 
 export default function CreateCurriculumPage() {
   const router = useRouter();

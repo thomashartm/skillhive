@@ -62,6 +62,18 @@ export interface ElementReorderPayload {
   orderedIds: string[];
 }
 
+export const metadata = {
+  title: 'Curricula - SkillHive',
+  description: 'Create and organize your training curricula',
+};
+
+export const sidebarItems = [
+  { href: '/curricula', label: 'All Curricula' },
+  { href: '/curricula/my-curricula', label: 'My Curricula' },
+  { href: '/curricula/shared', label: 'Shared with Me' },
+  { href: '/curricula/create', label: 'Create Curriculum' },
+];
+
 /* =========================
  * Utilities
  * ========================= */
@@ -564,9 +576,15 @@ export function ElementList({
           Get started by adding your first element using the buttons above.
         </p>
         <div className="text-xs text-gray-400">
-          <p>• Add an <strong>Instruction</strong> for text notes</p>
-          <p>• Add a <strong>Technique</strong> to reference a training technique</p>
-          <p>• Add a <strong>Reference Asset</strong> to include a video</p>
+          <p>
+            • Add an <strong>Instruction</strong> for text notes
+          </p>
+          <p>
+            • Add a <strong>Technique</strong> to reference a training technique
+          </p>
+          <p>
+            • Add a <strong>Reference Asset</strong> to include a video
+          </p>
         </div>
       </div>
     );
@@ -744,7 +762,9 @@ export function TechniqueSelectionModal({
                         )}
                       </div>
                       {t.description ? (
-                        <div className={`text-xs line-clamp-2 ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}>
+                        <div
+                          className={`text-xs line-clamp-2 ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}
+                        >
                           {t.description}
                         </div>
                       ) : null}
@@ -824,7 +844,11 @@ export function AssetSelectionModal({
               <div className="w-12 h-8 bg-gray-200 rounded overflow-hidden flex items-center justify-center">
                 {currentAsset.thumbnailUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={currentAsset.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                  <img
+                    src={currentAsset.thumbnailUrl}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <IconVideo />
                 )}
@@ -876,14 +900,18 @@ export function AssetSelectionModal({
                         )}
                       </div>
                       <div className="min-w-0">
-                        <div className={`font-medium truncate ${isSelected ? 'text-blue-900' : ''}`}>
+                        <div
+                          className={`font-medium truncate ${isSelected ? 'text-blue-900' : ''}`}
+                        >
                           {v.title}
                           {isSelected && (
                             <span className="ml-2 text-xs text-blue-600">(Selected)</span>
                           )}
                         </div>
                         {typeof v.durationSeconds === 'number' ? (
-                          <div className={`text-xs ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}>
+                          <div
+                            className={`text-xs ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}
+                          >
                             {formatDuration(v.durationSeconds)}
                           </div>
                         ) : null}

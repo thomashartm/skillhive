@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generateSlug } from '@trainhive/shared';
+import { wrapDb } from '@app/lib/wrapDb';
 
 const createCategorySchema = z.object({
   disciplineId: z.coerce.number().int().positive(),
@@ -38,18 +39,13 @@ function buildCategoryTree(categories: any[]): any[] {
 }
 
 // GET /api/v1/categories - List all categories or get tree structure
-export async function GET(request: NextRequest) {
+export const GET = wrapDb(async (AppDataSource, request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
     const tree = searchParams.get('tree') === 'true';
     const disciplineId = searchParams.get('disciplineId');
 
-    const dbModule = await import('@trainhive/db');
-    const { AppDataSource, Category } = dbModule;
-
-    if (!AppDataSource.isInitialized) {
-      await AppDataSource.initialize();
-    }
+    const { Category } = await import('@trainhive/db');
 
     const categoryRepo = AppDataSource.getRepository(Category);
 
@@ -74,14 +70,17 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching categories:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to fetch categories', details: process.env.NODE_ENV === 'development' ? errorMessage : undefined },
-      { status: 500 },
+      {
+        error: 'Failed to fetch categories',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+      { status: 500 }
     );
   }
-}
+});
 
 // POST /api/v1/categories - Create a new category
-export async function POST(request: NextRequest) {
+export const POST = wrapDb(async (AppDataSource, request: NextRequest) => {
   try {
     const body = await request.json();
     const validationResult = createCategorySchema.safeParse(body);
@@ -89,7 +88,7 @@ export async function POST(request: NextRequest) {
     if (!validationResult.success) {
       return NextResponse.json(
         { error: 'Invalid request data', details: validationResult.error.issues },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -98,12 +97,7 @@ export async function POST(request: NextRequest) {
     // Auto-generate slug from name if not provided
     const slug = data.slug || generateSlug(data.name);
 
-    const dbModule = await import('@trainhive/db');
-    const { AppDataSource, Category } = dbModule;
-
-    if (!AppDataSource.isInitialized) {
-      await AppDataSource.initialize();
-    }
+    const { Category } = await import('@trainhive/db');
 
     const categoryRepo = AppDataSource.getRepository(Category);
 
@@ -115,7 +109,7 @@ export async function POST(request: NextRequest) {
     if (existingCategory) {
       return NextResponse.json(
         { error: 'Category with this slug already exists in this discipline' },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -126,17 +120,14 @@ export async function POST(request: NextRequest) {
       });
 
       if (!parentCategory) {
-        return NextResponse.json(
-          { error: 'Parent category not found' },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: 'Parent category not found' }, { status: 404 });
       }
 
       // Verify parent belongs to same discipline
       if (parentCategory.disciplineId !== data.disciplineId) {
         return NextResponse.json(
           { error: 'Parent category must belong to the same discipline' },
-          { status: 400 },
+          { status: 400 }
         );
       }
     }
@@ -150,8 +141,11 @@ export async function POST(request: NextRequest) {
     console.error('Error creating category:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to create category', details: process.env.NODE_ENV === 'development' ? errorMessage : undefined },
-      { status: 500 },
+      {
+        error: 'Failed to create category',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+      { status: 500 }
     );
   }
-}
+});

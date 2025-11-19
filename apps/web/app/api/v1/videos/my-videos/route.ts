@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AppDataSource, ReferenceAsset, Technique, Category, TechniqueCategory } from '@trainhive/db';
+import { wrapDb } from '@app/lib/wrapDb';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@trainhive/auth';
 
 const authOptions = getAuthOptions();
 
 // GET /api/v1/videos/my-videos
-export async function GET(request: NextRequest) {
+export const GET = wrapDb(async (AppDataSource, request: NextRequest) => {
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!AppDataSource.isInitialized) {
-      await AppDataSource.initialize();
-    }
+    const { ReferenceAsset, Technique, Category, TechniqueCategory } = await import(
+      '@trainhive/db'
+    );
 
     const { searchParams } = new URL(request.url);
 
@@ -41,12 +41,14 @@ export async function GET(request: NextRequest) {
       .createQueryBuilder('asset')
       .leftJoinAndSelect('asset.techniqueId', 'technique')
       .where('asset.type = :type', { type: 'video' })
-      .andWhere('asset.createdBy = :userId', { userId: session.user.id });
+      .andWhere('asset.createdBy = :userId', {
+        userId: Number((session.user as { id?: string | number }).id),
+      });
 
     // Apply title filter
     if (titleFilter) {
       query = query.andWhere('asset.title LIKE :title', {
-        title: `%${titleFilter}%`
+        title: `%${titleFilter}%`,
       });
     }
 
@@ -55,7 +57,7 @@ export async function GET(request: NextRequest) {
       query = query
         .leftJoin(Technique, 't', 't.id = asset.techniqueId')
         .andWhere('t.name LIKE :techniqueName', {
-          techniqueName: `%${techniqueFilter}%`
+          techniqueName: `%${techniqueFilter}%`,
         });
     }
 
@@ -65,7 +67,7 @@ export async function GET(request: NextRequest) {
         .leftJoin(TechniqueCategory, 'tc', 'tc.techniqueId = asset.techniqueId')
         .leftJoin(Category, 'c', 'c.id = tc.categoryId')
         .andWhere('c.name LIKE :categoryName', {
-          categoryName: `%${categoryFilter}%`
+          categoryName: `%${categoryFilter}%`,
         });
     }
 
@@ -122,15 +124,17 @@ export async function GET(request: NextRequest) {
           });
 
           categories = await Promise.all(
-            techniqueCategoryAssocs.map(async (assoc) => {
+            techniqueCategoryAssocs.map(async (assoc: { categoryId: number }) => {
               const category = await categoryRepo.findOne({
                 where: { id: assoc.categoryId },
               });
-              return category ? { id: category.id, name: category.name, slug: category.slug } : null;
+              return category
+                ? { id: category.id, name: category.name, slug: category.slug }
+                : null;
             })
           );
 
-          categories = categories.filter(c => c !== null);
+          categories = categories.filter((c) => c !== null);
         }
 
         return {
@@ -157,4 +161,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
