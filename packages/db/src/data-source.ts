@@ -13,11 +13,14 @@ import { ReferenceAssetTag } from './entities/ReferenceAssetTag';
 import { Curriculum } from './entities/Curriculum';
 import { CurriculumElement } from './entities/CurriculumElement';
 
+//process.env.NODE_ENV === 'development'
 export const AppDataSource = new DataSource({
   type: 'mysql',
-  url: process.env.DATABASE_URL || 'mysql://trainhive_user:trainhive_password@localhost:3306/trainhive',
+  url:
+    process.env.DATABASE_URL ||
+    'mysql://trainhive_user:trainhive_password@localhost:3306/trainhive',
   synchronize: true, // Auto-create schema from entities (dev only)
-  logging: process.env.NODE_ENV === 'development',
+  logging: false,
   entities: [
     User,
     Discipline,
