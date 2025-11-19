@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AppLayout } from '../../components/layout/AppLayout';
-import { sidebarItems } from '../components';
+import { sidebarItems } from '../../components/curricula';
 
 interface Curriculum {
   id: number;

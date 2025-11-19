@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { HiEye, HiPencil, HiTrash } from 'react-icons/hi';
 import { HiGlobeAlt, HiEyeSlash } from 'react-icons/hi2';
-import { sidebarItems } from '../components';
+import { sidebarItems } from '../../components/curricula';
 
 interface Curriculum {
   id: number;

@@ -9,7 +9,7 @@ import {
   TechniqueSelectionModal,
   AssetSelectionModal,
 } from '../../../components/curricula';
-import { sidebarItems } from '../components';
+import { sidebarItems } from '../../../components/curricula';
 
 interface Curriculum {
   id: number;

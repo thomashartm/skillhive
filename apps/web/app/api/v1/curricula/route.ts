@@ -1,9 +1,5 @@
-import 'reflect-metadata';
 import { NextRequest, NextResponse } from 'next/server';
-/**
- * Note: TypeORM entities and data source are loaded via dynamic import inside handlers
- * to avoid bundling/decorator issues in Next.js.
- */
+import { wrapDb } from '@app/lib/wrapDb';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@trainhive/auth';
 import { z } from 'zod';
@@ -16,17 +12,15 @@ const createCurriculumSchema = z.object({
   isPublic: z.boolean().default(false),
 });
 
-// POST /api/v1/curricula - Create a new curriculum
-export async function POST(request: NextRequest) {
+/**
+ * POST /api/v1/curricula
+ * Create a new curriculum
+ */
+export const POST = wrapDb(async (AppDataSource, request: NextRequest) => {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { AppDataSource, Curriculum } = await import('@trainhive/db');
-    if (!AppDataSource.isInitialized) {
-      await AppDataSource.initialize();
     }
 
     const body = await request.json();
@@ -42,14 +36,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { Curriculum } = await import('@trainhive/db');
+
     const data = validationResult.data;
     const curriculumRepo = AppDataSource.getRepository(Curriculum);
+
+    const createdBy = Number((session.user as { id?: string | number }).id);
 
     const curriculum = curriculumRepo.create({
       title: data.title,
       description: data.description || null,
       isPublic: data.isPublic,
-      createdBy: Number((session.user as { id?: string | number }).id),
+      createdBy,
     });
 
     await curriculumRepo.save(curriculum);
@@ -64,24 +62,24 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error creating curriculum:', error);
     return NextResponse.json(
-      { error: 'Failed to create curriculum', message: error.message },
+      { error: 'Failed to create curriculum', message: error?.message || String(error) },
       { status: 500 }
     );
   }
-}
+});
 
-// GET /api/v1/curricula - List curricula (user's own + public ones)
-export async function GET(request: NextRequest) {
+/**
+ * GET /api/v1/curricula
+ * List curricula (user's own + public ones)
+ */
+export const GET = wrapDb(async (AppDataSource, request: NextRequest) => {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { AppDataSource, Curriculum } = await import('@trainhive/db');
-    if (!AppDataSource.isInitialized) {
-      await AppDataSource.initialize();
-    }
+    const { Curriculum } = await import('@trainhive/db');
 
     const { searchParams } = new URL(request.url);
     const onlyMine = searchParams.get('onlyMine') === 'true';
@@ -90,15 +88,17 @@ export async function GET(request: NextRequest) {
 
     let query = curriculumRepo.createQueryBuilder('curriculum');
 
+    const userId = Number((session.user as { id?: string | number }).id);
+
     if (onlyMine) {
       // Only user's curricula
       query = query.where('curriculum.createdBy = :userId', {
-        userId: Number((session.user as { id?: string | number }).id),
+        userId,
       });
     } else {
       // User's curricula + public ones
       query = query.where('(curriculum.createdBy = :userId OR curriculum.isPublic = :isPublic)', {
-        userId: Number((session.user as { id?: string | number }).id),
+        userId,
         isPublic: true,
       });
     }
@@ -111,8 +111,8 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('Error fetching curricula:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch curricula', message: error.message },
+      { error: 'Failed to fetch curricula', message: error?.message || String(error) },
       { status: 500 }
     );
   }
-}
+});

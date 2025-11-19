@@ -218,13 +218,20 @@ export async function POST(request: NextRequest) {
       // Create reference assets and their tag associations
       if (data.referenceAssets.length > 0) {
         for (const assetData of data.referenceAssets) {
+          const typeMapped =
+            assetData.type === 'video'
+              ? AssetType.VIDEO
+              : assetData.type === 'web'
+                ? AssetType.WEB
+                : AssetType.IMAGE;
+
           const asset = referenceAssetRepo.create({
             techniqueId: technique.id,
-            type: assetData.type as AssetType,
+            type: typeMapped as any,
             url: assetData.url,
             title: assetData.title ?? null,
             description: assetData.description ?? null,
-            videoType: assetData.videoType ?? null,
+            videoType: (assetData.videoType ?? null) as any,
             originator: assetData.originator ?? null,
             ord: assetData.ord,
           });
