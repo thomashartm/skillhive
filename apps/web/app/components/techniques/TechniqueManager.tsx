@@ -214,9 +214,7 @@ function TagFilterInput({
             </button>
           ))}
           {filteredTags.length === 0 && searchTerm && (
-            <div className="px-3 py-2 text-sm text-muted-foreground text-center">
-              No tags found
-            </div>
+            <div className="px-3 py-2 text-sm text-muted-foreground text-center">No tags found</div>
           )}
         </div>
       )}
@@ -422,11 +420,7 @@ export function TechniqueManager({ disciplineId }: TechniqueManagerProps) {
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">Filter by Tag</label>
-            <TagFilterInput
-              tags={tags}
-              selectedTag={selectedTag}
-              onTagChange={setSelectedTag}
-            />
+            <TagFilterInput tags={tags} selectedTag={selectedTag} onTagChange={setSelectedTag} />
           </div>
         </div>
       </div>
@@ -447,7 +441,7 @@ export function TechniqueManager({ disciplineId }: TechniqueManagerProps) {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {techniques.map((technique) => (
             <div
               key={technique.id}
@@ -502,8 +496,18 @@ export function TechniqueManager({ disciplineId }: TechniqueManagerProps) {
                         <ul className="mt-2 space-y-1">
                           {technique.referenceAssets.map((asset: any) => (
                             <li key={asset.id} className="flex items-center gap-2 text-sm">
-                              <svg className="w-4 h-4 text-muted-foreground flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                              <svg
+                                className="w-4 h-4 text-muted-foreground flex-shrink-0"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                                />
                               </svg>
                               <a
                                 href={asset.url}
