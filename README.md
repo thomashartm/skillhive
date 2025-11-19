@@ -1,4 +1,5 @@
 # SkillHive 
+WORK in PROGRESS
 
 SkillHive is your onestop shop to organize your personal knowledge 
 path or your training curriculum around existing public media, enriched by your ideas.
