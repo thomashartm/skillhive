@@ -5,6 +5,7 @@ import { CategoryTree } from './CategoryTree';
 import { CategoryForm, CategoryFormData } from './CategoryForm';
 import { CategoryNode } from './CategoryTreeNode';
 import { CategoryDetailView } from './CategoryDetailView';
+import { apiClient, getErrorMessage } from '@/lib/api';
 
 interface CategoryManagerProps {
   disciplineId: number;
@@ -47,14 +48,8 @@ export function CategoryManager({ disciplineId, maxLevel = 5 }: CategoryManagerP
     }
 
     try {
-      const response = await fetch(`/api/v1/categories/${category.id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const error = (await response.json()) as { error: string };
-        throw new Error(error.error || 'Failed to delete category');
-      }
+      // Use API client for deletion
+      await apiClient.categories.delete(category.id);
 
       // Refresh the tree
       setRefreshKey((prev) => prev + 1);
@@ -62,33 +57,18 @@ export function CategoryManager({ disciplineId, maxLevel = 5 }: CategoryManagerP
       // eslint-disable-next-line no-console
       console.error('Error deleting category:', error);
       // eslint-disable-next-line no-alert
-      alert(error instanceof Error ? error.message : 'Failed to delete category');
+      alert(getErrorMessage(error));
     }
   };
 
   const handleSubmit = async (data: CategoryFormData) => {
     try {
-      let response;
-
       if (modalMode === 'edit' && selectedCategory) {
         // Update existing category
-        response = await fetch(`/api/v1/categories/${selectedCategory.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        });
+        await apiClient.categories.update(selectedCategory.id, data);
       } else {
         // Create new category
-        response = await fetch('/api/v1/categories', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        });
-      }
-
-      if (!response.ok) {
-        const error = (await response.json()) as { error: string };
-        throw new Error(error.error || 'Failed to save category');
+        await apiClient.categories.create(data);
       }
 
       // Close modal and refresh tree
@@ -100,7 +80,7 @@ export function CategoryManager({ disciplineId, maxLevel = 5 }: CategoryManagerP
       // eslint-disable-next-line no-console
       console.error('Error saving category:', error);
       // eslint-disable-next-line no-alert
-      alert(error instanceof Error ? error.message : 'Failed to save category');
+      alert(getErrorMessage(error));
     }
   };
 
@@ -122,16 +102,12 @@ export function CategoryManager({ disciplineId, maxLevel = 5 }: CategoryManagerP
   useEffect(() => {
     async function fetchCategories() {
       try {
-        const params = new URLSearchParams({ tree: 'true' });
-        if (disciplineId) {
-          params.append('disciplineId', disciplineId.toString());
-        }
-
-        const response = await fetch(`/api/v1/categories?${params.toString()}`);
-        if (response.ok) {
-          const data = (await response.json()) as CategoryNode[];
-          setAllCategories(data || []);
-        }
+        // Use API client to fetch categories
+        const data = await apiClient.categories.list({
+          disciplineId,
+          tree: true
+        });
+        setAllCategories(data || []);
       } catch (error) {
         console.error('Error fetching categories:', error);
       }

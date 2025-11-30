@@ -20,7 +20,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"],
+      "@/*": ["./app/*"],
       "@app/*": ["./app/*"],
       "@trainhive/shared": ["../../packages/shared/src"],
       "@trainhive/shared/*": ["../../packages/shared/src/*"],

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { generateSlug } from '@trainhive/shared';
 import { CategoryNode } from './CategoryTreeNode';
+import { apiClient } from '@/lib/api';
 
 interface CategoryFormProps {
   category?: CategoryNode | null;
@@ -46,8 +47,7 @@ export function CategoryForm({
     if (category) {
       // Only fetch categories when editing
       setLoadingCategories(true);
-      fetch(`/api/v1/categories?disciplineId=${disciplineId}`)
-        .then((res) => res.json())
+      apiClient.categories.list({ disciplineId })
         .then((data) => {
           setAllCategories(data as CategoryNode[]);
         })

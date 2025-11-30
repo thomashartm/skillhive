@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { sidebarItems } from '../../components/curricula';
+import { apiClient, getErrorMessage } from '@/lib/api';
 
 interface Curriculum {
   id: number;
@@ -47,18 +48,12 @@ export default function CurriculumDetailPage() {
 
   const fetchCurriculum = async () => {
     try {
-      const response = await fetch(`/api/v1/curricula/${curriculumId}`);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || `Server error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setCurriculum(data.curriculum);
+      // Use API client to fetch curriculum by ID
+      const curriculum = await apiClient.curricula.getById(parseInt(curriculumId));
+      setCurriculum(curriculum);
     } catch (err: any) {
       console.error('Error fetching curriculum:', err);
-      setError(err.message);
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -66,15 +61,9 @@ export default function CurriculumDetailPage() {
 
   const fetchElements = async () => {
     try {
-      const response = await fetch(`/api/v1/curricula/${curriculumId}/elements`);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || `Server error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setElements(data.elements || []);
+      // Use API client to fetch curriculum elements
+      const elements = await apiClient.curricula.elements.list(parseInt(curriculumId));
+      setElements(elements || []);
     } catch (err: any) {
       console.error('Error fetching elements:', err);
     }

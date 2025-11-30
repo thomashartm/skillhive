@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { CategoryTreeNode, CategoryNode } from './CategoryTreeNode';
+import { apiClient, getErrorMessage } from '@/lib/api';
 
 interface CategoryTreeProps {
   disciplineId?: number;
@@ -30,22 +31,17 @@ export function CategoryTree({
     async function fetchCategories() {
       try {
         setLoading(true);
-        const params = new URLSearchParams({ tree: 'true' });
-        if (disciplineId) {
-          params.append('disciplineId', disciplineId.toString());
-        }
 
-        const response = await fetch(`/api/v1/categories?${params.toString()}`);
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Failed to fetch categories' }));
-          throw new Error(errorData.error || 'Failed to fetch categories');
-        }
+        // Use API client to fetch categories
+        const data = await apiClient.categories.list({
+          disciplineId,
+          tree: true
+        });
 
-        const data = (await response.json()) as CategoryNode[];
         setCategories(data || []);
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        setError(getErrorMessage(err));
         setCategories([]);
       } finally {
         setLoading(false);

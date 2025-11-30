@@ -9,7 +9,7 @@ const navItems = [
   //{ href: '/sessions', label: 'Training Sessions' },
   { href: '/curricula/my-curricula', label: 'Curricula' },
   { href: '/techniques', label: 'Techniques' },
-  { href: '/videos/save', label: 'Save Video' },
+  { href: '/videos/my-videos', label: 'Videos' },
 ];
 
 export function MainNav() {
@@ -77,9 +77,7 @@ export function MainNav() {
                 key={item.href}
                 href={item.href}
                 className={`text-sm font-medium transition-colors hover:text-foreground ${
-                  isActive
-                    ? 'text-foreground border-b-2 border-primary pb-1'
-                    : 'text-muted-foreground'
+                  isActive ? 'text-foreground border-primary pb-1' : 'text-muted-foreground'
                 }`}
               >
                 {item.label}

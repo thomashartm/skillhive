@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { generateSlug } from '@trainhive/shared';
+import { apiClient, getErrorMessage } from '@/lib/api';
 
 interface Tag {
   id: number;
@@ -35,8 +36,8 @@ export function TagAutocomplete({
   useEffect(() => {
     const fetchTags = async () => {
       try {
-        const response = await fetch(`/api/v1/tags?disciplineId=${disciplineId}`);
-        const data = await response.json();
+        // Use API client to fetch tags
+        const data = await apiClient.tags.list({ disciplineId });
         setTags(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Failed to load tags:', error);
@@ -117,24 +118,16 @@ export function TagAutocomplete({
 
     try {
       const slug = generateSlug(searchTerm.trim());
-      const response = await fetch('/api/v1/tags', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          disciplineId,
-          name: searchTerm.trim(),
-          slug,
-          description: null,
-          color: null,
-        }),
+
+      // Use API client to create tag
+      const newTag = await apiClient.tags.create({
+        disciplineId,
+        name: searchTerm.trim(),
+        slug,
+        description: null,
+        color: null,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create tag');
-      }
-
-      const newTag = await response.json();
       setTags([...tags, newTag]);
       onSelectionChange([...selectedIds, newTag.id]);
       setSearchTerm('');
@@ -142,7 +135,7 @@ export function TagAutocomplete({
       inputRef.current?.focus();
     } catch (error) {
       console.error('Error creating tag:', error);
-      alert(error instanceof Error ? error.message : 'Failed to create tag');
+      alert(getErrorMessage(error));
     } finally {
       setIsCreating(false);
     }

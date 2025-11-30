@@ -1,0 +1,402 @@
+LoginDto:
+  type: object
+  properties:
+    email:
+      type: string
+      description: User email address
+      example: user@example.com
+    password:
+      type: string
+      description: User password
+      example: SecurePassword123!
+      minLength: 6
+  required:
+    - email
+    - password
+LoginResponseDto:
+  type: object
+  properties:
+    accessToken:
+      type: string
+      description: JWT access token - use in Authorization header as Bearer token
+      example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    tokenType:
+      type: string
+      description: Token type
+      example: Bearer
+    expiresIn:
+      type: number
+      description: Token expiration time in seconds
+      example: 604800
+    user:
+      type: object
+      description: Authenticated user information
+  required:
+    - accessToken
+    - tokenType
+    - expiresIn
+    - user
+CreateUserDto:
+  type: object
+  properties:
+    handle:
+      type: string
+      example: john.doe
+      description: User handle/username
+    name:
+      type: string
+      example: John Doe
+      description: Full name
+    email:
+      type: string
+      example: john@example.com
+      description: Email address
+    role:
+      type: string
+      enum: &UserRole
+        - user
+        - admin
+        - manager
+        - professor
+      example: user
+      description: User role
+    avatarUrl:
+      type: string
+      example: https://example.com/avatar.jpg
+      description: Avatar URL
+    password:
+      type: string
+      example: securePassword123
+      description: User password
+  required:
+    - name
+    - email
+UpdateUserDto:
+  type: object
+  properties:
+    handle:
+      type: string
+      example: john.doe
+      description: User handle/username
+    name:
+      type: string
+      example: John Doe
+      description: Full name
+    email:
+      type: string
+      example: john@example.com
+      description: Email address
+    role:
+      type: string
+      enum: *UserRole
+      example: user
+      description: User role
+    avatarUrl:
+      type: string
+      example: https://example.com/avatar.jpg
+      description: Avatar URL
+CreateDisciplineDto:
+  type: object
+  properties:
+    name:
+      type: string
+      example: Brazilian Jiu-Jitsu
+      description: Name of the discipline
+    slug:
+      type: string
+      example: brazilian-jiu-jitsu
+      description: URL-friendly slug
+    description:
+      type: string
+      example: A martial art focusing on grappling and ground fighting
+  required:
+    - name
+UpdateDisciplineDto:
+  type: object
+  properties:
+    name:
+      type: string
+      example: Brazilian Jiu-Jitsu
+      description: Name of the discipline
+    slug:
+      type: string
+      example: brazilian-jiu-jitsu
+      description: URL-friendly slug
+    description:
+      type: string
+      example: A martial art focusing on grappling and ground fighting
+CreateCategoryDto:
+  type: object
+  properties:
+    disciplineId:
+      type: number
+      example: 1
+      description: Discipline ID
+    name:
+      type: string
+      example: Guard Passes
+      description: Category name
+    slug:
+      type: string
+      example: guard-passes
+      description: URL-friendly slug
+    description:
+      type: string
+      example: Techniques for passing the guard
+    parentId:
+      type: number
+      example: 1
+      description: Parent category ID
+  required:
+    - disciplineId
+    - name
+UpdateCategoryDto:
+  type: object
+  properties:
+    disciplineId:
+      type: number
+      example: 1
+      description: Discipline ID
+    name:
+      type: string
+      example: Guard Passes
+      description: Category name
+    slug:
+      type: string
+      example: guard-passes
+      description: URL-friendly slug
+    description:
+      type: string
+      example: Techniques for passing the guard
+    parentId:
+      type: number
+      example: 1
+      description: Parent category ID
+CreateTechniqueDto:
+  type: object
+  properties:
+    disciplineId:
+      type: number
+      example: 1
+      description: Discipline ID
+    name:
+      type: string
+      example: Arm Bar from Guard
+      description: Technique name
+    slug:
+      type: string
+      example: arm-bar-from-guard
+      description: URL-friendly slug
+    description:
+      type: string
+      example: A submission technique from guard position
+    categoryIds:
+      example: &CategoryIds
+        - 1
+        - 2
+      description: Category IDs to associate
+      type: array
+      items:
+        type: number
+  required:
+    - disciplineId
+    - name
+UpdateTechniqueDto:
+  type: object
+  properties:
+    disciplineId:
+      type: number
+      example: 1
+      description: Discipline ID
+    name:
+      type: string
+      example: Arm Bar from Guard
+      description: Technique name
+    slug:
+      type: string
+      example: arm-bar-from-guard
+      description: URL-friendly slug
+    description:
+      type: string
+      example: A submission technique from guard position
+    categoryIds:
+      example: *CategoryIds
+      description: Category IDs to associate
+      type: array
+      items:
+        type: number
+CreateTagDto:
+  type: object
+  properties:
+    disciplineId:
+      type: number
+      example: 1
+      description: Discipline ID
+    name:
+      type: string
+      example: Beginner Friendly
+      description: Tag name
+    slug:
+      type: string
+      example: beginner-friendly
+      description: URL-friendly slug
+    description:
+      type: string
+      example: Techniques suitable for beginners
+    color:
+      type: string
+      example: "#4CAF50"
+      description: Hex color code for UI display
+  required:
+    - disciplineId
+    - name
+UpdateTagDto:
+  type: object
+  properties:
+    disciplineId:
+      type: number
+      example: 1
+      description: Discipline ID
+    name:
+      type: string
+      example: Beginner Friendly
+      description: Tag name
+    slug:
+      type: string
+      example: beginner-friendly
+      description: URL-friendly slug
+    description:
+      type: string
+      example: Techniques suitable for beginners
+    color:
+      type: string
+      example: "#4CAF50"
+      description: Hex color code for UI display
+CreateReferenceAssetDto:
+  type: object
+  properties:
+    techniqueId:
+      type: number
+      example: 1
+      description: Technique ID
+    type:
+      type: string
+      enum: &AssetType
+        - video
+        - web
+        - image
+      example: video
+      description: Type of asset
+    url:
+      type: string
+      example: https://youtube.com/watch?v=example
+      description: URL of the asset
+    title:
+      type: string
+      example: Triangle Choke Tutorial
+      description: Title of the asset
+    description:
+      type: string
+      example: Detailed breakdown of triangle choke
+    videoType:
+      type: string
+      enum: &VideoType
+        - short
+        - full
+        - instructional
+        - seminar
+      example: instructional
+    originator:
+      type: string
+      example: John Danaher
+      description: Source or creator name
+    ord:
+      type: number
+      example: 0
+      description: Display order
+    createdBy:
+      type: number
+      example: 1
+      description: ID of user who created this asset
+  required:
+    - techniqueId
+    - type
+    - url
+UpdateReferenceAssetDto:
+  type: object
+  properties:
+    techniqueId:
+      type: number
+      example: 1
+      description: Technique ID
+    type:
+      type: string
+      enum: *AssetType
+      example: video
+      description: Type of asset
+    url:
+      type: string
+      example: https://youtube.com/watch?v=example
+      description: URL of the asset
+    title:
+      type: string
+      example: Triangle Choke Tutorial
+      description: Title of the asset
+    description:
+      type: string
+      example: Detailed breakdown of triangle choke
+    videoType:
+      type: string
+      enum: *VideoType
+      example: instructional
+    originator:
+      type: string
+      example: John Danaher
+      description: Source or creator name
+    ord:
+      type: number
+      example: 0
+      description: Display order
+    createdBy:
+      type: number
+      example: 1
+      description: ID of user who created this asset
+CreateCurriculumDto:
+  type: object
+  properties:
+    title:
+      type: string
+      example: BJJ Fundamentals
+      description: Curriculum title
+    description:
+      type: string
+      example: Core techniques for BJJ beginners
+    createdBy:
+      type: number
+      example: 1
+      description: ID of user creating this curriculum
+    isPublic:
+      type: boolean
+      example: false
+      description: Whether curriculum is publicly visible
+  required:
+    - title
+    - createdBy
+UpdateCurriculumDto:
+  type: object
+  properties:
+    title:
+      type: string
+      example: BJJ Fundamentals
+      description: Curriculum title
+    description:
+      type: string
+      example: Core techniques for BJJ beginners
+    createdBy:
+      type: number
+      example: 1
+      description: ID of user creating this curriculum
+    isPublic:
+      type: boolean
+      example: false
+      description: Whether curriculum is publicly visible

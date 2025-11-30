@@ -1,0 +1,44 @@
+login:
+  post:
+    operationId: AuthController_login
+    summary: Login with email and password
+    description: Authenticate with email and password to receive a JWT token. Use
+      the returned access token in the Authorization header as a Bearer token
+      for protected endpoints. Token format is compatible with NextAuth.js
+      tokens.
+    parameters: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../components/schemas.yaml#/LoginDto"
+    responses:
+      "200":
+        description: Login successful, returns JWT access token
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas.yaml#/LoginResponseDto"
+      "400":
+        description: Validation error
+        content:
+          application/json:
+            schema:
+              example:
+                statusCode: 400
+                message:
+                  - email must be an email
+                  - password should not be empty
+                error: Bad Request
+      "401":
+        description: Invalid credentials
+        content:
+          application/json:
+            schema:
+              example:
+                statusCode: 401
+                message: Invalid email or password
+                error: Unauthorized
+    tags:
+      - Authentication

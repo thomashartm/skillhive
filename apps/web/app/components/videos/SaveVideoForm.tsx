@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { RichTextEditor } from '../common/RichTextEditor';
 import { TechniqueSearchAutocomplete } from './TechniqueSearchAutocomplete';
 import { generateSlug } from '@trainhive/shared';
+import { apiClient } from '@/lib/api';
 
 interface Technique {
   id: number;
@@ -75,15 +76,8 @@ export function SaveVideoForm({ disciplineId, onSuccess }: SaveVideoFormProps) {
       setMetadataError(null);
 
       try {
-        const response = await fetch(
-          `/api/v1/oembed?url=${encodeURIComponent(videoUrl)}`
-        );
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch video metadata');
-        }
-
-        const data: VideoMetadata = await response.json();
+        // Use API client to fetch oEmbed metadata
+        const data: VideoMetadata = await apiClient.oembed.fetch(videoUrl);
         setVideoMetadata(data);
 
         // Prefill form fields if not already filled
@@ -128,30 +122,23 @@ export function SaveVideoForm({ disciplineId, onSuccess }: SaveVideoFormProps) {
       return;
     }
 
-    // For now, we'll just log the data
-    // TODO: Create an API endpoint to save videos
-    const videoData = {
-      url: videoUrl,
-      title,
-      description,
-      authorName,
-      authorUrl,
-      embedHtml,
-      techniqueId: selectedTechnique?.id,
-      newTechniqueName,
-      disciplineId,
-    };
-
-    console.log('Video data to save:', videoData);
-
     setIsSaving(true);
 
-    // Simulate save for now
-    setTimeout(() => {
-      setIsSaving(false);
-      alert('Video saved successfully! (This is a placeholder - API integration needed)');
+    try {
+      // Use API client to save video
+      await apiClient.videos.create({
+        url: videoUrl,
+        title,
+        description: description || null,
+        authorName: authorName || null,
+        authorUrl: authorUrl || null,
+        embedHtml: embedHtml || null,
+        techniqueId: selectedTechnique?.id || null,
+        newTechniqueName: newTechniqueName || null,
+        disciplineId,
+      });
 
-      // Reset form
+      // Reset form on success
       setVideoUrl('');
       setTitle('');
       setDescription('');
@@ -162,10 +149,17 @@ export function SaveVideoForm({ disciplineId, onSuccess }: SaveVideoFormProps) {
       setNewTechniqueName(null);
       setVideoMetadata(null);
 
+      alert('Video saved successfully!');
+
       if (onSuccess) {
         onSuccess();
       }
-    }, 1000);
+    } catch (error: any) {
+      console.error('Error saving video:', error);
+      alert(`Failed to save video: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (

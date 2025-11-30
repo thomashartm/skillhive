@@ -1,2 +1,2 @@
 // Shared constants
-export {};
+export * from './scopes';

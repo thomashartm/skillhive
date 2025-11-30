@@ -11,7 +11,7 @@ export { Technique } from './entities/Technique';
 export { TechniqueCategory } from './entities/TechniqueCategory';
 export { Tag } from './entities/Tag';
 export { TechniqueTag } from './entities/TechniqueTag';
-export { ReferenceAsset, AssetType } from './entities/ReferenceAsset';
+export { ReferenceAsset, AssetType, VideoType } from './entities/ReferenceAsset';
 export { ReferenceAssetTag } from './entities/ReferenceAssetTag';
 export { Curriculum } from './entities/Curriculum';
 export { CurriculumElement, ElementType } from './entities/CurriculumElement';

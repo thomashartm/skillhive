@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AppLayout } from '../../components/layout/AppLayout';
+import { sidebarItems } from '../../components/videos';
+import { CreateLink } from '../../components/actionbar';
+import { apiClient, getErrorMessage } from '@/lib/api';
 
 interface Video {
   id: number;
@@ -54,12 +57,8 @@ export default function MyVideosPage() {
   );
 
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(
-    parseInt(searchParams.get('page') || '1')
-  );
-  const [pageLimit, setPageLimit] = useState(
-    parseInt(searchParams.get('limit') || '10')
-  );
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page') || '1'));
+  const [pageLimit, setPageLimit] = useState(parseInt(searchParams.get('limit') || '10'));
 
   // Fetch videos
   useEffect(() => {
@@ -71,35 +70,29 @@ export default function MyVideosPage() {
       setLoading(true);
       setError(null);
 
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: pageLimit.toString(),
-        sortBy,
-        sortOrder,
-      });
-
-      if (titleFilter) params.append('title', titleFilter);
-      if (techniqueFilter) params.append('technique', techniqueFilter);
-      if (categoryFilter) params.append('category', categoryFilter);
-
-      const response = await fetch(`/api/v1/videos/my-videos?${params.toString()}`);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || `Server error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setVideos(data.videos || []);
-      setPagination(data.pagination || {
+      // Use API client to fetch user's videos
+      const data = await apiClient.videos.getMyVideos({
         page: currentPage,
         limit: pageLimit,
-        total: 0,
-        totalPages: 0,
+        sortBy,
+        sortOrder,
+        title: titleFilter || undefined,
+        technique: techniqueFilter || undefined,
+        category: categoryFilter || undefined,
       });
+
+      setVideos(data.videos || []);
+      setPagination(
+        data.pagination || {
+          page: currentPage,
+          limit: pageLimit,
+          total: 0,
+          totalPages: 0,
+        }
+      );
     } catch (err: any) {
       console.error('Error fetching videos:', err);
-      setError(err.message);
+      setError(getErrorMessage(err));
       setVideos([]);
       setPagination({
         page: currentPage,
@@ -134,18 +127,13 @@ export default function MyVideosPage() {
     }
 
     try {
-      const response = await fetch(`/api/v1/videos/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete video');
-      }
+      // Use API client to delete video
+      await apiClient.videos.delete(id);
 
       // Refresh the list
       fetchVideos();
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${getErrorMessage(err)}`);
     }
   };
 
@@ -159,307 +147,305 @@ export default function MyVideosPage() {
   return (
     <AppLayout sidebarItems={sidebarItems} sidebarTitle="Videos">
       <div className="container mx-auto py-8 px-4">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-foreground">My Videos</h1>
-        <Link
-          href="/videos/save"
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-bold text-foreground">My Videos</h1>
+          <CreateLink path="/videos/save" title="New Video" />
+        </div>
+
+        {/* Filters */}
+        <form
+          onSubmit={handleFilterSubmit}
+          className="bg-card border border-border rounded-lg p-6 mb-6"
         >
-          Add New Video
-        </Link>
-      </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label htmlFor="title" className="block text-sm font-medium text-foreground mb-2">
+                Title
+              </label>
+              <input
+                type="text"
+                id="title"
+                value={titleFilter}
+                onChange={(e) => setTitleFilter(e.target.value)}
+                placeholder="Filter by title..."
+                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+              />
+            </div>
 
-      {/* Filters */}
-      <form onSubmit={handleFilterSubmit} className="bg-card border border-border rounded-lg p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <div>
-            <label htmlFor="title" className="block text-sm font-medium text-foreground mb-2">
-              Title
-            </label>
-            <input
-              type="text"
-              id="title"
-              value={titleFilter}
-              onChange={(e) => setTitleFilter(e.target.value)}
-              placeholder="Filter by title..."
-              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-            />
+            <div>
+              <label htmlFor="technique" className="block text-sm font-medium text-foreground mb-2">
+                Technique
+              </label>
+              <input
+                type="text"
+                id="technique"
+                value={techniqueFilter}
+                onChange={(e) => setTechniqueFilter(e.target.value)}
+                placeholder="Filter by technique..."
+                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="category" className="block text-sm font-medium text-foreground mb-2">
+                Category
+              </label>
+              <input
+                type="text"
+                id="category"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                placeholder="Filter by category..."
+                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+              />
+            </div>
           </div>
 
-          <div>
-            <label htmlFor="technique" className="block text-sm font-medium text-foreground mb-2">
-              Technique
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            >
+              Apply Filters
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTitleFilter('');
+                setTechniqueFilter('');
+                setCategoryFilter('');
+                setCurrentPage(1);
+              }}
+              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </form>
+
+        {/* Results per page selector */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <label htmlFor="pageLimit" className="text-sm text-foreground">
+              Show:
             </label>
-            <input
-              type="text"
-              id="technique"
-              value={techniqueFilter}
-              onChange={(e) => setTechniqueFilter(e.target.value)}
-              placeholder="Filter by technique..."
-              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-            />
+            <select
+              id="pageLimit"
+              value={pageLimit}
+              onChange={(e) => {
+                setPageLimit(parseInt(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="px-3 py-1 border border-border rounded-md bg-background text-foreground"
+            >
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </select>
+            <span className="text-sm text-muted-foreground">videos per page</span>
           </div>
 
-          <div>
-            <label htmlFor="category" className="block text-sm font-medium text-foreground mb-2">
-              Category
-            </label>
-            <input
-              type="text"
-              id="category"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              placeholder="Filter by category..."
-              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-            />
+          <div className="text-sm text-muted-foreground">
+            Showing {videos.length > 0 ? (currentPage - 1) * pageLimit + 1 : 0} to{' '}
+            {Math.min(currentPage * pageLimit, pagination.total)} of {pagination.total} videos
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-          >
-            Apply Filters
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setTitleFilter('');
-              setTechniqueFilter('');
-              setCategoryFilter('');
-              setCurrentPage(1);
-            }}
-            className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80"
-          >
-            Clear Filters
-          </button>
-        </div>
-      </form>
+        {/* Loading state */}
+        {loading && <div className="text-center py-8 text-muted-foreground">Loading...</div>}
 
-      {/* Results per page selector */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <label htmlFor="pageLimit" className="text-sm text-foreground">
-            Show:
-          </label>
-          <select
-            id="pageLimit"
-            value={pageLimit}
-            onChange={(e) => {
-              setPageLimit(parseInt(e.target.value));
-              setCurrentPage(1);
-            }}
-            className="px-3 py-1 border border-border rounded-md bg-background text-foreground"
-          >
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="50">50</option>
-          </select>
-          <span className="text-sm text-muted-foreground">videos per page</span>
-        </div>
+        {/* Error state - only show if there's an actual error */}
+        {!loading && error && videos.length === 0 && (
+          <div className="bg-destructive/10 border border-destructive rounded-lg p-4 mb-4">
+            <p className="text-destructive text-sm">{error}</p>
+            <button
+              onClick={() => {
+                setError(null);
+                fetchVideos();
+              }}
+              className="mt-2 text-sm text-destructive hover:underline"
+            >
+              Try again
+            </button>
+          </div>
+        )}
 
-        <div className="text-sm text-muted-foreground">
-          Showing {videos.length > 0 ? (currentPage - 1) * pageLimit + 1 : 0} to{' '}
-          {Math.min(currentPage * pageLimit, pagination.total)} of {pagination.total} videos
-        </div>
-      </div>
-
-      {/* Loading state */}
-      {loading && <div className="text-center py-8 text-muted-foreground">Loading...</div>}
-
-      {/* Error state - only show if there's an actual error */}
-      {!loading && error && videos.length === 0 && (
-        <div className="bg-destructive/10 border border-destructive rounded-lg p-4 mb-4">
-          <p className="text-destructive text-sm">{error}</p>
-          <button
-            onClick={() => {
-              setError(null);
-              fetchVideos();
-            }}
-            className="mt-2 text-sm text-destructive hover:underline"
-          >
-            Try again
-          </button>
-        </div>
-      )}
-
-      {/* Table */}
-      {!loading && (
-        <div className="bg-card border border-border rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted/50">
-                  <th
-                    className="px-4 py-3 text-left text-sm font-semibold text-foreground cursor-pointer hover:bg-muted"
-                    onClick={() => handleSort('title')}
-                  >
-                    Title <SortIcon column="title" />
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">
-                    Video Type
-                  </th>
-                  <th
-                    className="px-4 py-3 text-left text-sm font-semibold text-foreground cursor-pointer hover:bg-muted"
-                    onClick={() => handleSort('technique')}
-                  >
-                    Technique <SortIcon column="technique" />
-                  </th>
-                  <th
-                    className="px-4 py-3 text-left text-sm font-semibold text-foreground cursor-pointer hover:bg-muted"
-                    onClick={() => handleSort('category')}
-                  >
-                    Categories <SortIcon column="category" />
-                  </th>
-                  <th
-                    className="px-4 py-3 text-left text-sm font-semibold text-foreground cursor-pointer hover:bg-muted"
-                    onClick={() => handleSort('createdAt')}
-                  >
-                    Upload Date <SortIcon column="createdAt" />
-                  </th>
-                  <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {videos.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                      No videos found. Try adjusting your filters or add a new video.
-                    </td>
+        {/* Table */}
+        {!loading && (
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-muted/50">
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-foreground cursor-pointer hover:bg-muted"
+                      onClick={() => handleSort('title')}
+                    >
+                      Title <SortIcon column="title" />
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">
+                      Video Type
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-foreground cursor-pointer hover:bg-muted"
+                      onClick={() => handleSort('technique')}
+                    >
+                      Technique <SortIcon column="technique" />
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-foreground cursor-pointer hover:bg-muted"
+                      onClick={() => handleSort('category')}
+                    >
+                      Categories <SortIcon column="category" />
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-sm font-semibold text-foreground cursor-pointer hover:bg-muted"
+                      onClick={() => handleSort('createdAt')}
+                    >
+                      Upload Date <SortIcon column="createdAt" />
+                    </th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">
+                      Actions
+                    </th>
                   </tr>
-                ) : (
-                  videos.map((video) => (
-                    <tr key={video.id} className="border-b border-border hover:bg-muted/30">
-                      <td className="px-4 py-3 text-sm text-foreground">
-                        <a
-                          href={video.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline"
-                        >
-                          {video.title || 'Untitled'}
-                        </a>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {video.videoType}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-foreground">
-                        {video.technique ? (
-                          <Link
-                            href={`/techniques/${video.technique.slug}`}
-                            className="text-primary hover:underline"
-                          >
-                            {video.technique.name}
-                          </Link>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-foreground">
-                        {video.categories.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {video.categories.map((cat) => (
-                              <span
-                                key={cat.id}
-                                className="inline-block px-2 py-0.5 rounded-full text-xs bg-secondary text-secondary-foreground"
-                              >
-                                {cat.name}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {new Date(video.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Link
-                            href={`/videos/${video.id}`}
-                            className="text-primary hover:underline text-sm"
-                          >
-                            View
-                          </Link>
-                          <Link
-                            href={`/videos/${video.id}/edit`}
-                            className="text-primary hover:underline text-sm"
-                          >
-                            Edit
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(video.id)}
-                            className="text-destructive hover:underline text-sm"
-                          >
-                            Delete
-                          </button>
-                        </div>
+                </thead>
+                <tbody>
+                  {videos.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                        No videos found. Try adjusting your filters or add a new video.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    videos.map((video) => (
+                      <tr key={video.id} className="border-b border-border hover:bg-muted/30">
+                        <td className="px-4 py-3 text-sm text-foreground">
+                          <a
+                            href={video.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            {video.title || 'Untitled'}
+                          </a>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {video.videoType}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-foreground">
+                          {video.technique ? (
+                            <Link
+                              href={`/techniques/${video.technique.slug}`}
+                              className="text-primary hover:underline"
+                            >
+                              {video.technique.name}
+                            </Link>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-foreground">
+                          {video.categories.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {video.categories.map((cat) => (
+                                <span
+                                  key={cat.id}
+                                  className="inline-block px-2 py-0.5 rounded-full text-xs bg-secondary text-secondary-foreground"
+                                >
+                                  {cat.name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {new Date(video.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Link
+                              href={`/videos/${video.id}`}
+                              className="text-primary hover:underline text-sm"
+                            >
+                              View
+                            </Link>
+                            <Link
+                              href={`/videos/${video.id}/edit`}
+                              className="text-primary hover:underline text-sm"
+                            >
+                              Edit
+                            </Link>
+                            <button
+                              onClick={() => handleDelete(video.id)}
+                              className="text-destructive hover:underline text-sm"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Pagination */}
-      {!loading && !error && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-6">
-          <button
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            className="px-3 py-1 border border-border rounded-md bg-background text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
-          >
-            Previous
-          </button>
+        {/* Pagination */}
+        {!loading && !error && pagination.totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 border border-border rounded-md bg-background text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
+            >
+              Previous
+            </button>
 
-          <div className="flex items-center gap-1">
-            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => {
-              // Show first page, last page, current page, and pages around current
-              if (
-                page === 1 ||
-                page === pagination.totalPages ||
-                (page >= currentPage - 1 && page <= currentPage + 1)
-              ) {
-                return (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`px-3 py-1 border rounded-md ${
-                      currentPage === page
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background text-foreground border-border hover:bg-muted'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                );
-              } else if (page === currentPage - 2 || page === currentPage + 2) {
-                return (
-                  <span key={page} className="px-2 text-muted-foreground">
-                    ...
-                  </span>
-                );
-              }
-              return null;
-            })}
+            <div className="flex items-center gap-1">
+              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => {
+                // Show first page, last page, current page, and pages around current
+                if (
+                  page === 1 ||
+                  page === pagination.totalPages ||
+                  (page >= currentPage - 1 && page <= currentPage + 1)
+                ) {
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1 border rounded-md ${
+                        currentPage === page
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background text-foreground border-border hover:bg-muted'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                } else if (page === currentPage - 2 || page === currentPage + 2) {
+                  return (
+                    <span key={page} className="px-2 text-muted-foreground">
+                      ...
+                    </span>
+                  );
+                }
+                return null;
+              })}
+            </div>
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
+              disabled={currentPage === pagination.totalPages}
+              className="px-3 py-1 border border-border rounded-md bg-background text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
+            >
+              Next
+            </button>
           </div>
-
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
-            disabled={currentPage === pagination.totalPages}
-            className="px-3 py-1 border border-border rounded-md bg-background text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
-          >
-            Next
-          </button>
-        </div>
-      )}
+        )}
       </div>
     </AppLayout>
   );

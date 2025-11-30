@@ -1,0 +1,13 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Discipline } from '@trainhive/db';
+import { DisciplinesController } from './disciplines.controller';
+import { DisciplinesService } from './disciplines.service';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([Discipline])],
+  controllers: [DisciplinesController],
+  providers: [DisciplinesService],
+  exports: [DisciplinesService],
+})
+export class DisciplinesModule {}

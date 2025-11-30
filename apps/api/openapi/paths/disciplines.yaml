@@ -1,0 +1,99 @@
+list:
+  post:
+    operationId: DisciplinesController_create
+    summary: Create a new discipline (MANAGER+ only)
+    parameters: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../components/schemas.yaml#/CreateDisciplineDto"
+    responses:
+      "201":
+        description: Discipline created successfully
+      "401":
+        description: Unauthorized - invalid or missing token
+      "403":
+        description: Forbidden - insufficient permissions
+      "409":
+        description: Discipline with slug already exists
+    tags: &a2
+      - disciplines
+    security:
+      - bearer: []
+  get:
+    operationId: DisciplinesController_findAll
+    summary: Get all disciplines (public)
+    parameters: []
+    responses:
+      "200":
+        description: List of all disciplines
+    tags: *a2
+
+detail:
+  get:
+    operationId: DisciplinesController_findOne
+    summary: Get a discipline by ID (public)
+    parameters:
+      - name: id
+        required: true
+        in: path
+        schema:
+          type: number
+    responses:
+      "200":
+        description: Discipline found
+      "404":
+        description: Discipline not found
+    tags: *a2
+  patch:
+    operationId: DisciplinesController_update
+    summary: Update a discipline (MANAGER+ only)
+    parameters:
+      - name: id
+        required: true
+        in: path
+        schema:
+          type: number
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../components/schemas.yaml#/UpdateDisciplineDto"
+    responses:
+      "200":
+        description: Discipline updated successfully
+      "401":
+        description: Unauthorized - invalid or missing token
+      "403":
+        description: Forbidden - insufficient permissions
+      "404":
+        description: Discipline not found
+      "409":
+        description: Discipline with slug already exists
+    tags: *a2
+    security:
+      - bearer: []
+  delete:
+    operationId: DisciplinesController_remove
+    summary: Delete a discipline (ADMIN only)
+    parameters:
+      - name: id
+        required: true
+        in: path
+        schema:
+          type: number
+    responses:
+      "200":
+        description: Discipline deleted successfully
+      "401":
+        description: Unauthorized - invalid or missing token
+      "403":
+        description: Forbidden - insufficient permissions
+      "404":
+        description: Discipline not found
+    tags: *a2
+    security:
+      - bearer: []

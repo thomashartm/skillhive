@@ -10,6 +10,7 @@ import {
   AssetSelectionModal,
 } from '../../../components/curricula';
 import { sidebarItems } from '../../../components/curricula';
+import { apiClient, getErrorMessage } from '@/lib/api';
 
 interface Curriculum {
   id: number;
@@ -120,23 +121,17 @@ export default function EditCurriculumPage() {
 
   const fetchCurriculum = async () => {
     try {
-      const response = await fetch(`/api/v1/curricula/${curriculumId}`);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || `Server error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setCurriculum(data.curriculum);
+      // Use API client to fetch curriculum by ID
+      const curriculum = await apiClient.curricula.getById(parseInt(curriculumId));
+      setCurriculum(curriculum);
       setCurriculumForm({
-        title: data.curriculum.title,
-        description: data.curriculum.description || '',
-        isPublic: data.curriculum.isPublic,
+        title: curriculum.title,
+        description: curriculum.description || '',
+        isPublic: curriculum.isPublic,
       });
     } catch (err: any) {
       console.error('Error fetching curriculum:', err);
-      setError(err.message);
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -144,16 +139,10 @@ export default function EditCurriculumPage() {
 
   const fetchElements = async () => {
     try {
-      const response = await fetch(`/api/v1/curricula/${curriculumId}/elements`);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || `Server error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('Fetched elements:', data.elements);
-      setElements(data.elements || []);
+      // Use API client to fetch curriculum elements
+      const elements = await apiClient.curricula.elements.list(parseInt(curriculumId));
+      console.log('Fetched elements:', elements);
+      setElements(elements || []);
     } catch (err: any) {
       console.error('Error fetching elements:', err);
     }
@@ -162,25 +151,19 @@ export default function EditCurriculumPage() {
   const handleSaveCurriculum = async () => {
     try {
       setSaving(true);
-      const response = await fetch(`/api/v1/curricula/${curriculumId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: curriculumForm.title,
-          description: curriculumForm.description || null,
-          isPublic: curriculumForm.isPublic,
-        }),
-      });
 
-      if (!response.ok) {
-        throw new Error('Failed to update curriculum');
-      }
+      // Use API client to update curriculum
+      await apiClient.curricula.update(parseInt(curriculumId), {
+        title: curriculumForm.title,
+        description: curriculumForm.description || null,
+        isPublic: curriculumForm.isPublic,
+      });
 
       await fetchCurriculum();
       setEditingCurriculum(false);
       showNotification('success', 'Curriculum updated successfully');
     } catch (err: any) {
-      showNotification('error', `Error: ${err.message}`);
+      showNotification('error', `Error: ${getErrorMessage(err)}`);
     } finally {
       setSaving(false);
     }
@@ -208,19 +191,9 @@ export default function EditCurriculumPage() {
         payload.assetId = null;
       }
 
-      const response = await fetch(`/api/v1/curricula/${curriculumId}/elements`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to add element');
-      }
-
-      const result = await response.json();
-      const newElementId = String(result.element.id);
+      // Use API client to create element
+      const element = await apiClient.curricula.elements.add(parseInt(curriculumId), payload);
+      const newElementId = String(element.id);
 
       await fetchElements();
 
@@ -246,23 +219,18 @@ export default function EditCurriculumPage() {
     if (!deleteConfirmation) return;
 
     try {
-      const response = await fetch(
-        `/api/v1/curricula/${curriculumId}/elements/${deleteConfirmation.elementId}`,
-        {
-          method: 'DELETE',
-        }
+      // Use API client to delete element
+      await apiClient.curricula.elements.delete(
+        parseInt(curriculumId),
+        deleteConfirmation.elementId
       );
-
-      if (!response.ok) {
-        throw new Error('Failed to delete element');
-      }
 
       setDeleteConfirmation(null);
       await fetchElements();
       showNotification('success', 'Element deleted successfully');
     } catch (err: any) {
       setDeleteConfirmation(null);
-      showNotification('error', `Error: ${err.message}`);
+      showNotification('error', `Error: ${getErrorMessage(err)}`);
     }
   };
 
@@ -274,19 +242,12 @@ export default function EditCurriculumPage() {
     try {
       const elementIds = newOrder.map((e) => e.id);
 
-      const response = await fetch(`/api/v1/curricula/${curriculumId}/elements/reorder`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ elementIds }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to reorder elements');
-      }
+      // Use API client to reorder elements
+      await apiClient.curricula.elements.reorder(parseInt(curriculumId), elementIds);
 
       await fetchElements();
     } catch (err: any) {
-      showNotification('error', `Error: ${err.message}`);
+      showNotification('error', `Error: ${getErrorMessage(err)}`);
     }
   };
 
@@ -534,10 +495,9 @@ export default function EditCurriculumPage() {
               const numId = Number(elementId);
               if (!Number.isFinite(numId)) return;
               try {
-                await fetch(`/api/v1/curricula/${curriculumId}/elements/${numId}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ title: text }),
+                // Use API client to update text element
+                await apiClient.curricula.elements.update(parseInt(curriculumId), numId, {
+                  title: text,
                 });
                 await fetchElements();
               } catch (e) {
@@ -561,28 +521,17 @@ export default function EditCurriculumPage() {
               const numId = Number(techniqueModal.elementId);
               console.log('Updating element', numId, 'with techniqueId', techId);
               try {
-                const response = await fetch(
-                  `/api/v1/curricula/${curriculumId}/elements/${numId}`,
-                  {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ techniqueId: techId }),
-                  }
-                );
-
-                const result = await response.json();
-                console.log('Update response:', response.status, result);
-
-                if (!response.ok) {
-                  throw new Error(result.error || 'Failed to update element');
-                }
+                // Use API client to update element with techniqueId
+                await apiClient.curricula.elements.update(parseInt(curriculumId), numId, {
+                  techniqueId: techId,
+                });
 
                 setTechniqueModal({ open: false, elementId: null });
                 await fetchElements();
                 console.log('Elements refreshed');
-              } catch (e) {
+              } catch (e: any) {
                 console.error('Failed to set technique on element:', e);
-                alert(`Error: ${e.message}`);
+                alert(`Error: ${getErrorMessage(e)}`);
               }
             }}
             onSearch={async (q) => {
@@ -594,21 +543,15 @@ export default function EditCurriculumPage() {
 
               setSearchLoading(true);
               try {
-                // Build URL with proper parameters
-                const params = new URLSearchParams();
-                if (disciplineId) {
-                  params.set('disciplineId', String(disciplineId));
-                }
-                params.set('search', q.trim());
-
-                const url = `/api/v1/techniques?${params.toString()}`;
-                const res = await fetch(url);
-                if (res.ok) {
-                  const json = await res.json();
-                  setTechniqueResults(json);
-                } else {
-                  setTechniqueResults([]);
-                }
+                // Use API client to search techniques
+                const results = await apiClient.techniques.list({
+                  disciplineId: disciplineId || undefined,
+                  search: q.trim(),
+                });
+                setTechniqueResults(Array.isArray(results) ? results : []);
+              } catch (err) {
+                console.error('Failed to search techniques:', err);
+                setTechniqueResults([]);
               } finally {
                 setSearchLoading(false);
               }
@@ -631,10 +574,9 @@ export default function EditCurriculumPage() {
               if (!assetModal.elementId) return;
               const numId = Number(assetModal.elementId);
               try {
-                await fetch(`/api/v1/curricula/${curriculumId}/elements/${numId}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ assetId }),
+                // Use API client to update element with assetId
+                await apiClient.curricula.elements.update(parseInt(curriculumId), numId, {
+                  assetId,
                 });
                 setAssetModal({ open: false, elementId: null });
                 await fetchElements();
@@ -645,13 +587,14 @@ export default function EditCurriculumPage() {
             onSearch={async (q) => {
               setSearchLoading(true);
               try {
-                const res = await fetch(`/api/v1/videos?search=${encodeURIComponent(q)}`);
-                if (res.ok) {
-                  const json = await res.json();
-                  setAssetResults(json);
-                } else {
-                  setAssetResults([]);
-                }
+                // Use API client to search videos
+                const data = await apiClient.videos.list({
+                  title: q || undefined,
+                });
+                setAssetResults(data.videos || []);
+              } catch (err) {
+                console.error('Failed to search videos:', err);
+                setAssetResults([]);
               } finally {
                 setSearchLoading(false);
               }

@@ -9,6 +9,8 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "dev": "npm run dev -w @trainhive/web",
+    "dev:api": "npm run dev -w @trainhive/api",
+    "dev:all": "concurrently \"npm run dev:api\" \"npm run dev\"",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { apiClient } from '@/lib/api';
 
 interface Technique {
   id: number;
@@ -34,8 +35,8 @@ export function TechniqueSearchAutocomplete({
   useEffect(() => {
     const fetchTechniques = async () => {
       try {
-        const response = await fetch(`/api/v1/techniques?disciplineId=${disciplineId}`);
-        const data = await response.json();
+        // Use API client to fetch techniques
+        const data = await apiClient.techniques.list({ disciplineId });
         setTechniques(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Failed to load techniques:', error);

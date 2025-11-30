@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AppLayout } from '../../../components/layout/AppLayout';
+import { sidebarItems } from '../../../components/videos';
+import { apiClient, getErrorMessage } from '@/lib/api';
 
 interface Video {
   id: number;
@@ -22,12 +24,6 @@ interface Technique {
   slug: string;
 }
 
-const sidebarItems = [
-  { href: '/videos/save', label: 'Add Video' },
-  { href: '/videos/my-videos', label: 'My Videos' },
-  { href: '/videos/recent', label: 'Recent' },
-];
-
 export default function VideoEditPage() {
   const params = useParams();
   const router = useRouter();
@@ -41,7 +37,9 @@ export default function VideoEditPage() {
 
   // Form state
   const [title, setTitle] = useState('');
-  const [videoType, setVideoType] = useState<'short' | 'full' | 'instructional' | 'seminar'>('full');
+  const [videoType, setVideoType] = useState<'short' | 'full' | 'instructional' | 'seminar'>(
+    'full'
+  );
   const [description, setDescription] = useState('');
   const [originator, setOriginator] = useState('');
   const [techniqueId, setTechniqueId] = useState<string>('');
@@ -56,16 +54,8 @@ export default function VideoEditPage() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/v1/videos/${videoId}`);
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Video not found');
-        }
-        throw new Error('Failed to fetch video');
-      }
-
-      const data = await response.json();
+      // Use API client to fetch video by ID
+      const data = await apiClient.videos.getById(parseInt(videoId));
       setVideo(data);
 
       // Set form values
@@ -75,7 +65,7 @@ export default function VideoEditPage() {
       setOriginator(data.originator || '');
       setTechniqueId(data.techniqueId ? data.techniqueId.toString() : '');
     } catch (err: any) {
-      setError(err.message);
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -83,11 +73,9 @@ export default function VideoEditPage() {
 
   const fetchTechniques = async () => {
     try {
-      const response = await fetch('/api/v1/techniques');
-      if (response.ok) {
-        const data = await response.json();
-        setTechniques(data);
-      }
+      // Use API client to fetch techniques
+      const data = await apiClient.techniques.list({});
+      setTechniques(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to fetch techniques:', err);
     }
@@ -99,28 +87,18 @@ export default function VideoEditPage() {
     setError(null);
 
     try {
-      const response = await fetch(`/api/v1/videos/${videoId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title,
-          videoType,
-          description: description || null,
-          originator: originator || null,
-          techniqueId: techniqueId ? parseInt(techniqueId) : null,
-        }),
+      // Use API client to update video
+      await apiClient.videos.update(parseInt(videoId), {
+        title,
+        videoType,
+        description: description || null,
+        originator: originator || null,
+        techniqueId: techniqueId ? parseInt(techniqueId) : null,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to update video');
-      }
 
       router.push(`/videos/${videoId}`);
     } catch (err: any) {
-      setError(err.message);
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -154,120 +132,123 @@ export default function VideoEditPage() {
   return (
     <AppLayout sidebarItems={sidebarItems} sidebarTitle="Videos">
       <div className="container mx-auto py-8 px-4 max-w-2xl">
-      {/* Header */}
-      <div className="mb-6">
-        <Link
-          href={`/videos/${videoId}`}
-          className="text-primary hover:underline flex items-center gap-1"
-        >
-          ← Back to Video
-        </Link>
-        <h1 className="text-3xl font-bold text-foreground mt-4">Edit Video</h1>
-      </div>
-
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="bg-card border border-border rounded-lg p-6 space-y-6">
-        {error && (
-          <div className="p-3 bg-destructive/10 border border-destructive rounded-md text-destructive text-sm">
-            {error}
-          </div>
-        )}
-
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium text-foreground mb-2">
-            Title <span className="text-destructive">*</span>
-          </label>
-          <input
-            type="text"
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="videoType" className="block text-sm font-medium text-foreground mb-2">
-            Video Type <span className="text-destructive">*</span>
-          </label>
-          <select
-            id="videoType"
-            value={videoType}
-            onChange={(e) => setVideoType(e.target.value as any)}
-            required
-            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-          >
-            <option value="short">Short</option>
-            <option value="full">Full</option>
-            <option value="instructional">Instructional</option>
-            <option value="seminar">Seminar</option>
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium text-foreground mb-2">
-            Description
-          </label>
-          <textarea
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={4}
-            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-            placeholder="Optional description..."
-          />
-        </div>
-
-        <div>
-          <label htmlFor="originator" className="block text-sm font-medium text-foreground mb-2">
-            Author/Source
-          </label>
-          <input
-            type="text"
-            id="originator"
-            value={originator}
-            onChange={(e) => setOriginator(e.target.value)}
-            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-            placeholder="e.g., John Danaher, Gordon Ryan"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="techniqueId" className="block text-sm font-medium text-foreground mb-2">
-            Associated Technique
-          </label>
-          <select
-            id="techniqueId"
-            value={techniqueId}
-            onChange={(e) => setTechniqueId(e.target.value)}
-            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-          >
-            <option value="">None</option>
-            {techniques.map((tech) => (
-              <option key={tech.id} value={tech.id}>
-                {tech.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex gap-3 pt-4">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
-          >
-            {submitting ? 'Saving...' : 'Save Changes'}
-          </button>
+        {/* Header */}
+        <div className="mb-6">
           <Link
             href={`/videos/${videoId}`}
-            className="px-6 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80"
+            className="text-primary hover:underline flex items-center gap-1"
           >
-            Cancel
+            ← Back to Video
           </Link>
+          <h1 className="text-3xl font-bold text-foreground mt-4">Edit Video</h1>
         </div>
-      </form>
+
+        {/* Form */}
+        <form
+          onSubmit={handleSubmit}
+          className="bg-card border border-border rounded-lg p-6 space-y-6"
+        >
+          {error && (
+            <div className="p-3 bg-destructive/10 border border-destructive rounded-md text-destructive text-sm">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium text-foreground mb-2">
+              Title <span className="text-destructive">*</span>
+            </label>
+            <input
+              type="text"
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="videoType" className="block text-sm font-medium text-foreground mb-2">
+              Video Type <span className="text-destructive">*</span>
+            </label>
+            <select
+              id="videoType"
+              value={videoType}
+              onChange={(e) => setVideoType(e.target.value as any)}
+              required
+              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+            >
+              <option value="short">Short</option>
+              <option value="full">Full</option>
+              <option value="instructional">Instructional</option>
+              <option value="seminar">Seminar</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="description" className="block text-sm font-medium text-foreground mb-2">
+              Description
+            </label>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+              placeholder="Optional description..."
+            />
+          </div>
+
+          <div>
+            <label htmlFor="originator" className="block text-sm font-medium text-foreground mb-2">
+              Author/Source
+            </label>
+            <input
+              type="text"
+              id="originator"
+              value={originator}
+              onChange={(e) => setOriginator(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+              placeholder="e.g., John Danaher, Gordon Ryan"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="techniqueId" className="block text-sm font-medium text-foreground mb-2">
+              Associated Technique
+            </label>
+            <select
+              id="techniqueId"
+              value={techniqueId}
+              onChange={(e) => setTechniqueId(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+            >
+              <option value="">None</option>
+              {techniques.map((tech) => (
+                <option key={tech.id} value={tech.id}>
+                  {tech.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
+            >
+              {submitting ? 'Saving...' : 'Save Changes'}
+            </button>
+            <Link
+              href={`/videos/${videoId}`}
+              className="px-6 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80"
+            >
+              Cancel
+            </Link>
+          </div>
+        </form>
       </div>
     </AppLayout>
   );

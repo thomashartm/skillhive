@@ -2,12 +2,7 @@
 
 import { AppLayout } from '../../components/layout/AppLayout';
 import { SaveVideoForm } from '../../components/videos/SaveVideoForm';
-
-const sidebarItems = [
-  { href: '/videos/save', label: 'Add Video' },
-  { href: '/videos/my-videos', label: 'My Videos' },
-  { href: '/videos/recent', label: 'Recent' },
-];
+import { sidebarItems } from '../../components/videos';
 
 export default function SaveVideoPage() {
   // TODO: Get disciplineId from user preferences or context
