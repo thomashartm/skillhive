@@ -1,0 +1,10 @@
+health:
+  get:
+    operationId: HealthController_healthCheck
+    summary: Health check endpoint
+    parameters: []
+    responses:
+      "200":
+        description: Service is healthy
+    tags:
+      - health

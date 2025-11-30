@@ -2,19 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { TechniqueForm, TechniqueFormData } from './TechniqueForm';
-
-interface Technique {
-  id: number;
-  disciplineId: number;
-  name: string;
-  slug: string;
-  description: string | null;
-  categoryIds: number[];
-  tagIds: number[];
-  referenceAssets: any[];
-  createdAt: string;
-  updatedAt: string;
-}
+import { Technique, TechniqueTile } from './TechniqueTile';
+import { apiClient, getErrorMessage } from '@/lib/api';
 
 interface Category {
   id: number;
@@ -238,17 +227,13 @@ export function TechniqueManager({ disciplineId }: TechniqueManagerProps) {
     setError(null);
 
     try {
-      const params = new URLSearchParams({ disciplineId: disciplineId.toString() });
-      if (selectedCategory) params.append('categoryId', selectedCategory.toString());
-      if (selectedTag) params.append('tagId', selectedTag.toString());
+      // Use API client to fetch techniques
+      const data = await apiClient.techniques.list({
+        disciplineId,
+        categoryId: selectedCategory || undefined,
+        tagId: selectedTag || undefined,
+      });
 
-      const response = await fetch(`/api/v1/techniques?${params}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch techniques');
-      }
-
-      const data = await response.json();
       // Ensure data is an array
       setTechniques(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -263,13 +248,11 @@ export function TechniqueManager({ disciplineId }: TechniqueManagerProps) {
 
   const fetchCategoriesAndTags = async () => {
     try {
-      const [categoriesRes, tagsRes] = await Promise.all([
-        fetch(`/api/v1/categories?disciplineId=${disciplineId}`),
-        fetch(`/api/v1/tags?disciplineId=${disciplineId}`),
+      // Use API client to fetch categories and tags
+      const [categoriesData, tagsData] = await Promise.all([
+        apiClient.categories.list({ disciplineId }),
+        apiClient.tags.list({ disciplineId }),
       ]);
-
-      const categoriesData = await categoriesRes.json();
-      const tagsData = await tagsRes.json();
 
       // Flatten category tree
       const flattenCategories = (cats: any[], result: Category[] = []): Category[] => {
@@ -300,21 +283,13 @@ export function TechniqueManager({ disciplineId }: TechniqueManagerProps) {
 
   const handleCreate = async (data: TechniqueFormData) => {
     try {
-      const response = await fetch('/api/v1/techniques', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create technique');
-      }
+      // Use API client to create technique
+      await apiClient.techniques.create(data);
 
       setShowForm(false);
       fetchTechniques();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create technique');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -327,22 +302,14 @@ export function TechniqueManager({ disciplineId }: TechniqueManagerProps) {
     if (!editingTechnique) return;
 
     try {
-      const response = await fetch(`/api/v1/techniques/${editingTechnique.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update technique');
-      }
+      // Use API client to update technique
+      await apiClient.techniques.update(editingTechnique.id, data);
 
       setShowForm(false);
       setEditingTechnique(null);
       fetchTechniques();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update technique');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -350,17 +317,12 @@ export function TechniqueManager({ disciplineId }: TechniqueManagerProps) {
     if (!confirm('Are you sure you want to delete this technique?')) return;
 
     try {
-      const response = await fetch(`/api/v1/techniques/${techniqueId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete technique');
-      }
+      // Use API client to delete technique
+      await apiClient.techniques.delete(techniqueId);
 
       fetchTechniques();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete technique');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -443,109 +405,12 @@ export function TechniqueManager({ disciplineId }: TechniqueManagerProps) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {techniques.map((technique) => (
-            <div
-              key={technique.id}
-              className="rounded-lg border border-border bg-card p-6 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-foreground mb-2">{technique.name}</h3>
-                  {technique.description && (
-                    <div
-                      className="text-muted-foreground mb-3 prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: technique.description }}
-                    />
-                  )}
-
-                  <div className="flex flex-wrap gap-4 text-sm">
-                    {technique.categoryIds.length > 0 && (
-                      <div>
-                        <span className="text-muted-foreground">Categories: </span>
-                        <span className="text-foreground">
-                          {technique.categoryIds
-                            .map((id) => categories.find((c) => c.id === id)?.name)
-                            .filter(Boolean)
-                            .join(', ')}
-                        </span>
-                      </div>
-                    )}
-
-                    {technique.tagIds.length > 0 && (
-                      <div>
-                        <span className="text-muted-foreground">Tags: </span>
-                        <div className="inline-flex flex-wrap gap-1">
-                          {technique.tagIds.map((tagId) => {
-                            const tag = tags.find((t) => t.id === tagId);
-                            return tag ? (
-                              <span
-                                key={tagId}
-                                className="px-2 py-0.5 rounded text-xs bg-secondary text-secondary-foreground"
-                                style={tag.color ? { backgroundColor: tag.color } : {}}
-                              >
-                                {tag.name}
-                              </span>
-                            ) : null;
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {technique.referenceAssets && technique.referenceAssets.length > 0 && (
-                      <div className="mt-3">
-                        <span className="text-muted-foreground font-medium">Reference Assets:</span>
-                        <ul className="mt-2 space-y-1">
-                          {technique.referenceAssets.map((asset: any) => (
-                            <li key={asset.id} className="flex items-center gap-2 text-sm">
-                              <svg
-                                className="w-4 h-4 text-muted-foreground flex-shrink-0"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                                />
-                              </svg>
-                              <a
-                                href={asset.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:underline"
-                              >
-                                {asset.title || asset.url}
-                              </a>
-                              {asset.originator && (
-                                <span className="text-muted-foreground text-xs">
-                                  by {asset.originator}
-                                </span>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex gap-2 ml-4">
-                  <button
-                    onClick={() => handleEdit(technique)}
-                    className="px-3 py-1 text-sm bg-secondary text-secondary-foreground rounded hover:bg-secondary/80"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(technique.id)}
-                    className="px-3 py-1 text-sm bg-destructive text-destructive-foreground rounded hover:bg-destructive/90"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
+            <TechniqueTile
+              disciplineId="1"
+              technique={technique}
+              editHandler={() => handleEdit(technique)}
+              deleteHandler={() => handleDelete(technique.id)}
+            />
           ))}
         </div>
       )}

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { apiClient, getErrorMessage, isApiError } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,24 +21,22 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
-      });
-
-      const data = (await response.json()) as { error?: string };
-
-      if (!response.ok) {
-        setError(data.error || 'Registration failed');
-        setIsLoading(false);
-        return;
-      }
+      // Use API client for registration
+      await apiClient.users.register({ name, email, password });
 
       // Redirect to login after successful registration
       router.push('/login?registered=true');
     } catch (err) {
-      setError('Failed to register. Please try again.');
+      // Use API client error handling
+      const errorMessage = getErrorMessage(err);
+
+      // Show validation errors if available
+      if (isApiError(err) && err.validationErrors) {
+        setError(err.validationErrors.join(', '));
+      } else {
+        setError(errorMessage);
+      }
+
       setIsLoading(false);
     }
   };

@@ -14,7 +14,12 @@ import { Curriculum } from './entities/Curriculum';
 import { CurriculumElement } from './entities/CurriculumElement';
 
 //process.env.NODE_ENV === 'development'
-export const AppDataSource = new DataSource({
+declare global {
+  // eslint-disable-next-line no-var
+  var __trainhive_app_ds: DataSource | undefined;
+}
+
+const dataSource = new DataSource({
   type: 'mysql',
   url:
     process.env.DATABASE_URL ||
@@ -47,3 +52,10 @@ export const AppDataSource = new DataSource({
     keepAliveInitialDelay: 0,
   },
 });
+
+// Reuse a single DataSource instance across HMR/route reloads in dev
+export const AppDataSource: DataSource = globalThis.__trainhive_app_ds ?? dataSource;
+
+if (!globalThis.__trainhive_app_ds) {
+  globalThis.__trainhive_app_ds = AppDataSource;
+}

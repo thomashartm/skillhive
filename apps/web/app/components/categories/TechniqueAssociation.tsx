@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { CategoryNode } from './CategoryTreeNode';
+import { apiClient, getErrorMessage } from '@/lib/api';
 
 interface Technique {
   id: string;
@@ -27,19 +28,14 @@ export function TechniqueAssociation({ techniqueId, onClose }: TechniqueAssociat
     async function fetchData() {
       try {
         setLoading(true);
-        // Fetch all categories
-        const categoriesResponse = await fetch('/api/v1/categories');
-        if (categoriesResponse.ok) {
-          const categoriesData = (await categoriesResponse.json()) as CategoryNode[];
-          setCategories(categoriesData || []);
-        }
 
-        // Fetch associated categories for this technique
-        const associatedResponse = await fetch(`/api/v1/techniques/${techniqueId}/categories`);
-        if (associatedResponse.ok) {
-          const associatedData = (await associatedResponse.json()) as Technique[];
-          setAssociatedCategories(associatedData || []);
-        }
+        // Fetch all categories using API client
+        const categoriesData = await apiClient.categories.list({});
+        setCategories(categoriesData || []);
+
+        // Fetch associated categories for this technique using API client
+        const associatedData = await apiClient.techniques.getCategories(Number(techniqueId));
+        setAssociatedCategories(associatedData || []);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('Error fetching data:', error);
@@ -57,23 +53,16 @@ export function TechniqueAssociation({ techniqueId, onClose }: TechniqueAssociat
     }
 
     try {
-      const response = await fetch(`/api/v1/techniques/${techniqueId}/categories`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ categoryId: selectedCategoryId, primary: isPrimary }),
-      });
-
-      if (!response.ok) {
-        const error = (await response.json()) as { error: string };
-        throw new Error(error.error || 'Failed to associate category');
-      }
+      // Use API client to add category to technique
+      await apiClient.techniques.addCategory(
+        Number(techniqueId),
+        Number(selectedCategoryId),
+        isPrimary
+      );
 
       // Refresh associated categories
-      const associatedResponse = await fetch(`/api/v1/techniques/${techniqueId}/categories`);
-      if (associatedResponse.ok) {
-        const associatedData = (await associatedResponse.json()) as Technique[];
-        setAssociatedCategories(associatedData || []);
-      }
+      const associatedData = await apiClient.techniques.getCategories(Number(techniqueId));
+      setAssociatedCategories(associatedData || []);
 
       // Reset form
       setSelectedCategoryId('');
@@ -82,32 +71,23 @@ export function TechniqueAssociation({ techniqueId, onClose }: TechniqueAssociat
       // eslint-disable-next-line no-console
       console.error('Error associating category:', error);
       // eslint-disable-next-line no-alert
-      alert(error instanceof Error ? error.message : 'Failed to associate category');
+      alert(getErrorMessage(error));
     }
   };
 
   const handleRemove = async (categoryId: string) => {
     try {
-      const response = await fetch(`/api/v1/techniques/${techniqueId}/categories/${categoryId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const error = (await response.json()) as { error: string };
-        throw new Error(error.error || 'Failed to remove association');
-      }
+      // Use API client to remove category from technique
+      await apiClient.techniques.removeCategory(Number(techniqueId), Number(categoryId));
 
       // Refresh associated categories
-      const associatedResponse = await fetch(`/api/v1/techniques/${techniqueId}/categories`);
-      if (associatedResponse.ok) {
-        const associatedData = (await associatedResponse.json()) as Technique[];
-        setAssociatedCategories(associatedData || []);
-      }
+      const associatedData = await apiClient.techniques.getCategories(Number(techniqueId));
+      setAssociatedCategories(associatedData || []);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Error removing association:', error);
       // eslint-disable-next-line no-alert
-      alert(error instanceof Error ? error.message : 'Failed to remove association');
+      alert(getErrorMessage(error));
     }
   };
 

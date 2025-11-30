@@ -3,11 +3,20 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AppLayout } from '../components/layout/AppLayout';
-import { HiEye, HiPencil, HiTrash } from 'react-icons/hi';
-import { HiGlobeAlt, HiEyeSlash } from 'react-icons/hi2';
+import { ViewActionLink } from '../components/actionbar';
 import { sidebarItems } from '../components/curricula';
+import { apiClient, getErrorMessage } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
+
+interface Curriculum {
+  id: number;
+  title: string;
+  description: string | null;
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function CurriculaPage() {
   const [curricula, setCurricula] = useState<Curriculum[]>([]);
@@ -23,18 +32,12 @@ export default function CurriculaPage() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/v1/curricula');
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || `Server error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setCurricula(data.curricula || []);
+      // Use API client to fetch all curricula (public + own)
+      const curricula = await apiClient.curricula.list({});
+      setCurricula(curricula || []);
     } catch (err: any) {
       console.error('Error fetching curricula:', err);
-      setError(err.message);
+      setError(getErrorMessage(err));
       setCurricula([]);
     } finally {
       setLoading(false);
@@ -108,7 +111,11 @@ export default function CurriculaPage() {
 
                     {/* Icon action bar at bottom */}
                     <div className="flex items-center justify-end gap-2 mt-auto pt-4 border-t border-border">
-                      ToDo Place Editbar
+                      <ViewActionLink
+                        prefix="curricula"
+                        id={curriculum.id}
+                        title="View curriculum"
+                      />
                     </div>
                   </div>
                 ))}

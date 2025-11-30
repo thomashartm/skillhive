@@ -1,18 +1,31 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { UserRole } from '@trainhive/shared';
+import GoogleProvider from 'next-auth/providers/google';
+import AzureADProvider from 'next-auth/providers/azure-ad';
+import { encode } from 'next-auth/jwt';
+import { UserRole, getScopesForRole } from '@trainhive/shared';
 import bcrypt from 'bcryptjs';
+import { TypeORMAdapter } from './adapter';
 
 // Database connection is initialized lazily by the adapter when needed
 // Using dynamic imports to prevent webpack from bundling TypeORM entities at build time
 
 export function getAuthOptions(): NextAuthOptions {
-  // For JWT sessions with credentials provider, we don't need an adapter
-  // User creation/retrieval is handled in the authorize callback
-  // Adapter is only needed for database sessions or OAuth providers
+  // TypeORM adapter is used for OAuth account linking
+  // For credentials provider, authorization is handled manually in authorize() callback
+  // Session strategy is JWT (not database-backed)
+
+  // Log the secret at startup for debugging
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    console.error('[NextAuth] NEXTAUTH_SECRET is not set!');
+  } else {
+    console.log('[NextAuth] Using secret (first 20 chars):', secret.substring(0, 20));
+  }
 
   const config: NextAuthOptions = {
-    // No adapter needed for credentials provider with JWT sessions
+    // Adapter needed for OAuth account linking (Account table management)
+    adapter: TypeORMAdapter(),
     providers: [
       CredentialsProvider({
         id: 'credentials',
@@ -71,29 +84,95 @@ export function getAuthOptions(): NextAuthOptions {
           }
         },
       }),
+      // Google OAuth Provider (optional - requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
+      ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+        ? [
+            GoogleProvider({
+              clientId: process.env.GOOGLE_CLIENT_ID,
+              clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+              authorization: {
+                params: {
+                  prompt: 'consent',
+                  access_type: 'offline',
+                  response_type: 'code',
+                },
+              },
+            }),
+          ]
+        : []),
+      // Microsoft/Azure AD Provider (optional - requires MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET)
+      ...(process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET
+        ? [
+            AzureADProvider({
+              clientId: process.env.MICROSOFT_CLIENT_ID,
+              clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+              tenantId: process.env.MICROSOFT_TENANT_ID || 'common',
+              authorization: {
+                params: {
+                  scope: 'openid profile email User.Read',
+                },
+              },
+            }),
+          ]
+        : []),
     ],
     session: {
       strategy: 'jwt',
+      // JWT expiration settings
+      maxAge: 7 * 24 * 60 * 60, // 7 days (604800 seconds)
+    },
+    jwt: {
+      // JWT token expiration
+      maxAge: 7 * 24 * 60 * 60, // 7 days (604800 seconds)
     },
     callbacks: {
-      jwt({ token, user }) {
+      jwt({ token, user, account }) {
         // Initial sign in
         if (user) {
           // eslint-disable-next-line no-param-reassign
           token.id = user.id;
+
+          const userRole = (user as { role?: UserRole }).role || UserRole.USER;
           // eslint-disable-next-line no-param-reassign
-          token.role = (user as { role?: UserRole }).role || UserRole.USER;
+          token.role = userRole;
+
+          // Add scopes based on user role
+          // eslint-disable-next-line no-param-reassign
+          token.scopes = getScopesForRole(userRole);
+
+          // Add issued at timestamp
+          // eslint-disable-next-line no-param-reassign
+          token.iat = Math.floor(Date.now() / 1000);
+        }
+
+        // Add OAuth account information if available
+        if (account) {
+          // eslint-disable-next-line no-param-reassign
+          token.provider = account.provider;
+          // eslint-disable-next-line no-param-reassign
+          token.providerAccountId = account.providerAccountId;
         }
 
         return token;
       },
       session({ session, token }) {
         if (session.user) {
-          const sessionUser = session.user as { id?: string; role?: UserRole };
+          // Type assertion for extended session user
+          const sessionUser = session.user as {
+            id?: string;
+            role?: UserRole;
+            scopes?: string[];
+            provider?: string;
+          };
+
           // eslint-disable-next-line no-param-reassign
           sessionUser.id = token.id as string;
-          // eslint-disable-next-line no-param-reassign, max-len
+          // eslint-disable-next-line no-param-reassign
           sessionUser.role = (token.role as UserRole) || UserRole.USER;
+          // eslint-disable-next-line no-param-reassign
+          sessionUser.scopes = (token.scopes as string[]) || [];
+          // eslint-disable-next-line no-param-reassign
+          sessionUser.provider = (token.provider as string) || 'credentials';
         }
         return session;
       },

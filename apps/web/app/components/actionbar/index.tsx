@@ -14,6 +14,7 @@ interface ActionLinkProps {
 interface CreateLinkProps {
   path: string;
   title: string;
+  withLabel?: boolean;
 }
 
 interface ActionHandlerProps {
@@ -31,6 +32,18 @@ export function EditActionLink({ prefix, id, title }: ActionLinkProps) {
     >
       <HiPencil className="w-5 h-5" />
     </Link>
+  );
+}
+
+export function EditHandlerButton({ onClick, title }: ActionHandlerProps) {
+  return (
+    <button
+      onClick={onClick}
+      className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
+      title={title}
+    >
+      <HiPencil className="w-5 h-5" />
+    </button>
   );
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { apiClient } from '@/lib/api';
 
 interface Category {
   id: number;
@@ -34,8 +35,8 @@ export function CategoryAutocomplete({
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch(`/api/v1/categories?disciplineId=${disciplineId}`);
-        const data = await response.json();
+        // Use API client to fetch categories
+        const data = await apiClient.categories.list({ disciplineId });
         setCategories(Array.isArray(data) ? data : []);
 
         // Flatten category tree with hierarchy information

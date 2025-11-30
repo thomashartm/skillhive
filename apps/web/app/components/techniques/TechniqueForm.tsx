@@ -5,6 +5,7 @@ import { generateSlug } from '@trainhive/shared';
 import { RichTextEditor } from '../common/RichTextEditor';
 import { CategoryAutocomplete } from '../common/CategoryAutocomplete';
 import { TagAutocomplete } from '../common/TagAutocomplete';
+import { apiClient } from '@/lib/api';
 
 interface Category {
   id: number;
@@ -71,8 +72,8 @@ export function TechniqueForm({
   useEffect(() => {
     const fetchTags = async () => {
       try {
-        const response = await fetch(`/api/v1/tags?disciplineId=${disciplineId}`);
-        const tagsData = await response.json();
+        // Use API client to fetch tags
+        const tagsData = await apiClient.tags.list({ disciplineId });
         setTags(Array.isArray(tagsData) ? tagsData : []);
       } catch (error) {
         console.error('Failed to load tags:', error);

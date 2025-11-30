@@ -1,0 +1,62 @@
+openapi: 3.0.0
+info:
+  title: SkillHive API
+  description: Training curriculum and knowledge management API for martial arts
+  version: "1.0"
+  contact: {}
+tags:
+  - name: users
+    description: User management
+  - name: disciplines
+    description: Martial arts disciplines
+  - name: categories
+    description: Technique categories
+  - name: techniques
+    description: Techniques and skills
+  - name: tags
+    description: Tag management
+  - name: reference-assets
+    description: Media assets (videos, images, web links)
+  - name: curricula
+    description: Training curricula
+servers: []
+paths:
+  /api/v1/auth/login:
+    $ref: "./paths/auth.yaml#/login"
+  /api/v1/health:
+    $ref: "./paths/health.yaml#/health"
+  /api/v1/users:
+    $ref: "./paths/users.yaml#/list"
+  /api/v1/users/me:
+    $ref: "./paths/users.yaml#/me"
+  /api/v1/users/{id}:
+    $ref: "./paths/users.yaml#/detail"
+  /api/v1/disciplines:
+    $ref: "./paths/disciplines.yaml#/list"
+  /api/v1/disciplines/{id}:
+    $ref: "./paths/disciplines.yaml#/detail"
+  /api/v1/categories:
+    $ref: "./paths/categories.yaml#/list"
+  /api/v1/categories/{id}:
+    $ref: "./paths/categories.yaml#/detail"
+  /api/v1/techniques:
+    $ref: "./paths/techniques.yaml#/list"
+  /api/v1/techniques/{id}:
+    $ref: "./paths/techniques.yaml#/detail"
+  /api/v1/tags:
+    $ref: "./paths/tags.yaml#/list"
+  /api/v1/tags/{id}:
+    $ref: "./paths/tags.yaml#/detail"
+  /api/v1/reference-assets:
+    $ref: "./paths/reference-assets.yaml#/list"
+  /api/v1/reference-assets/{id}:
+    $ref: "./paths/reference-assets.yaml#/detail"
+  /api/v1/curricula:
+    $ref: "./paths/curricula.yaml#/list"
+  /api/v1/curricula/{id}:
+    $ref: "./paths/curricula.yaml#/detail"
+components:
+  securitySchemes:
+    $ref: "./components/security.yaml"
+  schemas:
+    $ref: "./components/schemas.yaml"

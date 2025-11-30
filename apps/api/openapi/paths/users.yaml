@@ -1,0 +1,119 @@
+list:
+  post:
+    operationId: UsersController_create
+    summary: Create a new user (public registration)
+    parameters: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../components/schemas.yaml#/CreateUserDto"
+    responses:
+      "201":
+        description: User created successfully
+      "409":
+        description: User with email already exists
+    tags: &a1
+      - users
+  get:
+    operationId: UsersController_findAll
+    summary: Get all users (MANAGER+ only)
+    parameters: []
+    responses:
+      "200":
+        description: List of all users
+      "401":
+        description: Unauthorized - invalid or missing token
+      "403":
+        description: Forbidden - insufficient permissions
+    tags: *a1
+    security:
+      - bearer: []
+
+me:
+  get:
+    operationId: UsersController_getProfile
+    summary: Get current user profile
+    parameters: []
+    responses:
+      "200":
+        description: Current user profile
+      "401":
+        description: Unauthorized - invalid or missing token
+    tags: *a1
+    security:
+      - bearer: []
+
+detail:
+  get:
+    operationId: UsersController_findOne
+    summary: Get a user by ID (own profile or MANAGER+)
+    parameters:
+      - name: id
+        required: true
+        in: path
+        schema:
+          type: number
+    responses:
+      "200":
+        description: User found
+      "401":
+        description: Unauthorized - invalid or missing token
+      "403":
+        description: Forbidden - can only view own profile
+      "404":
+        description: User not found
+    tags: *a1
+    security:
+      - bearer: []
+  patch:
+    operationId: UsersController_update
+    summary: Update a user (own profile or ADMIN)
+    parameters:
+      - name: id
+        required: true
+        in: path
+        schema:
+          type: number
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../components/schemas.yaml#/UpdateUserDto"
+    responses:
+      "200":
+        description: User updated successfully
+      "401":
+        description: Unauthorized - invalid or missing token
+      "403":
+        description: Forbidden - can only update own profile
+      "404":
+        description: User not found
+      "409":
+        description: User with email already exists
+    tags: *a1
+    security:
+      - bearer: []
+  delete:
+    operationId: UsersController_remove
+    summary: Delete a user (ADMIN only)
+    parameters:
+      - name: id
+        required: true
+        in: path
+        schema:
+          type: number
+    responses:
+      "200":
+        description: User deleted successfully
+      "401":
+        description: Unauthorized - invalid or missing token
+      "403":
+        description: Forbidden - admin only
+      "404":
+        description: User not found
+    tags: *a1
+    security:
+      - bearer: []

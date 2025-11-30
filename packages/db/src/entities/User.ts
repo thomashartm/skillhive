@@ -4,8 +4,10 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
 import { UserRole } from '@trainhive/shared';
+import { Account } from './Account';
 
 @Entity('users')
 export class User {
@@ -46,6 +48,6 @@ export class User {
   @UpdateDateColumn()
   updatedAt!: Date;
 
-  // @OneToMany(() => require('./Account').Account, (account: any) => account.user, { cascade: true })
-  // accounts!: any[];
+  @OneToMany(() => Account, (account) => account.user, { cascade: true })
+  accounts!: Account[];
 }

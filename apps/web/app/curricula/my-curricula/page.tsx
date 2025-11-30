@@ -12,6 +12,7 @@ import {
   CreateLink,
 } from '../../components/actionbar';
 import { PublicPrivateLabel } from '../../components/labels';
+import { apiClient, getErrorMessage } from '@/lib/api';
 
 interface Curriculum {
   id: number;
@@ -36,18 +37,12 @@ export default function MyCurriculaPage() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/v1/curricula?onlyMine=true');
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || `Server error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setCurricula(data.curricula || []);
+      // Use API client to fetch user's curricula
+      const curricula = await apiClient.curricula.list({ onlyMine: true });
+      setCurricula(curricula || []);
     } catch (err: any) {
       console.error('Error fetching curricula:', err);
-      setError(err.message);
+      setError(getErrorMessage(err));
       setCurricula([]);
     } finally {
       setLoading(false);
@@ -60,41 +55,27 @@ export default function MyCurriculaPage() {
     }
 
     try {
-      const response = await fetch(`/api/v1/curricula/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete curriculum');
-      }
+      // Use API client to delete curriculum
+      await apiClient.curricula.delete(id);
 
       // Refresh the list
       fetchCurricula();
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${getErrorMessage(err)}`);
     }
   };
 
   const handleTogglePublic = async (curriculum: Curriculum) => {
     try {
-      const response = await fetch(`/api/v1/curricula/${curriculum.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          isPublic: !curriculum.isPublic,
-        }),
+      // Use API client to update curriculum visibility
+      await apiClient.curricula.update(curriculum.id, {
+        isPublic: !curriculum.isPublic,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update curriculum');
-      }
 
       // Refresh the list
       fetchCurricula();
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${getErrorMessage(err)}`);
     }
   };
 
@@ -131,7 +112,6 @@ export default function MyCurriculaPage() {
             {curricula.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground mb-4">You haven't created any curricula yet.</p>
-                <CreateLink path="/curricula/create" title="Create Your First Curriculum" />
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

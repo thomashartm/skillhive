@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { CurriculumElementsSection } from '../../components/curricula';
 import { sidebarItems } from '../../components/curricula';
+import { apiClient, getErrorMessage } from '@/lib/api';
 
 export default function CreateCurriculumPage() {
   const router = useRouter();
@@ -24,30 +25,18 @@ export default function CreateCurriculumPage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/v1/curricula', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: formData.title,
-          description: formData.description || null,
-          isPublic: formData.isPublic,
-        }),
+      // Use API client to create curriculum
+      const curriculum = await apiClient.curricula.create({
+        title: formData.title,
+        description: formData.description || null,
+        isPublic: formData.isPublic,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create curriculum');
-      }
-
-      const data = await response.json();
-
       // Show inline builder (DnD list) on this page
-      setCreated({ id: data.curriculum.id });
+      setCreated({ id: curriculum.id });
     } catch (err: any) {
       console.error('Error creating curriculum:', err);
-      setError(err.message);
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

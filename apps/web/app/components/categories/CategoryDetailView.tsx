@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { CategoryNode } from './CategoryTreeNode';
+import { apiClient } from '@/lib/api';
 
 interface CategoryDetailViewProps {
   category: CategoryNode;
@@ -91,11 +92,9 @@ export function CategoryDetailView({
   useEffect(() => {
     const fetchTags = async () => {
       try {
-        const response = await fetch(`/api/v1/tags?disciplineId=${category.disciplineId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setTags(data);
-        }
+        // Use API client to fetch tags
+        const data = await apiClient.tags.list({ disciplineId: category.disciplineId });
+        setTags(data);
       } catch (error) {
         console.error('Error fetching tags:', error);
       }
@@ -109,29 +108,17 @@ export function CategoryDetailView({
     const fetchTechniques = async () => {
       setLoading(true);
       try {
-        const params = new URLSearchParams({
-          page: currentPage.toString(),
-          limit: limit.toString(),
+        // Use API client to fetch techniques for category
+        const data: TechniquesResponse = await apiClient.categories.getTechniques(category.id, {
+          page: currentPage,
+          limit,
+          title: titleFilter.trim() || undefined,
+          tagIds: selectedTagIds.length > 0 ? selectedTagIds.join(',') : undefined,
         });
 
-        if (titleFilter.trim()) {
-          params.append('title', titleFilter.trim());
-        }
-
-        if (selectedTagIds.length > 0) {
-          params.append('tagIds', selectedTagIds.join(','));
-        }
-
-        const response = await fetch(
-          `/api/v1/categories/${category.id}/techniques?${params.toString()}`
-        );
-
-        if (response.ok) {
-          const data: TechniquesResponse = await response.json();
-          setTechniques(data.techniques);
-          setTotalTechniques(data.total);
-          setTotalPages(data.totalPages);
-        }
+        setTechniques(data.techniques);
+        setTotalTechniques(data.total);
+        setTotalPages(data.totalPages);
       } catch (error) {
         console.error('Error fetching techniques:', error);
       } finally {
