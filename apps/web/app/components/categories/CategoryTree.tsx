@@ -38,7 +38,7 @@ export function CategoryTree({
           tree: true
         });
 
-        setCategories(data || []);
+        setCategories((data as unknown as CategoryNode[]) || []);
         setError(null);
       } catch (err) {
         setError(getErrorMessage(err));

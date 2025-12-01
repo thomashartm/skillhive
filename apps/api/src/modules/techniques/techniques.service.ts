@@ -61,14 +61,14 @@ export class TechniquesService {
     // Filter by category
     if (categoryId) {
       query
-        .innerJoin('technique.techniqueCategories', 'tc')
+        .innerJoin('technique_categories', 'tc', 'tc.techniqueId = technique.id')
         .andWhere('tc.categoryId = :categoryId', { categoryId });
     }
 
     // Filter by tag
     if (tagId) {
       query
-        .innerJoin('technique.techniqueTags', 'tt')
+        .innerJoin('technique_tags', 'tt', 'tt.techniqueId = technique.id')
         .andWhere('tt.tagId = :tagId', { tagId });
     }
 

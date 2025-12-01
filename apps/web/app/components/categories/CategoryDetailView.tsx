@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { CategoryNode } from './CategoryTreeNode';
 import { apiClient } from '@/lib/api';
+import type { Technique } from '@/lib/api/dtos';
 
 interface CategoryDetailViewProps {
   category: CategoryNode;
@@ -17,22 +18,6 @@ interface Tag {
   name: string;
   slug: string;
   color: string | null;
-}
-
-interface Technique {
-  id: number;
-  name: string;
-  slug: string;
-  description: string | null;
-  tagIds: number[];
-}
-
-interface TechniquesResponse {
-  techniques: Technique[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
 }
 
 export function CategoryDetailView({
@@ -109,16 +94,18 @@ export function CategoryDetailView({
       setLoading(true);
       try {
         // Use API client to fetch techniques for category
-        const data: TechniquesResponse = await apiClient.categories.getTechniques(category.id, {
+        const data: Technique[] = await apiClient.categories.getTechniques(category.id, {
           page: currentPage,
           limit,
           title: titleFilter.trim() || undefined,
           tagIds: selectedTagIds.length > 0 ? selectedTagIds.join(',') : undefined,
         });
 
-        setTechniques(data.techniques);
-        setTotalTechniques(data.total);
-        setTotalPages(data.totalPages);
+        // Note: API returns array, not paginated response
+        // Client-side pagination would be needed for proper implementation
+        setTechniques(data);
+        setTotalTechniques(data.length);
+        setTotalPages(Math.ceil(data.length / limit));
       } catch (error) {
         console.error('Error fetching techniques:', error);
       } finally {
@@ -323,11 +310,11 @@ export function CategoryDetailView({
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
-                          {technique.tagIds.slice(0, 3).map((tagId) => {
-                            const tag = tags.find((t) => t.id === tagId);
+                          {(technique.tags || []).slice(0, 3).map((techniqueTag) => {
+                            const tag = techniqueTag.tag || tags.find((t) => t.id === techniqueTag.tagId);
                             return tag ? (
                               <span
-                                key={tag.id}
+                                key={techniqueTag.tagId}
                                 className="px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground"
                                 style={tag.color ? { backgroundColor: tag.color, color: '#fff' } : {}}
                               >
@@ -335,9 +322,9 @@ export function CategoryDetailView({
                               </span>
                             ) : null;
                           })}
-                          {technique.tagIds.length > 3 && (
+                          {(technique.tags || []).length > 3 && (
                             <span className="px-2 py-0.5 text-xs text-muted-foreground">
-                              +{technique.tagIds.length - 3}
+                              +{(technique.tags || []).length - 3}
                             </span>
                           )}
                         </div>

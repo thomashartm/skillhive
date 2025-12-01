@@ -406,8 +406,11 @@ export function TechniqueManager({ disciplineId }: TechniqueManagerProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {techniques.map((technique) => (
             <TechniqueTile
+              key={technique.id}
               disciplineId="1"
               technique={technique}
+              categories={categories}
+              tags={tags}
               editHandler={() => handleEdit(technique)}
               deleteHandler={() => handleDelete(technique.id)}
             />

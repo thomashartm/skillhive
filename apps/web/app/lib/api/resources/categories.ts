@@ -29,32 +29,31 @@ export const categories = {
     const queryString = params.toString();
     const endpoint = `/categories${queryString ? `?${queryString}` : ''}`;
 
-    const response = await httpClient.get<Category[] | CategoryTree[]>(endpoint, { skipAuth: true });
+    const response = await httpClient.get<Category[] | CategoryTree[]>(endpoint);
     return response.data;
   },
 
   /**
-   * Get category tree for a discipline (public)
+   * Get category tree for a discipline
    */
   async getTree(disciplineId: number): Promise<CategoryTree[]> {
     return (await categories.list({ disciplineId, tree: true })) as CategoryTree[];
   },
 
   /**
-   * Get category by ID (public)
+   * Get category by ID
    */
   async getById(id: number): Promise<Category> {
-    const response = await httpClient.get<Category>(`/categories/${id}`, { skipAuth: true });
+    const response = await httpClient.get<Category>(`/categories/${id}`);
     return response.data;
   },
 
   /**
-   * Get category by slug (public)
+   * Get category by slug
    */
   async getBySlug(disciplineId: number, slug: string): Promise<Category> {
     const response = await httpClient.get<Category>(
-      `/categories/by-slug/${disciplineId}/${slug}`,
-      { skipAuth: true }
+      `/categories/by-slug/${disciplineId}/${slug}`
     );
     return response.data;
   },
@@ -83,12 +82,27 @@ export const categories = {
   },
 
   /**
-   * Get techniques in a category (public)
+   * Get techniques in a category
    */
-  async getTechniques(id: number): Promise<Technique[]> {
-    const response = await httpClient.get<Technique[]>(`/categories/${id}/techniques`, {
-      skipAuth: true,
-    });
+  async getTechniques(
+    id: number,
+    filters?: {
+      page?: number;
+      limit?: number;
+      title?: string;
+      tagIds?: string;
+    }
+  ): Promise<Technique[]> {
+    const params = new URLSearchParams();
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    if (filters?.title) params.append('title', filters.title);
+    if (filters?.tagIds) params.append('tagIds', filters.tagIds);
+
+    const queryString = params.toString();
+    const endpoint = `/categories/${id}/techniques${queryString ? `?${queryString}` : ''}`;
+
+    const response = await httpClient.get<Technique[]>(endpoint);
     return response.data;
   },
 };

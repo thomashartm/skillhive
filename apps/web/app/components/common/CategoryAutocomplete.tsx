@@ -213,7 +213,6 @@ export function CategoryAutocomplete({
                   .map((cat: any) => {
                     const isSelected = selectedIds.includes(cat.id);
                     const paddingLeft = `${cat.level * 1.5 + 0.75}rem`;
-                    const indent = '  '.repeat(cat.level);
 
                     return (
                       <button

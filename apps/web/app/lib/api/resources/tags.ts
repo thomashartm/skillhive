@@ -29,25 +29,24 @@ export const tags = {
     const queryString = buildQueryString(filters);
     const endpoint = `/tags${queryString ? `?${queryString}` : ''}`;
 
-    const response = await httpClient.get<Tag[]>(endpoint, { skipAuth: true });
+    const response = await httpClient.get<Tag[]>(endpoint);
     return response.data;
   },
 
   /**
-   * Get tag by ID (public)
+   * Get tag by ID
    */
   async getById(id: number): Promise<Tag> {
-    const response = await httpClient.get<Tag>(`/tags/${id}`, { skipAuth: true });
+    const response = await httpClient.get<Tag>(`/tags/${id}`);
     return response.data;
   },
 
   /**
-   * Get tag by slug (public)
+   * Get tag by slug
    */
   async getBySlug(disciplineId: number, slug: string): Promise<Tag> {
     const response = await httpClient.get<Tag>(
-      `/tags/by-slug/${disciplineId}/${slug}`,
-      { skipAuth: true }
+      `/tags/by-slug/${disciplineId}/${slug}`
     );
     return response.data;
   },

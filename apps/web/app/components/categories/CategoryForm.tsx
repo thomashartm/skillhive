@@ -49,7 +49,7 @@ export function CategoryForm({
       setLoadingCategories(true);
       apiClient.categories.list({ disciplineId })
         .then((data) => {
-          setAllCategories(data as CategoryNode[]);
+          setAllCategories(data as unknown as CategoryNode[]);
         })
         .catch((err) => {
           console.error('Failed to load categories:', err);

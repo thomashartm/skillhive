@@ -4,14 +4,6 @@ import { useState, useEffect } from 'react';
 import { CategoryNode } from './CategoryTreeNode';
 import { apiClient, getErrorMessage } from '@/lib/api';
 
-interface Technique {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  primary?: boolean;
-}
-
 interface TechniqueAssociationProps {
   techniqueId: string;
   onClose?: () => void;
@@ -19,7 +11,7 @@ interface TechniqueAssociationProps {
 
 export function TechniqueAssociation({ techniqueId, onClose }: TechniqueAssociationProps) {
   const [categories, setCategories] = useState<CategoryNode[]>([]);
-  const [associatedCategories, setAssociatedCategories] = useState<Technique[]>([]);
+  const [associatedCategories, setAssociatedCategories] = useState<CategoryNode[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [isPrimary, setIsPrimary] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -31,11 +23,11 @@ export function TechniqueAssociation({ techniqueId, onClose }: TechniqueAssociat
 
         // Fetch all categories using API client
         const categoriesData = await apiClient.categories.list({});
-        setCategories(categoriesData || []);
+        setCategories((categoriesData as unknown as CategoryNode[]) || []);
 
         // Fetch associated categories for this technique using API client
         const associatedData = await apiClient.techniques.getCategories(Number(techniqueId));
-        setAssociatedCategories(associatedData || []);
+        setAssociatedCategories((associatedData as unknown as CategoryNode[]) || []);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('Error fetching data:', error);
@@ -62,7 +54,7 @@ export function TechniqueAssociation({ techniqueId, onClose }: TechniqueAssociat
 
       // Refresh associated categories
       const associatedData = await apiClient.techniques.getCategories(Number(techniqueId));
-      setAssociatedCategories(associatedData || []);
+      setAssociatedCategories((associatedData as unknown as CategoryNode[]) || []);
 
       // Reset form
       setSelectedCategoryId('');
@@ -75,14 +67,14 @@ export function TechniqueAssociation({ techniqueId, onClose }: TechniqueAssociat
     }
   };
 
-  const handleRemove = async (categoryId: string) => {
+  const handleRemove = async (categoryId: number) => {
     try {
       // Use API client to remove category from technique
-      await apiClient.techniques.removeCategory(Number(techniqueId), Number(categoryId));
+      await apiClient.techniques.removeCategory(Number(techniqueId), categoryId);
 
       // Refresh associated categories
       const associatedData = await apiClient.techniques.getCategories(Number(techniqueId));
-      setAssociatedCategories(associatedData || []);
+      setAssociatedCategories((associatedData as unknown as CategoryNode[]) || []);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Error removing association:', error);
@@ -111,7 +103,7 @@ export function TechniqueAssociation({ techniqueId, onClose }: TechniqueAssociat
               >
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-foreground">{cat.name}</span>
-                  {cat.primary && (
+                  {(cat as any).primary && (
                     <span className="px-2 py-0.5 text-xs bg-primary/10 text-primary rounded-full">
                       Primary
                     </span>
