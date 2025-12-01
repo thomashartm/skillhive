@@ -88,8 +88,10 @@ class HttpClient {
       }
 
       const data = await response.json();
+      const token = data.token || null;
       console.log('[API Client] Token retrieved successfully');
-      return data.token || null;
+      console.log('[API Client] JWT token (first 50 chars):', token ? token.substring(0, 50) + '...' : 'NULL');
+      return token;
     } catch (error) {
       console.error('[API Client] Failed to get auth token:', error);
       return null;
@@ -110,6 +112,9 @@ class HttpClient {
       const token = await this.getAuthToken();
       if (token) {
         (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+        console.log('[API Client] Authorization header set with token (first 50 chars):', token.substring(0, 50) + '...');
+      } else {
+        console.warn('[API Client] No token available, Authorization header NOT set');
       }
     }
 
@@ -210,10 +215,20 @@ class HttpClient {
     const url = `${this.baseUrl}${endpoint}`;
     const controller = this.createAbortController(config);
 
+    console.log('[API Client] Making request:', {
+      method,
+      url,
+      endpoint,
+      baseUrl: this.baseUrl,
+    });
+
     this.logRequest(method, url, config.body);
 
     try {
       const headers = await this.buildHeaders(config);
+
+      // Log headers to verify Authorization is included
+      console.log('[API Client] Request headers:', JSON.stringify(headers, null, 2));
 
       const fetchFn = async () => {
         const response = await fetch(url, {
@@ -225,6 +240,13 @@ class HttpClient {
           cache: config.cache || 'no-store',
         });
 
+        console.log('[API Client] Response received:', {
+          url,
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+        });
+
         // Parse response
         let data: any;
         const contentType = response.headers.get('content-type');
@@ -233,6 +255,8 @@ class HttpClient {
         } else {
           data = await response.text();
         }
+
+        console.log('[API Client] Raw response data:', JSON.stringify(data, null, 2));
 
         this.logResponse(method, url, response.status, data);
 

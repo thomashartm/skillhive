@@ -13,10 +13,10 @@ export class CreateCurriculumDto {
   @IsOptional()
   description?: string;
 
-  @ApiProperty({ example: 1, description: 'ID of user creating this curriculum' })
+  @ApiProperty({ example: 1, description: 'ID of user creating this curriculum (auto-populated from session)' })
   @IsNumber()
-  @IsNotEmpty()
-  createdBy: number;
+  @IsOptional()
+  createdBy?: number;
 
   @ApiProperty({ example: false, description: 'Whether curriculum is publicly visible', required: false })
   @IsBoolean()

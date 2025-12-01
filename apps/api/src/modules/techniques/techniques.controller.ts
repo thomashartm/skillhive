@@ -30,9 +30,28 @@ export class TechniquesController {
   @Get()
   @ApiOperation({ summary: 'Get all techniques' })
   @ApiQuery({ name: 'disciplineId', required: false, type: Number })
+  @ApiQuery({ name: 'categoryId', required: false, type: Number })
+  @ApiQuery({ name: 'tagId', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'ids', required: false, type: String })
+  @ApiQuery({ name: 'include', required: false, type: String })
   @ApiResponse({ status: 200, description: 'List of all techniques' })
-  findAll(@Query('disciplineId', new ParseIntPipe({ optional: true })) disciplineId?: number) {
-    return this.techniquesService.findAll(disciplineId);
+  findAll(@Query() query: any) {
+    const disciplineId = query.disciplineId ? parseInt(query.disciplineId, 10) : undefined;
+    const categoryId = query.categoryId ? parseInt(query.categoryId, 10) : undefined;
+    const tagId = query.tagId ? parseInt(query.tagId, 10) : undefined;
+    const search = query.search;
+    const ids = query.ids;
+    const include = query.include;
+
+    return this.techniquesService.findAll(
+      disciplineId,
+      categoryId,
+      tagId,
+      search,
+      ids,
+      include,
+    );
   }
 
   @Get(':id')

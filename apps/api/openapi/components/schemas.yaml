@@ -400,3 +400,70 @@ UpdateCurriculumDto:
       type: boolean
       example: false
       description: Whether curriculum is publicly visible
+CreateCurriculumElementDto:
+  type: object
+  properties:
+    type:
+      type: string
+      enum:
+        - technique
+        - asset
+        - text
+      example: technique
+      description: Type of curriculum element
+    techniqueId:
+      type: number
+      example: 1
+      description: ID of technique (required if type is technique)
+      nullable: true
+    assetId:
+      type: number
+      example: 1
+      description: ID of reference asset (required if type is asset)
+      nullable: true
+    title:
+      type: string
+      example: Introduction
+      description: Title for text elements
+      nullable: true
+    details:
+      type: string
+      example: Additional notes or details for this element
+      description: Additional details or notes
+      nullable: true
+  required:
+    - type
+UpdateCurriculumElementDto:
+  type: object
+  properties:
+    techniqueId:
+      type: number
+      example: 1
+      description: ID of technique
+      nullable: true
+    assetId:
+      type: number
+      example: 1
+      description: ID of reference asset
+      nullable: true
+    title:
+      type: string
+      example: Updated title
+      description: Title for text elements
+      nullable: true
+    details:
+      type: string
+      example: Updated details
+      description: Additional details or notes
+      nullable: true
+ReorderElementsDto:
+  type: object
+  properties:
+    elementIds:
+      type: array
+      items:
+        type: number
+      example: [3, 1, 2]
+      description: Ordered array of element IDs defining the new order
+  required:
+    - elementIds

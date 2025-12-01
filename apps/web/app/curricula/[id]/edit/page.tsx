@@ -176,33 +176,23 @@ export default function EditCurriculumPage() {
     }
 
     try {
-      const payload: any = {
-        type: kind,
-        details: null,
-      };
-
-      // For text elements, create with empty title
-      // For technique/asset, create without ID and open modal
+      // For text elements, create immediately with empty title
       if (kind === 'text') {
-        payload.title = 'Click to add instruction text...';
+        const payload: any = {
+          type: 'text',
+          title: 'Click to add instruction text...',
+          details: null,
+        };
+
+        await apiClient.curricula.elements.add(parseInt(curriculumId), payload);
+        await fetchElements();
       } else if (kind === 'technique') {
-        payload.techniqueId = null;
-      } else if (kind === 'asset') {
-        payload.assetId = null;
-      }
-
-      // Use API client to create element
-      const element = await apiClient.curricula.elements.add(parseInt(curriculumId), payload);
-      const newElementId = String(element.id);
-
-      await fetchElements();
-
-      // Open appropriate modal for technique or asset
-      if (kind === 'technique') {
-        setTechniqueModal({ open: true, elementId: newElementId });
+        // For technique, open modal first to select technique
+        setTechniqueModal({ open: true, elementId: 'new' });
         setTechniqueResults([]);
       } else if (kind === 'asset') {
-        setAssetModal({ open: true, elementId: newElementId });
+        // For asset, open modal first to select asset
+        setAssetModal({ open: true, elementId: 'new' });
         setAssetResults([]);
       }
     } catch (err: any) {
@@ -508,7 +498,7 @@ export default function EditCurriculumPage() {
           <TechniqueSelectionModal
             open={techniqueModal.open}
             currentTechnique={
-              techniqueModal.elementId
+              techniqueModal.elementId && techniqueModal.elementId !== 'new'
                 ? (() => {
                     const element = elements.find((e) => String(e.id) === techniqueModal.elementId);
                     return element?.techniqueId ? techniqueMap[element.techniqueId] : null;
@@ -518,13 +508,24 @@ export default function EditCurriculumPage() {
             onClose={() => setTechniqueModal({ open: false, elementId: null })}
             onSelect={async (techId) => {
               if (!techniqueModal.elementId) return;
-              const numId = Number(techniqueModal.elementId);
-              console.log('Updating element', numId, 'with techniqueId', techId);
+
               try {
-                // Use API client to update element with techniqueId
-                await apiClient.curricula.elements.update(parseInt(curriculumId), numId, {
-                  techniqueId: techId,
-                });
+                if (techniqueModal.elementId === 'new') {
+                  // Creating a new element with the selected technique
+                  console.log('Creating new element with techniqueId', techId);
+                  await apiClient.curricula.elements.add(parseInt(curriculumId), {
+                    type: 'technique',
+                    techniqueId: techId,
+                    details: null,
+                  });
+                } else {
+                  // Updating an existing element
+                  const numId = Number(techniqueModal.elementId);
+                  console.log('Updating element', numId, 'with techniqueId', techId);
+                  await apiClient.curricula.elements.update(parseInt(curriculumId), numId, {
+                    techniqueId: techId,
+                  });
+                }
 
                 setTechniqueModal({ open: false, elementId: null });
                 await fetchElements();
@@ -562,7 +563,7 @@ export default function EditCurriculumPage() {
           <AssetSelectionModal
             open={assetModal.open}
             currentAsset={
-              assetModal.elementId
+              assetModal.elementId && assetModal.elementId !== 'new'
                 ? (() => {
                     const element = elements.find((e) => String(e.id) === assetModal.elementId);
                     return element?.assetId ? videoMap[element.assetId] : null;
@@ -572,12 +573,24 @@ export default function EditCurriculumPage() {
             onClose={() => setAssetModal({ open: false, elementId: null })}
             onSelect={async (assetId) => {
               if (!assetModal.elementId) return;
-              const numId = Number(assetModal.elementId);
+
               try {
-                // Use API client to update element with assetId
-                await apiClient.curricula.elements.update(parseInt(curriculumId), numId, {
-                  assetId,
-                });
+                if (assetModal.elementId === 'new') {
+                  // Creating a new element with the selected asset
+                  console.log('Creating new element with assetId', assetId);
+                  await apiClient.curricula.elements.add(parseInt(curriculumId), {
+                    type: 'asset',
+                    assetId,
+                    details: null,
+                  });
+                } else {
+                  // Updating an existing element
+                  const numId = Number(assetModal.elementId);
+                  await apiClient.curricula.elements.update(parseInt(curriculumId), numId, {
+                    assetId,
+                  });
+                }
+
                 setAssetModal({ open: false, elementId: null });
                 await fetchElements();
               } catch (e) {

@@ -85,3 +85,116 @@ detail:
       "404":
         description: Curriculum not found
     tags: *a7
+
+elements:
+  post:
+    operationId: CurriculaController_addElement
+    summary: Add an element to a curriculum
+    parameters:
+      - name: id
+        required: true
+        in: path
+        schema:
+          type: number
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../components/schemas.yaml#/CreateCurriculumElementDto"
+    responses:
+      "201":
+        description: Element added successfully
+      "404":
+        description: Curriculum not found
+      "400":
+        description: Invalid element data
+    tags: *a7
+  get:
+    operationId: CurriculaController_listElements
+    summary: List all elements in a curriculum
+    parameters:
+      - name: id
+        required: true
+        in: path
+        schema:
+          type: number
+    responses:
+      "200":
+        description: List of curriculum elements
+      "404":
+        description: Curriculum not found
+    tags: *a7
+
+element_detail:
+  put:
+    operationId: CurriculaController_updateElement
+    summary: Update a curriculum element
+    parameters:
+      - name: id
+        required: true
+        in: path
+        schema:
+          type: number
+      - name: elementId
+        required: true
+        in: path
+        schema:
+          type: number
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../components/schemas.yaml#/UpdateCurriculumElementDto"
+    responses:
+      "200":
+        description: Element updated successfully
+      "404":
+        description: Element or curriculum not found
+    tags: *a7
+  delete:
+    operationId: CurriculaController_removeElement
+    summary: Delete a curriculum element
+    parameters:
+      - name: id
+        required: true
+        in: path
+        schema:
+          type: number
+      - name: elementId
+        required: true
+        in: path
+        schema:
+          type: number
+    responses:
+      "200":
+        description: Element deleted successfully
+      "404":
+        description: Element or curriculum not found
+    tags: *a7
+
+reorder:
+  put:
+    operationId: CurriculaController_reorderElements
+    summary: Reorder curriculum elements
+    parameters:
+      - name: id
+        required: true
+        in: path
+        schema:
+          type: number
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../components/schemas.yaml#/ReorderElementsDto"
+    responses:
+      "200":
+        description: Elements reordered successfully
+      "404":
+        description: Curriculum not found
+      "400":
+        description: Invalid element IDs
+    tags: *a7
