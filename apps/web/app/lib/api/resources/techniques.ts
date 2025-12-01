@@ -41,13 +41,13 @@ function buildQueryString(filters?: TechniqueFilters): string {
 
 export const techniques = {
   /**
-   * List all techniques with optional filters (public)
+   * List all techniques with optional filters (authenticated)
    */
   async list(filters?: TechniqueFilters): Promise<Technique[]> {
     const queryString = buildQueryString(filters);
     const endpoint = `/techniques${queryString ? `?${queryString}` : ''}`;
 
-    const response = await httpClient.get<Technique[]>(endpoint, { skipAuth: true });
+    const response = await httpClient.get<Technique[]>(endpoint);
     return response.data;
   },
 
@@ -59,23 +59,20 @@ export const techniques = {
   },
 
   /**
-   * Get technique by ID (public)
+   * Get technique by ID (authenticated)
    */
   async getById(id: number, options?: { include?: string[] }): Promise<Technique> {
     const params = options?.include ? `?include=${options.include.join(',')}` : '';
-    const response = await httpClient.get<Technique>(`/techniques/${id}${params}`, {
-      skipAuth: true,
-    });
+    const response = await httpClient.get<Technique>(`/techniques/${id}${params}`);
     return response.data;
   },
 
   /**
-   * Get technique by slug (public)
+   * Get technique by slug (authenticated)
    */
   async getBySlug(disciplineId: number, slug: string): Promise<Technique> {
     const response = await httpClient.get<Technique>(
-      `/techniques/by-slug/${disciplineId}/${slug}`,
-      { skipAuth: true }
+      `/techniques/by-slug/${disciplineId}/${slug}`
     );
     return response.data;
   },
@@ -104,12 +101,10 @@ export const techniques = {
   },
 
   /**
-   * Get categories for a technique (public)
+   * Get categories for a technique (authenticated)
    */
   async getCategories(id: number): Promise<Category[]> {
-    const response = await httpClient.get<Category[]>(`/techniques/${id}/categories`, {
-      skipAuth: true,
-    });
+    const response = await httpClient.get<Category[]>(`/techniques/${id}/categories`);
     return response.data;
   },
 
@@ -148,12 +143,10 @@ export const techniques = {
   },
 
   /**
-   * Get tags for a technique (public)
+   * Get tags for a technique (authenticated)
    */
   async getTags(id: number): Promise<Tag[]> {
-    const response = await httpClient.get<Tag[]>(`/techniques/${id}/tags`, {
-      skipAuth: true,
-    });
+    const response = await httpClient.get<Tag[]>(`/techniques/${id}/tags`);
     return response.data;
   },
 

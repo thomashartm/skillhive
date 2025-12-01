@@ -35,6 +35,7 @@ export async function GET() {
     }
 
     console.log('[Token Endpoint] Generating JWT for user:', decoded.email);
+    console.log('[Token Endpoint] Decoded token keys:', Object.keys(decoded));
 
     // Encode the session data as a JWT string that can be sent to the API
     // Use jsonwebtoken (same library as NestJS passport-jwt) for compatibility
@@ -48,14 +49,19 @@ export async function GET() {
     const secret = process.env.NEXTAUTH_SECRET;
     console.log('[Token Endpoint] Using secret (first 20 chars):', secret.substring(0, 20));
 
+    // Create payload explicitly to avoid any extra fields from decoded token
+    const payload = {
+      id: String(decoded.id),
+      email: decoded.email,
+      name: decoded.name,
+      role: decoded.role,
+      scopes: decoded.scopes || [],
+    };
+
+    console.log('[Token Endpoint] JWT payload:', payload);
+
     const token = jwt.sign(
-      {
-        id: decoded.id,
-        email: decoded.email,
-        name: decoded.name,
-        role: decoded.role,
-        scopes: decoded.scopes || [],
-      },
+      payload,
       secret,
       {
         algorithm: 'HS256',

@@ -14,31 +14,54 @@ import type {
   ReorderElementsDto,
 } from '../dtos';
 
-function buildQueryString(filters?: CurriculumFilters): string {
-  if (!filters) return '';
+async function buildQueryString(filters?: CurriculumFilters): Promise<string> {
+  console.log('[Curricula API] buildQueryString called with filters:', JSON.stringify(filters));
+
+  if (!filters) {
+    console.log('[Curricula API] No filters provided, returning empty string');
+    return '';
+  }
 
   const params = new URLSearchParams();
 
-  if (filters.createdBy) {
+  // Handle onlyMine filter by converting it to createdBy with current user's ID
+  if (filters.onlyMine) {
+    console.log('[Curricula API] onlyMine filter detected, fetching current user...');
+    try {
+      // Get current user to use their ID for createdBy filter
+      const { users } = await import('./users');
+      const currentUser = await users.getMe();
+      console.log('[Curricula API] Current user ID:', currentUser.id);
+      params.append('createdBy', currentUser.id.toString());
+    } catch (error) {
+      console.error('[Curricula API] Failed to get current user for onlyMine filter:', error);
+      // If we can't get the user, don't add the filter
+    }
+  } else if (filters.createdBy) {
+    console.log('[Curricula API] createdBy filter:', filters.createdBy);
     params.append('createdBy', filters.createdBy.toString());
   }
+
   if (filters.isPublic !== undefined) {
+    console.log('[Curricula API] isPublic filter:', filters.isPublic);
     params.append('isPublic', filters.isPublic.toString());
   }
-  if (filters.onlyMine) {
-    params.append('onlyMine', 'true');
-  }
 
-  return params.toString();
+  // NOTE: onlyMine is NOT sent to the API - it's translated to createdBy above
+
+  const queryString = params.toString();
+  console.log('[Curricula API] Built query string:', queryString);
+  return queryString;
 }
 
 export const curricula = {
   /**
    * List curricula with optional filters (authenticated)
    * Returns user's own + public curricula
+   * Note: onlyMine filter is translated to createdBy=<currentUserId>
    */
   async list(filters?: CurriculumFilters): Promise<Curriculum[]> {
-    const queryString = buildQueryString(filters);
+    const queryString = await buildQueryString(filters);
     const endpoint = `/curricula${queryString ? `?${queryString}` : ''}`;
 
     const response = await httpClient.get<Curriculum[]>(endpoint);

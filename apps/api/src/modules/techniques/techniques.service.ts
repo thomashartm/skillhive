@@ -43,11 +43,65 @@ export class TechniquesService {
     return savedTechnique;
   }
 
-  async findAll(disciplineId?: number): Promise<Technique[]> {
+  async findAll(
+    disciplineId?: number,
+    categoryId?: number,
+    tagId?: number,
+    search?: string,
+    ids?: string,
+    include?: string,
+  ): Promise<Technique[]> {
     const query = this.techniqueRepository.createQueryBuilder('technique');
 
+    // Filter by discipline
     if (disciplineId) {
-      query.where('technique.disciplineId = :disciplineId', { disciplineId });
+      query.andWhere('technique.disciplineId = :disciplineId', { disciplineId });
+    }
+
+    // Filter by category
+    if (categoryId) {
+      query
+        .innerJoin('technique.techniqueCategories', 'tc')
+        .andWhere('tc.categoryId = :categoryId', { categoryId });
+    }
+
+    // Filter by tag
+    if (tagId) {
+      query
+        .innerJoin('technique.techniqueTags', 'tt')
+        .andWhere('tt.tagId = :tagId', { tagId });
+    }
+
+    // Search by name or description
+    if (search) {
+      query.andWhere(
+        '(technique.name LIKE :search OR technique.description LIKE :search)',
+        { search: `%${search}%` }
+      );
+    }
+
+    // Filter by specific IDs
+    if (ids) {
+      const idArray = ids.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
+      if (idArray.length > 0) {
+        query.andWhere('technique.id IN (:...ids)', { ids: idArray });
+      }
+    }
+
+    // Include relations
+    if (include) {
+      const relations = include.split(',').map(r => r.trim());
+      relations.forEach(relation => {
+        if (relation === 'categories') {
+          query.leftJoinAndSelect('technique.techniqueCategories', 'categories')
+               .leftJoinAndSelect('categories.category', 'category');
+        } else if (relation === 'tags') {
+          query.leftJoinAndSelect('technique.techniqueTags', 'tags')
+               .leftJoinAndSelect('tags.tag', 'tag');
+        } else if (relation === 'discipline') {
+          query.leftJoinAndSelect('technique.discipline', 'discipline');
+        }
+      });
     }
 
     return query.orderBy('technique.name', 'ASC').getMany();

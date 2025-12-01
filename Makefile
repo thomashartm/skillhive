@@ -1,4 +1,4 @@
-.PHONY: db-start db-stop db-restart db-status db-logs db-reset db-shell db-schema db-seed
+.PHONY: db-start db-stop db-restart db-status db-logs db-reset db-shell db-schema db-seed token token-save
 
 # Database container management
 db-start:
@@ -66,4 +66,26 @@ db-seed:
 
 db-setup: db-start db-schema db-seed
 	@echo "Database setup complete! Ready to use."
+
+# Generate bearer token for API testing
+# Usage:
+#   make token              - Interactive mode
+#   make token USER_NUM=1   - Generate for specific user
+#   make token-save USER_NUM=1 - Generate and save to CLI tool
+token:
+	@echo "Generating bearer token..."
+	@npx ts-node -P packages/db/tsconfig.json scripts/generate-token.ts $(USER_NUM)
+
+# Generate and save token directly to CLI tool
+token-save:
+	@echo "Generating and saving bearer token..."
+	@TOKEN=$$(npx ts-node -P packages/db/tsconfig.json scripts/generate-token.ts $(USER_NUM) 2>/dev/null | grep -A1 "Bearer Token:" | tail -1 | tr -d ' '); \
+	if [ -n "$$TOKEN" ]; then \
+		echo "$$TOKEN" > ~/.trainhive-token; \
+		echo "Token saved to ~/.trainhive-token"; \
+		echo "You can now use the CLI: npm run cli -w @trainhive/api-cli -- request GET /api/v1/videos"; \
+	else \
+		echo "Failed to generate token"; \
+		exit 1; \
+	fi
 
