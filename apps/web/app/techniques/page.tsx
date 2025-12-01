@@ -1,12 +1,9 @@
+'use client';
+
 import { AppLayout } from '../components/layout/AppLayout';
 import { TechniqueManager } from '../components/techniques/TechniqueManager';
 
 export const dynamic = 'force-dynamic';
-
-export const metadata = {
-  title: 'Techniques - SkillHive',
-  description: 'Browse and manage your technique library',
-};
 
 const sidebarItems = [
   { href: '/techniques', label: 'All Techniques' },

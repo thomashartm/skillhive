@@ -1,122 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AppLayout } from '../../components/layout/AppLayout';
-import { sidebarItems } from '../../components/curricula';
-import { apiClient, getErrorMessage } from '@/lib/api';
-
-interface Curriculum {
-  id: number;
-  title: string;
-  description: string | null;
-  isPublic: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface CurriculumElement {
-  id: number;
-  curriculumId: number;
-  type: 'technique' | 'asset' | 'text';
-  ord: number;
-  techniqueId: number | null;
-  assetId: number | null;
-  title: string | null;
-  details: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+import { sidebarItems, useCurriculumDetail, useCurriculumElements } from '../../components/curricula';
+import { LoadingState } from '../_components/LoadingState';
+import { ErrorState } from '../_components/ErrorState';
 
 export default function CurriculumDetailPage() {
   const params = useParams();
   const router = useRouter();
   const curriculumId = params.id as string;
 
-  const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
-  const [elements, setElements] = useState<CurriculumElement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { curriculum, loading: curriculumLoading, error } = useCurriculumDetail(curriculumId);
+  const { elements, loading: elementsLoading } = useCurriculumElements(curriculumId);
 
-  useEffect(() => {
-    if (curriculumId) {
-      fetchCurriculum();
-      fetchElements();
-    }
-  }, [curriculumId]);
-
-  const fetchCurriculum = async () => {
-    try {
-      // Use API client to fetch curriculum by ID
-      const curriculum = await apiClient.curricula.getById(parseInt(curriculumId));
-      setCurriculum(curriculum);
-    } catch (err: any) {
-      console.error('Error fetching curriculum:', err);
-      setError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchElements = async () => {
-    try {
-      // Use API client to fetch curriculum elements
-      const elements = await apiClient.curricula.elements.list(parseInt(curriculumId));
-      setElements(elements || []);
-    } catch (err: any) {
-      console.error('Error fetching elements:', err);
-    }
-  };
-
-  const renderElementContent = (element: CurriculumElement) => {
-    if (element.type === 'text') {
-      return (
-        <div>
-          <div className="font-medium text-foreground">{element.title}</div>
-          {element.details && (
-            <div className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
-              {element.details}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (element.type === 'technique') {
-      return (
-        <div>
-          <div className="font-medium text-foreground">Technique ID: {element.techniqueId}</div>
-          {element.details && (
-            <div className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
-              {element.details}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (element.type === 'asset') {
-      return (
-        <div>
-          <div className="font-medium text-foreground">Asset ID: {element.assetId}</div>
-          {element.details && (
-            <div className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
-              {element.details}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    return null;
-  };
+  const loading = curriculumLoading || elementsLoading;
 
   if (loading) {
     return (
       <AppLayout sidebarItems={sidebarItems} sidebarTitle="Curricula">
         <div className="container mx-auto py-8 px-4">
-          <div className="text-center text-muted-foreground">Loading...</div>
+          <LoadingState />
         </div>
       </AppLayout>
     );
@@ -126,24 +31,21 @@ export default function CurriculumDetailPage() {
     return (
       <AppLayout sidebarItems={sidebarItems} sidebarTitle="Curricula">
         <div className="container mx-auto py-8 px-4">
-          <div className="bg-destructive/10 border border-destructive rounded-lg p-4">
-            <p className="text-destructive text-sm">{error || 'Curriculum not found'}</p>
-            <button
-              onClick={() => router.push('/curricula/my-curricula')}
-              className="mt-2 text-sm text-primary hover:underline"
-            >
-              Back to My Curricula
-            </button>
-          </div>
+          <ErrorState
+            error={error || 'Curriculum not found'}
+            onRetry={() => router.push('/curricula/my-curricula')}
+          />
         </div>
       </AppLayout>
     );
   }
 
+  // Sort elements by ord for display
+  const sortedElements = [...elements].sort((a, b) => a.ord - b.ord);
+
   return (
     <AppLayout sidebarItems={sidebarItems} sidebarTitle="Curricula">
       <div className="container mx-auto py-8 px-4 max-w-4xl">
-        {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
@@ -170,7 +72,6 @@ export default function CurriculumDetailPage() {
           </Link>
         </div>
 
-        {/* Description */}
         {curriculum.description && (
           <div className="bg-card border border-border rounded-lg p-6 mb-6">
             <h2 className="text-lg font-semibold text-foreground mb-3">Description</h2>
@@ -178,15 +79,14 @@ export default function CurriculumDetailPage() {
           </div>
         )}
 
-        {/* Elements */}
         <div className="bg-card border border-border rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">
-              Curriculum Elements ({elements.length})
+              Curriculum Elements ({sortedElements.length})
             </h2>
           </div>
 
-          {elements.length === 0 ? (
+          {sortedElements.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p className="mb-4">No elements added yet.</p>
               <Link
@@ -198,7 +98,7 @@ export default function CurriculumDetailPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {elements.map((element, index) => (
+              {sortedElements.map((element, index) => (
                 <div
                   key={element.id}
                   className="flex gap-4 p-4 bg-background border border-border rounded-lg"
@@ -210,17 +110,21 @@ export default function CurriculumDetailPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <span
                         className={`px-2 py-0.5 rounded text-xs ${
-                          element.type === 'technique'
+                          element.kind === 'technique'
                             ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                            : element.type === 'asset'
+                            : element.kind === 'asset'
                               ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
                               : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
                         }`}
                       >
-                        {element.type}
+                        {element.kind}
                       </span>
                     </div>
-                    {renderElementContent(element)}
+                    <div className="font-medium text-foreground">
+                      {element.kind === 'text' && element.text}
+                      {element.kind === 'technique' && `Technique ID: ${element.techniqueId}`}
+                      {element.kind === 'asset' && `Asset ID: ${element.assetId}`}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -228,7 +132,6 @@ export default function CurriculumDetailPage() {
           )}
         </div>
 
-        {/* Back button */}
         <div className="mt-8">
           <Link href="/curricula/my-curricula" className="text-primary hover:underline">
             ← Back to My Curricula

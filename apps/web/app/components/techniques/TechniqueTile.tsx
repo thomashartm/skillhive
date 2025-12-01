@@ -4,16 +4,29 @@ export interface Technique {
   name: string;
   slug: string;
   description: string | null;
-  categoryIds: number[];
-  tagIds: number[];
-  referenceAssets: any[];
+  categoryIds?: number[];
+  tagIds?: number[];
+  referenceAssets?: any[];
   createdAt: string;
   updatedAt: string;
 }
 
+interface Category {
+  id: number;
+  name: string;
+}
+
+interface Tag {
+  id: number;
+  name: string;
+  color: string | null;
+}
+
 interface TechniqueProps {
-  disciplineId: number;
+  disciplineId: string | number;
   technique: Technique;
+  categories?: Category[];
+  tags?: Tag[];
   editHandler: () => void;
   deleteHandler: () => void;
 }
@@ -21,6 +34,8 @@ interface TechniqueProps {
 export function TechniqueTile({
   disciplineId,
   technique,
+  categories = [],
+  tags = [],
   editHandler,
   deleteHandler,
 }: TechniqueProps) {
@@ -40,7 +55,7 @@ export function TechniqueTile({
           )}
 
           <div className="flex flex-wrap gap-4 text-sm">
-            {technique.categoryIds.length > 0 && (
+            {technique.categoryIds && technique.categoryIds.length > 0 && (
               <div>
                 <span className="text-muted-foreground">Categories: </span>
                 <span className="text-foreground">
@@ -52,7 +67,7 @@ export function TechniqueTile({
               </div>
             )}
 
-            {technique.tagIds.length > 0 && (
+            {technique.tagIds && technique.tagIds.length > 0 && (
               <div>
                 <span className="text-muted-foreground">Tags: </span>
                 <div className="inline-flex flex-wrap gap-1">
@@ -111,10 +126,17 @@ export function TechniqueTile({
         </div>
 
         <div className="flex gap-2 ml-4">
-          <EditHandlerButton onClick={editHandler} title={title} />
+          <button
+            onClick={editHandler}
+            className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
+            title="Edit technique"
+          >
+            Edit
+          </button>
           <button
             onClick={deleteHandler}
             className="px-3 py-1 text-sm bg-destructive text-destructive-foreground rounded hover:bg-destructive/90"
+            title="Delete technique"
           >
             Delete
           </button>

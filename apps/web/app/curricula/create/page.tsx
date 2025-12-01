@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppLayout } from '../../components/layout/AppLayout';
-import { CurriculumElementsSection } from '../../components/curricula';
-import { sidebarItems } from '../../components/curricula';
+import { CurriculumElementsSection, sidebarItems } from '../../components/curricula';
 import { apiClient, getErrorMessage } from '@/lib/api';
 
 export default function CreateCurriculumPage() {

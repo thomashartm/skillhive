@@ -1,4 +1,4 @@
-.PHONY: db-start db-stop db-restart db-status db-logs db-reset db-shell db-schema db-seed token token-save
+.PHONY: db-start db-stop db-restart db-status db-logs db-reset db-shell db-schema db-seed token token-save kill-api kill-web
 
 # Database container management
 db-start:
@@ -88,4 +88,13 @@ token-save:
 		echo "Failed to generate token"; \
 		exit 1; \
 	fi
+
+kill-api:
+	@echo "Killing local API server..."
+	lsof -t -i :3001 | xargs kill
+
+kill-web:
+	@echo "Killing local Next.js Website"
+	lsof -t -i :3001 | xargs kill	
+
 

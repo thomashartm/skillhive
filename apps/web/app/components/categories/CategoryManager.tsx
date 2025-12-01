@@ -63,12 +63,18 @@ export function CategoryManager({ disciplineId, maxLevel = 5 }: CategoryManagerP
 
   const handleSubmit = async (data: CategoryFormData) => {
     try {
+      // Transform null to undefined for API compatibility
+      const apiData = {
+        ...data,
+        description: data.description === null ? undefined : data.description,
+      };
+
       if (modalMode === 'edit' && selectedCategory) {
         // Update existing category
-        await apiClient.categories.update(selectedCategory.id, data);
+        await apiClient.categories.update(selectedCategory.id, apiData);
       } else {
         // Create new category
-        await apiClient.categories.create(data);
+        await apiClient.categories.create(apiData);
       }
 
       // Close modal and refresh tree
@@ -107,7 +113,7 @@ export function CategoryManager({ disciplineId, maxLevel = 5 }: CategoryManagerP
           disciplineId,
           tree: true
         });
-        setAllCategories(data || []);
+        setAllCategories((data as unknown as CategoryNode[]) || []);
       } catch (error) {
         console.error('Error fetching categories:', error);
       }
