@@ -7,8 +7,7 @@ export const dynamic = 'force-dynamic';
 
 const sidebarItems = [
   { href: '/techniques', label: 'All Techniques' },
-  { href: '/techniques/categories', label: 'By Category' },
-  //{ href: '/techniques/favorites', label: 'Favorites' },
+  { href: '/techniques/categories', label: 'Categories' },
   { href: '/techniques/create', label: 'Add Technique' },
 ];
 
