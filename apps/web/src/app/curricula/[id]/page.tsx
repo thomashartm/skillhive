@@ -3,7 +3,8 @@
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AppLayout } from '@/lib/components/layout/AppLayout';
-import { sidebarItems, useCurriculumDetail, useCurriculumElements } from '@/lib/components/curricula';
+import { useCurriculumDetail, useCurriculumElements } from '@/lib/components/curricula';
+import { CurriculumSidebarItems } from '@/lib/components/navigation/SidebarConfig';
 import { LoadingState } from '../_components/LoadingState';
 import { ErrorState } from '../_components/ErrorState';
 
@@ -19,7 +20,7 @@ export default function CurriculumDetailPage() {
 
   if (loading) {
     return (
-      <AppLayout sidebarItems={sidebarItems} sidebarTitle="Curricula">
+      <AppLayout sidebarItems={CurriculumSidebarItems} sidebarTitle="Curricula">
         <div className="container mx-auto py-8 px-4">
           <LoadingState />
         </div>
@@ -29,7 +30,7 @@ export default function CurriculumDetailPage() {
 
   if (error || !curriculum) {
     return (
-      <AppLayout sidebarItems={sidebarItems} sidebarTitle="Curricula">
+      <AppLayout sidebarItems={CurriculumSidebarItems} sidebarTitle="Curricula">
         <div className="container mx-auto py-8 px-4">
           <ErrorState
             error={error || 'Curriculum not found'}
@@ -44,18 +45,17 @@ export default function CurriculumDetailPage() {
   const sortedElements = [...elements].sort((a, b) => a.ord - b.ord);
 
   return (
-    <AppLayout sidebarItems={sidebarItems} sidebarTitle="Curricula">
+    <AppLayout sidebarItems={CurriculumSidebarItems} sidebarTitle="Curricula">
       <div className="container mx-auto py-8 px-4 max-w-4xl">
         <div className="flex items-start justify-between mb-6">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold text-foreground">{curriculum.title}</h1>
               <span
-                className={`px-2 py-1 rounded text-xs ${
-                  curriculum.isPublic
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                }`}
+                className={`px-2 py-1 rounded text-xs ${curriculum.isPublic
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                  : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                  }`}
               >
                 {curriculum.isPublic ? 'Public' : 'Private'}
               </span>
@@ -109,13 +109,12 @@ export default function CurriculumDetailPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span
-                        className={`px-2 py-0.5 rounded text-xs ${
-                          element.kind === 'technique'
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                            : element.kind === 'asset'
-                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                        }`}
+                        className={`px-2 py-0.5 rounded text-xs ${element.kind === 'technique'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                          : element.kind === 'asset'
+                            ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                            : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                          }`}
                       >
                         {element.kind}
                       </span>

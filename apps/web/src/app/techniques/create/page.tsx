@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AppLayout } from '@/lib/components/layout/AppLayout';
 import { TechniqueForm, TechniqueFormData } from '@/lib/components/techniques/TechniqueForm';
 import { apiClient, getErrorMessage } from '@/lib/backend';
-import { sidebarItems } from '@/lib/components/techniques/constants';
+import { TechniqueSidebarItems } from '@/lib/components/navigation/SidebarConfig';
 
 
 // Default BJJ discipline ID (placeholder - should be replaced with actual discipline ID)
@@ -71,7 +71,7 @@ export default function CreateTechniquePage() {
   };
 
   return (
-    <AppLayout sidebarItems={sidebarItems} sidebarTitle="Techniques">
+    <AppLayout sidebarItems={TechniqueSidebarItems} sidebarTitle="Techniques">
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Create New Technique</h1>

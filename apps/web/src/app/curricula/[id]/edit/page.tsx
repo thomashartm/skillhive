@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AppLayout } from '@/lib/components/layout/AppLayout';
 import {
-  sidebarItems,
   useCurriculumDetail,
   useCurriculumElements,
   CurriculumElementsSection,
@@ -15,6 +14,7 @@ import {
 import { LoadingState } from '../../_components/LoadingState';
 import { ErrorState } from '../../_components/ErrorState';
 import { apiClient, getErrorMessage } from '@/lib/backend';
+import { CurriculumSidebarItems } from '@/lib/components/navigation/SidebarConfig';
 
 export default function EditCurriculumPage() {
   const params = useParams();
@@ -151,7 +151,7 @@ export default function EditCurriculumPage() {
   }
 
   return (
-    <AppLayout sidebarItems={sidebarItems} sidebarTitle="Curricula">
+    <AppLayout sidebarItems={CurriculumSidebarItems} sidebarTitle="Curricula">
       {deleteConfirmation && (
         <div className="fixed top-0 left-0 right-0 z-50 px-4 py-3 bg-yellow-500 text-white">
           <div className="container mx-auto flex items-center justify-between max-w-5xl">
@@ -176,9 +176,8 @@ export default function EditCurriculumPage() {
 
       {notification && (
         <div
-          className={`fixed top-0 left-0 right-0 z-50 px-4 py-3 ${
-            notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-          }`}
+          className={`fixed top-0 left-0 right-0 z-50 px-4 py-3 ${notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+            }`}
         >
           <div className="container mx-auto flex items-center justify-between max-w-5xl">
             <span>{notification.message}</span>
@@ -286,11 +285,10 @@ export default function EditCurriculumPage() {
               )}
               <div>
                 <span
-                  className={`px-2 py-1 rounded text-xs ${
-                    curriculum.isPublic
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                      : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                  }`}
+                  className={`px-2 py-1 rounded text-xs ${curriculum.isPublic
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                    }`}
                 >
                   {curriculum.isPublic ? 'Public' : 'Private'}
                 </span>
@@ -341,9 +339,9 @@ export default function EditCurriculumPage() {
             currentTechnique={
               techniqueModal.elementId && techniqueModal.elementId !== 'new'
                 ? (() => {
-                    const element = elements.find((e) => e.id === techniqueModal.elementId);
-                    return element?.techniqueId ? techniqueMap[element.techniqueId] : null;
-                  })()
+                  const element = elements.find((e) => e.id === techniqueModal.elementId);
+                  return element?.techniqueId ? techniqueMap[element.techniqueId] : null;
+                })()
                 : null
             }
             onClose={() => setTechniqueModal({ open: false, elementId: null })}
@@ -391,9 +389,9 @@ export default function EditCurriculumPage() {
             currentAsset={
               assetModal.elementId && assetModal.elementId !== 'new'
                 ? (() => {
-                    const element = elements.find((e) => e.id === assetModal.elementId);
-                    return element?.assetId ? videoMap[element.assetId] : null;
-                  })()
+                  const element = elements.find((e) => e.id === assetModal.elementId);
+                  return element?.assetId ? videoMap[element.assetId] : null;
+                })()
                 : null
             }
             onClose={() => setAssetModal({ open: false, elementId: null })}

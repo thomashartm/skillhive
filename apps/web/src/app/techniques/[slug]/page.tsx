@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { AppLayout } from '@/lib/components/layout/AppLayout';
-import { sidebarItems } from '@/lib/components/techniques/constants';
+import { TechniqueSidebarItems } from '@/lib/components/navigation/SidebarConfig';
 
 interface Technique {
   id: number;
@@ -60,7 +60,7 @@ export default function TechniqueDetailPage() {
 
   if (loading) {
     return (
-      <AppLayout sidebarItems={sidebarItems} sidebarTitle="Techniques">
+      <AppLayout sidebarItems={TechniqueSidebarItems} sidebarTitle="Techniques">
         <div className="flex items-center justify-center min-h-[400px]">
           <p className="text-muted-foreground">Loading technique...</p>
         </div>
@@ -70,7 +70,7 @@ export default function TechniqueDetailPage() {
 
   if (error || !technique) {
     return (
-      <AppLayout sidebarItems={sidebarItems} sidebarTitle="Techniques">
+      <AppLayout sidebarItems={TechniqueSidebarItems} sidebarTitle="Techniques">
         <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
           <p className="text-destructive">{error || 'Technique not found'}</p>
           <a href="/techniques" className="text-primary hover:underline">
@@ -82,7 +82,7 @@ export default function TechniqueDetailPage() {
   }
 
   return (
-    <AppLayout sidebarItems={sidebarItems} sidebarTitle="Techniques">
+    <AppLayout sidebarItems={TechniqueSidebarItems} sidebarTitle="Techniques">
       <div className="space-y-6">
         {/* Header */}
         <div className="border-b border-border pb-4">

@@ -2,7 +2,7 @@
 
 import { AppLayout } from '@/lib/components/layout/AppLayout';
 import { SaveVideoForm } from '@/lib/components/videos/SaveVideoForm';
-import { sidebarItems } from '@/lib/components/videos';
+import { VideoAssetSidebarItems } from '@/lib/components/navigation/SidebarConfig';
 
 export default function SaveVideoPage() {
   // TODO: Get disciplineId from user preferences or context
@@ -10,7 +10,7 @@ export default function SaveVideoPage() {
   const disciplineId = 1;
 
   return (
-    <AppLayout sidebarItems={sidebarItems} sidebarTitle="Videos">
+    <AppLayout sidebarItems={VideoAssetSidebarItems} sidebarTitle="Videos">
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Save Video</h1>

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AppLayout } from '@/lib/components/layout/AppLayout';
-import { sidebarItems } from '@/lib/components/videos';
+import { VideoAssetSidebarItems } from '@/lib/components/navigation/SidebarConfig';
 import { CreateLink } from '@/lib/components/actionbar';
 import { apiClient, getErrorMessage } from '@/lib/backend';
 
@@ -139,7 +139,7 @@ export default function MyVideosPage() {
   };
 
   return (
-    <AppLayout sidebarItems={sidebarItems} sidebarTitle="Videos">
+    <AppLayout sidebarItems={VideoAssetSidebarItems} sidebarTitle="Videos">
       <div className="container mx-auto py-8 px-4">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-foreground">My Videos</h1>
@@ -411,11 +411,10 @@ export default function MyVideosPage() {
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1 border rounded-md ${
-                        currentPage === page
+                      className={`px-3 py-1 border rounded-md ${currentPage === page
                           ? 'bg-primary text-primary-foreground border-primary'
                           : 'bg-background text-foreground border-border hover:bg-muted'
-                      }`}
+                        }`}
                     >
                       {page}
                     </button>

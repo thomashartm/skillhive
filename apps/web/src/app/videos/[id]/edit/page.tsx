@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AppLayout } from '@/lib/components/layout/AppLayout';
-import { sidebarItems } from '@/lib/components/videos';
+import { VideoAssetSidebarItems } from '@/lib/components/navigation/SidebarConfig';
 import { apiClient, getErrorMessage } from '@/lib/backend';
 
 interface Video {
@@ -106,7 +106,7 @@ export default function VideoEditPage() {
 
   if (loading) {
     return (
-      <AppLayout sidebarItems={sidebarItems} sidebarTitle="Videos">
+      <AppLayout sidebarItems={VideoAssetSidebarItems} sidebarTitle="Videos">
         <div className="container mx-auto py-8 px-4">
           <div className="text-center py-12 text-muted-foreground">Loading...</div>
         </div>
@@ -116,7 +116,7 @@ export default function VideoEditPage() {
 
   if (error && !video) {
     return (
-      <AppLayout sidebarItems={sidebarItems} sidebarTitle="Videos">
+      <AppLayout sidebarItems={VideoAssetSidebarItems} sidebarTitle="Videos">
         <div className="container mx-auto py-8 px-4">
           <div className="text-center py-12 text-destructive">{error}</div>
           <div className="text-center mt-4">
@@ -130,7 +130,7 @@ export default function VideoEditPage() {
   }
 
   return (
-    <AppLayout sidebarItems={sidebarItems} sidebarTitle="Videos">
+    <AppLayout sidebarItems={VideoAssetSidebarItems} sidebarTitle="Videos">
       <div className="container mx-auto py-8 px-4 max-w-2xl">
         {/* Header */}
         <div className="mb-6">

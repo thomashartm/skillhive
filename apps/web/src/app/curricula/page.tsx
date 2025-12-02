@@ -2,9 +2,10 @@
 
 import { AppLayout } from '@/lib/components/layout/AppLayout';
 import { ViewActionLink } from '@/lib/components/actionbar';
-import { sidebarItems, useCurriculaList } from '@/lib/components/curricula';
+import { useCurriculaList } from '@/lib/components/curricula';
 import { CurriculumGrid } from './_components/CurriculumGrid';
 import { CurriculumCard } from './_components/CurriculumCard';
+import { CurriculumSidebarItems } from '@/lib/components/navigation/SidebarConfig';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,7 @@ export default function CurriculaPage() {
   const { curricula, loading, error, refresh } = useCurriculaList();
 
   return (
-    <AppLayout sidebarItems={sidebarItems} sidebarTitle="Curricula">
+    <AppLayout sidebarItems={CurriculumSidebarItems} sidebarTitle="Curricula">
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Curricula</h1>
