@@ -203,7 +203,7 @@ export type AssetType = 'video' | 'web' | 'image';
 export type VideoType = 'short' | 'full' | 'instructional' | 'seminar';
 
 export interface CreateReferenceAssetDto {
-  techniqueId?: number | null;
+  techniqueId?: number;
   type: AssetType;
   url: string;
   title?: string;

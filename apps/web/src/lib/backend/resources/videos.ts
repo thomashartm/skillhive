@@ -68,24 +68,23 @@ function buildMyVideosQueryString(params?: MyVideosParams): string {
 
 export const videos = {
   /**
-   * List all videos with optional filters (public)
+   * List all videos with optional filters (authenticated)
    */
   async list(filters?: VideoFilters): Promise<ReferenceAsset[]> {
     const queryString = buildQueryString(filters);
     const endpoint = `/reference-assets${queryString ? `?${queryString}` : ''}`;
 
-    const response = await httpClient.get<ReferenceAsset[]>(endpoint, { skipAuth: true });
+    const response = await httpClient.get<ReferenceAsset[]>(endpoint);
     return response.data;
   },
 
   /**
-   * Get video by ID (public)
+   * Get video by ID (authenticated)
    */
   async getById(id: number, options?: { include?: string[] }): Promise<ReferenceAsset> {
     const params = options?.include ? `?include=${options.include.join(',')}` : '';
     const response = await httpClient.get<ReferenceAsset>(
-      `/reference-assets/${id}${params}`,
-      { skipAuth: true }
+      `/reference-assets/${id}${params}`
     );
     return response.data;
   },

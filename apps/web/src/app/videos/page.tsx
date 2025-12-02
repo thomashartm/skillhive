@@ -64,16 +64,15 @@ export default function MyVideosPage() {
       setLoading(true);
       setError(null);
 
-      // Use API client to fetch videos
-      const data = await apiClient.videos.list({
+      // Use getMyVideos for proper pagination support
+      const data = await apiClient.videos.getMyVideos({
         page: currentPage,
         limit: pageLimit,
         sortBy,
         sortOrder,
-        disciplineId: 1,
         title: titleFilter || undefined,
-        technique: techniqueFilter || undefined,
-        category: categoryFilter || undefined,
+        techniqueName: techniqueFilter || undefined,
+        categoryName: categoryFilter || undefined,
       });
 
       setVideos(data.videos || []);
