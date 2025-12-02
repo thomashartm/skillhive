@@ -1022,7 +1022,8 @@ Before starting the migration:
 ## Post-Migration Checklist
 
 After completing the migration:
-
+- [ ] The web application starts without errors
+- [ ] All next.js pages load with a 200 status code
 - [ ] All automated checks pass
 - [ ] All manual tests pass
 - [ ] Documentation updated
