@@ -124,8 +124,8 @@ export function TagAutocomplete({
         disciplineId,
         name: searchTerm.trim(),
         slug,
-        description: null,
-        color: null,
+        description: undefined,
+        color: undefined,
       });
 
       setTags([...tags, newTag]);

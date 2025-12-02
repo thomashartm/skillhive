@@ -4,13 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { AppLayout } from '@/lib/components/layout/AppLayout';
 import { TechniqueForm, TechniqueFormData } from '@/lib/components/techniques/TechniqueForm';
-
-const sidebarItems = [
-  { href: '/techniques', label: 'All Techniques' },
-  { href: '/techniques/categories', label: 'By Category' },
-  //{ href: '/techniques/favorites', label: 'Favorites' },
-  { href: '/techniques/create', label: 'Add Technique' },
-];
+import { sidebarItems } from '@/lib/components/techniques/constants';
 
 // Default BJJ discipline ID (placeholder - should be replaced with actual discipline ID)
 const BJJ_DISCIPLINE_ID = 1;

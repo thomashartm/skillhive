@@ -54,6 +54,7 @@ export { tags } from './resources/tags';
 export { videos } from './resources/videos';
 export { curricula } from './resources/curricula';
 export { oembed } from './resources/oembed';
+export { referenceAssets } from './resources/reference-assets';
 
 // Export types
 export type * from './types';
@@ -76,6 +77,7 @@ import { tags } from './resources/tags';
 import { videos } from './resources/videos';
 import { curricula } from './resources/curricula';
 import { oembed } from './resources/oembed';
+import { referenceAssets } from './resources/reference-assets';
 
 /**
  * Main API client instance
@@ -92,6 +94,7 @@ export const apiClient = {
   videos,
   curricula,
   oembed,
+  referenceAssets,
 };
 
 // Default export

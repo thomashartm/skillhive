@@ -5,6 +5,8 @@ import { generateSlug } from '@trainhive/shared';
 import { RichTextEditor } from '../common/RichTextEditor';
 import { CategoryAutocomplete } from '../common/CategoryAutocomplete';
 import { TagAutocomplete } from '../common/TagAutocomplete';
+import { AssetChoiceModal } from './AssetChoiceModal';
+import { ReferenceAssetSearchModal } from './ReferenceAssetSearchModal';
 import { apiClient } from '@/lib/backend';
 
 interface Category {
@@ -21,6 +23,7 @@ interface Tag {
 }
 
 export interface ReferenceAssetFormData {
+  id?: number; // Optional ID for existing assets
   type: 'video' | 'web' | 'image';
   url: string;
   title?: string | null;
@@ -29,6 +32,7 @@ export interface ReferenceAssetFormData {
   originator?: string | null;
   ord: number;
   tagIds: number[];
+  isExisting?: boolean; // Flag to track if this references an existing asset
 }
 
 export interface TechniqueFormData {
@@ -67,6 +71,7 @@ export function TechniqueForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [tags, setTags] = useState<Tag[]>([]);
   const [editingAssetIndex, setEditingAssetIndex] = useState<number | null>(null);
+  const [assetModalMode, setAssetModalMode] = useState<'choice' | 'search' | null>(null);
 
   // Fetch tags for reference asset tagging
   useEffect(() => {
@@ -115,6 +120,43 @@ export function TechniqueForm({
   };
 
   const handleAddAsset = () => {
+    // Open the choice modal instead of immediately creating a new asset
+    setAssetModalMode('choice');
+  };
+
+  const handleSelectExistingAsset = async (assetId: number) => {
+    try {
+      // Fetch full asset details
+      const asset = await apiClient.referenceAssets.getById(assetId);
+
+      // Add to form data with new ord value
+      setFormData((prev) => ({
+        ...prev,
+        referenceAssets: [
+          ...prev.referenceAssets,
+          {
+            id: asset.id,
+            type: asset.type,
+            url: asset.url,
+            title: asset.title,
+            description: asset.description,
+            videoType: asset.videoType,
+            originator: asset.originator,
+            ord: prev.referenceAssets.length,
+            tagIds: [],
+            isExisting: true,
+          },
+        ],
+      }));
+
+      setAssetModalMode(null);
+    } catch (error) {
+      console.error('Failed to load asset:', error);
+      alert('Failed to load the selected asset. Please try again.');
+    }
+  };
+
+  const handleCreateNewAsset = () => {
     const newIndex = formData.referenceAssets.length;
     setFormData((prev) => ({
       ...prev,
@@ -128,11 +170,12 @@ export function TechniqueForm({
           originator: null,
           ord: prev.referenceAssets.length,
           tagIds: [],
+          isExisting: false,
         },
       ],
     }));
-    // Automatically open the edit form for the new asset
     setEditingAssetIndex(newIndex);
+    setAssetModalMode(null);
   };
 
   const handleRemoveAsset = (index: number) => {
@@ -461,6 +504,11 @@ export function TechniqueForm({
                             >
                               {asset.title || asset.url}
                             </a>
+                            {asset.isExisting && (
+                              <span className="flex-shrink-0 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded">
+                                Referenced
+                              </span>
+                            )}
                             {asset.originator && (
                               <span className="text-xs text-muted-foreground">
                                 by {asset.originator}
@@ -483,16 +531,18 @@ export function TechniqueForm({
                         </div>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setEditingAssetIndex(index)}
-                          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors"
-                          title="Edit asset"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
+                        {!asset.isExisting && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingAssetIndex(index)}
+                            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors"
+                            title="Edit asset"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleRemoveAsset(index)}
@@ -529,6 +579,25 @@ export function TechniqueForm({
           Cancel
         </button>
       </div>
+
+      {/* Asset Choice Modal */}
+      {assetModalMode === 'choice' && (
+        <AssetChoiceModal
+          onSearchExisting={() => setAssetModalMode('search')}
+          onCreateNew={handleCreateNewAsset}
+          onClose={() => setAssetModalMode(null)}
+        />
+      )}
+
+      {/* Asset Search Modal */}
+      {assetModalMode === 'search' && (
+        <ReferenceAssetSearchModal
+          disciplineId={disciplineId}
+          onSelect={handleSelectExistingAsset}
+          onCreateNew={handleCreateNewAsset}
+          onClose={() => setAssetModalMode(null)}
+        />
+      )}
     </form>
   );
 }

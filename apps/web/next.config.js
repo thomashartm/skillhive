@@ -5,7 +5,7 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@trainhive/shared', '@trainhive/auth'],
   outputFileTracingRoot: path.join(__dirname, '../..'),
-  serverExternalPackages: ['typeorm', '@trainhive/db', 'next-auth', 'jose'],
+  serverExternalPackages: ['typeorm', '@trainhive/db'],
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -3,13 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { AppLayout } from '@/lib/components/layout/AppLayout';
-
-const sidebarItems = [
-  { href: '/techniques', label: 'All Techniques' },
-  { href: '/techniques/categories', label: 'By Category' },
-  //{ href: '/techniques/favorites', label: 'Favorites' },
-  { href: '/techniques/create', label: 'Add Technique' },
-];
+import { sidebarItems } from '@/lib/components/techniques/constants';
 
 interface Technique {
   id: number;
@@ -205,9 +199,9 @@ export default function TechniqueDetailPage() {
                       tag.color
                         ? { backgroundColor: tag.color, color: '#fff' }
                         : {
-                            backgroundColor: 'hsl(var(--primary) / 0.1)',
-                            color: 'hsl(var(--primary))',
-                          }
+                          backgroundColor: 'hsl(var(--primary) / 0.1)',
+                          color: 'hsl(var(--primary))',
+                        }
                     }
                   >
                     {tag.name}
