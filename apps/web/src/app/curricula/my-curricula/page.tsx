@@ -1,7 +1,7 @@
 'use client';
 
 import { AppLayout } from '@/lib/components/layout/AppLayout';
-import { sidebarItems, useCurriculaList, useCurriculumDetail } from '@/lib/components/curricula';
+import { useCurriculaList, useCurriculumDetail } from '@/lib/components/curricula';
 import {
   EditActionLink,
   ViewActionLink,
@@ -12,6 +12,7 @@ import {
 import { PublicPrivateLabel } from '@/lib/components/labels';
 import { CurriculumGrid } from '../_components/CurriculumGrid';
 import { getErrorMessage } from '@/lib/backend';
+import { CurriculumSidebarItems } from '@/lib/components/navigation/SidebarConfig';
 
 export default function MyCurriculaPage() {
   const { curricula, loading, error, refresh } = useCurriculaList({ onlyMine: true });
@@ -41,7 +42,7 @@ export default function MyCurriculaPage() {
   };
 
   return (
-    <AppLayout sidebarItems={sidebarItems} sidebarTitle="Curricula">
+    <AppLayout sidebarItems={CurriculumSidebarItems} sidebarTitle="Curricula">
       <div className="container mx-auto py-8 px-4">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-foreground">My Curricula</h1>

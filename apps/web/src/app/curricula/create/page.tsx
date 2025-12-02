@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppLayout } from '@/lib/components/layout/AppLayout';
-import { CurriculumElementsSection, sidebarItems } from '@/lib/components/curricula';
+import { CurriculumElementsSection } from '@/lib/components/curricula';
 import { apiClient, getErrorMessage } from '@/lib/backend';
+import { CurriculumSidebarItems } from '@/lib/components/navigation/SidebarConfig';
 
 export default function CreateCurriculumPage() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function CreateCurriculumPage() {
       // Use API client to create curriculum
       const curriculum = await apiClient.curricula.create({
         title: formData.title,
-        description: formData.description || null,
+        description: formData.description || undefined,
         isPublic: formData.isPublic,
       });
 
@@ -42,7 +43,7 @@ export default function CreateCurriculumPage() {
   };
 
   return (
-    <AppLayout sidebarItems={sidebarItems} sidebarTitle="Curricula">
+    <AppLayout sidebarItems={CurriculumSidebarItems} sidebarTitle="Curricula">
       <div className="container mx-auto py-8 px-4 max-w-3xl">
         <h1 className="text-3xl font-bold text-foreground mb-8">Create New Curriculum</h1>
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AppLayout } from '@/lib/components/layout/AppLayout';
-import { sidebarItems } from '@/lib/components/videos';
+import { VideoAssetSidebarItems } from '@/lib/components/navigation/SidebarConfig';
 import { apiClient, getErrorMessage } from '@/lib/backend';
 
 interface Video {
@@ -65,7 +65,7 @@ export default function VideoDetailPage() {
 
   if (loading) {
     return (
-      <AppLayout sidebarItems={sidebarItems} sidebarTitle="Videos">
+      <AppLayout sidebarItems={VideoAssetSidebarItems} sidebarTitle="Videos">
         <div className="container mx-auto py-8 px-4">
           <div className="text-center py-12 text-muted-foreground">Loading...</div>
         </div>
@@ -75,7 +75,7 @@ export default function VideoDetailPage() {
 
   if (error || !video) {
     return (
-      <AppLayout sidebarItems={sidebarItems} sidebarTitle="Videos">
+      <AppLayout sidebarItems={VideoAssetSidebarItems} sidebarTitle="Videos">
         <div className="container mx-auto py-8 px-4">
           <div className="text-center py-12 text-destructive">{error || 'Video not found'}</div>
           <div className="text-center mt-4">
@@ -89,7 +89,7 @@ export default function VideoDetailPage() {
   }
 
   return (
-    <AppLayout sidebarItems={sidebarItems} sidebarTitle="Videos">
+    <AppLayout sidebarItems={VideoAssetSidebarItems} sidebarTitle="Videos">
       <div className="container mx-auto py-8 px-4 max-w-4xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

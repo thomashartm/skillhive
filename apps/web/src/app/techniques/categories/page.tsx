@@ -2,7 +2,7 @@
 
 import { AppLayout } from '@/lib/components/layout/AppLayout';
 import { CategoryManager } from '@/lib/components/categories/CategoryManager';
-import { sidebarItems } from '@/lib/components/techniques/constants';
+import { TechniqueSidebarItems } from '@/lib/components/navigation/SidebarConfig';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,7 @@ const BJJ_DISCIPLINE_ID = 1;
 
 export default function TechniqueCategoriesPage() {
   return (
-    <AppLayout sidebarItems={sidebarItems} sidebarTitle="Techniques">
+    <AppLayout sidebarItems={TechniqueSidebarItems} sidebarTitle="Techniques">
       <CategoryManager disciplineId={BJJ_DISCIPLINE_ID} maxLevel={10} />
     </AppLayout>
   );
