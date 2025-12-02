@@ -30,7 +30,8 @@ export class ReferenceAssetsController {
   @ApiOperation({ summary: 'Get all reference assets' })
   @ApiQuery({ name: 'techniqueId', required: false, type: Number })
   @ApiResponse({ status: 200, description: 'List of all reference assets' })
-  findAll(@Query('techniqueId', new ParseIntPipe({ optional: true })) techniqueId?: number) {
+  findAll(@Query() query: any) {
+    const techniqueId = query.techniqueId ? parseInt(query.techniqueId, 10) : undefined;
     return this.assetsService.findAll(techniqueId);
   }
 

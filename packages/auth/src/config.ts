@@ -2,7 +2,6 @@ import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import AzureADProvider from 'next-auth/providers/azure-ad';
-import { encode } from 'next-auth/jwt';
 import { UserRole, getScopesForRole } from '@trainhive/shared';
 import bcrypt from 'bcryptjs';
 import { TypeORMAdapter } from './adapter';

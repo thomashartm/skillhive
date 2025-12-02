@@ -6,6 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 SkillHive is a training content management platform for collecting external video knowledge and instructionals and organizing them into repeatable, shareable curricula. The initial use case is creating guidance through a martial arts journey, for instance BJJ and JKD. Users can collect, organize, and share their training curriculum around existing video media.
 
+## Specialists
+Use specialist agents for the listed tasks.
+ 
+ - frontend-dev: Export developer for frontend implementations
+
 ### Key Concepts
 
 - Techniques and skills are reflected by referenced assets, which are primarily video links
