@@ -12,6 +12,9 @@ import { ScopesGuard } from './auth/guards/scopes.guard';
 // Import health module
 import { HealthModule } from './health/health.module';
 
+// Import utility modules
+import { OEmbedModule } from './modules/oembed/oembed.module';
+
 // Import all entity modules
 import { UsersModule } from './modules/users/users.module';
 import { DisciplinesModule } from './modules/disciplines/disciplines.module';
@@ -32,6 +35,8 @@ import { CurriculaModule } from './modules/curricula/curricula.module';
     AuthModule,
     // Health check module (public endpoints)
     HealthModule,
+    // Utility modules
+    OEmbedModule,
     // Entity modules
     UsersModule,
     DisciplinesModule,

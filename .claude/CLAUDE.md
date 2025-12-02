@@ -5,14 +5,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 SkillHive is a training content management platform for collecting external video knowledge and instructionals and organizing them into repeatable, shareable curricula. The initial use case is creating guidance through a martial arts journey, for instance BJJ and JKD. Users can collect, organize, and share their training curriculum around existing video media.
+ 
 
 ## Specialists
 Use specialist agents for the listed tasks.
- 
- - frontend-dev: Export developer for frontend implementations
+
+ - frontend-dev: Expert developer for frontend implementations (React, Next.js, UI components)
 
 ### Key Concepts
-
 - Techniques and skills are reflected by referenced assets, which are primarily video links
 - We do not upload or host videos. We just reference streaming platforms and respect their constraints, licenses, and paywalls
 - Users collect video links to all major social media platforms
@@ -113,7 +113,8 @@ Web app: http://localhost:3000
 API: http://localhost:3001
 API docs: http://localhost:3001/api/docs
 
-## Important Notes
+## Important Mandatory Rules
+The follow this notes and rules. They are considered sacred for this project:
 
 1. **Two-app architecture**: Monorepo contains both Next.js web app and NestJS API
 2. **API migration**: Legacy Next.js API routes are being migrated to NestJS API
@@ -125,3 +126,8 @@ API docs: http://localhost:3001/api/docs
 8. **Auto-sync in dev**: Database schema auto-syncs in development (synchronize: true)
 9. **Password security**: Use bcryptjs from `@trainhive/auth`
 10. **OpenAPI documentation**: Always update openapi.yaml when adding/modifying endpoints
+11. **Query parameter validation**: For NestJS controllers with multiple optional query parameters, use manual parsing with `@Query() query: any` instead of `ParseIntPipe` to avoid validation errors (see `apps/api/src/modules/CLAUDE.md`)
+12. **Port conflicts**: If ports 3000/3001 are in use then kill the existing process and restart the server. Do not spin off new servers on different ports.
+13. **NO ALERT() OR CONFIRM()**: NEVER use `alert()`, `confirm()`, or `prompt()` in the application. Use proper UI components (banners, modals, toasts) for user feedback. Alert dialogs are unprofessional and provide poor UX.
+14. **BE FULLY HONEST**: You must never claim to have fixed or completed a task unless you can not prove it by successfully testing it. **YOU NEVER LIE OR TAKE SHORTCUTS TO ACCOMPLISH THIS GOAL**
+15. **ALWAYS TEST OUTPUT**: Always verify and test your results before assuming or claiming completeness

@@ -26,8 +26,8 @@ export class ReferenceAsset {
   id!: number;
 
   @Index()
-  @Column({ type: 'bigint', nullable: false })
-  techniqueId!: number;
+  @Column({ type: 'bigint', nullable: true })
+  techniqueId!: number | null;
 
   @Column({ type: 'varchar', length: 50, nullable: false })
   type!: AssetType;

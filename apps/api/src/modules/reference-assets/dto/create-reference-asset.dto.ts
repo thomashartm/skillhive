@@ -3,10 +3,10 @@ import { IsString, IsNotEmpty, IsOptional, IsNumber, IsEnum, MaxLength, IsUrl } 
 import { AssetType, VideoType } from '@trainhive/db';
 
 export class CreateReferenceAssetDto {
-  @ApiProperty({ example: 1, description: 'Technique ID' })
+  @ApiProperty({ example: 1, description: 'Technique ID', required: false })
   @IsNumber()
-  @IsNotEmpty()
-  techniqueId: number;
+  @IsOptional()
+  techniqueId?: number;
 
   @ApiProperty({ enum: AssetType, example: AssetType.VIDEO, description: 'Type of asset' })
   @IsEnum(AssetType)
