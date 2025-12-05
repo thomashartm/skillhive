@@ -6,17 +6,7 @@ import Link from 'next/link';
 import { AppLayout } from '@/lib/components/layout/AppLayout';
 import { VideoAssetSidebarItems } from '@/lib/components/navigation/SidebarConfig';
 import { apiClient, getErrorMessage } from '@/lib/backend';
-
-interface Video {
-  id: number;
-  title: string;
-  url: string;
-  videoType: 'short' | 'full' | 'instructional' | 'seminar';
-  description: string | null;
-  originator: string | null;
-  techniqueId: number | null;
-  technique: { id: number; name: string; slug: string } | null;
-}
+import { ReferenceAsset } from '@/lib/types/api';
 
 interface Technique {
   id: number;
@@ -29,7 +19,7 @@ export default function VideoEditPage() {
   const router = useRouter();
   const videoId = params.id as string;
 
-  const [video, setVideo] = useState<Video | null>(null);
+  const [video, setVideo] = useState<ReferenceAsset | null>(null);
   const [techniques, setTechniques] = useState<Technique[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,9 +81,9 @@ export default function VideoEditPage() {
       await apiClient.videos.update(parseInt(videoId), {
         title,
         videoType,
-        description: description || null,
-        originator: originator || null,
-        techniqueId: techniqueId ? parseInt(techniqueId) : null,
+        description: description || undefined,
+        originator: originator || undefined,
+        techniqueId: techniqueId ? parseInt(techniqueId) : undefined,
       });
 
       router.push(`/videos/${videoId}`);

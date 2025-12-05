@@ -81,8 +81,8 @@ export default function MyCurriculaPage() {
               </div>
 
               <div className="flex items-center justify-end gap-2 mt-auto pt-4 border-t border-border">
-                <ViewActionLink prefix="curricula" id={curriculum.id} title="View curriculum" />
-                <EditActionLink prefix="curricula" id={curriculum.id} title="Edit curriculum" />
+                <ViewActionLink prefix="curricula" id={String(curriculum.id)} title="View curriculum" />
+                <EditActionLink prefix="curricula" id={String(curriculum.id)} title="Edit curriculum" />
                 <ToogleVisibilityButton
                   onClick={() => handleTogglePublic(curriculum.id)}
                   title={curriculum.isPublic ? 'Make private' : 'Make public'}

@@ -31,7 +31,7 @@ export default function CurriculaPage() {
               key={curriculum.id}
               curriculum={curriculum}
               actions={
-                <ViewActionLink prefix="curricula" id={curriculum.id} title="View curriculum" />
+                <ViewActionLink prefix="curricula" id={String(curriculum.id)} title="View curriculum" />
               }
             />
           )}

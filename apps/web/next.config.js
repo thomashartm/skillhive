@@ -6,9 +6,7 @@ const nextConfig = {
   transpilePackages: ['@trainhive/shared', '@trainhive/auth'],
   outputFileTracingRoot: path.join(__dirname, '../..'),
   serverExternalPackages: ['typeorm', '@trainhive/db'],
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  turbopack: {},
   webpack: (config, { isServer, webpack }) => {
     // Resolve aliases for both server and client
     config.resolve.alias = config.resolve.alias || {};

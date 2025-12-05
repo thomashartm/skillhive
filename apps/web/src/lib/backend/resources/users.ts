@@ -7,8 +7,6 @@ import type {
   CreateUserDto,
   UpdateUserDto,
   User,
-  LoginDto,
-  LoginResponseDto,
 } from '../../types/api';
 
 export const users = {

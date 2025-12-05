@@ -7,19 +7,13 @@ import { CategoryAutocomplete } from '../common/CategoryAutocomplete';
 import { TagAutocomplete } from '../common/TagAutocomplete';
 import { AssetChoiceModal } from './AssetChoiceModal';
 import { ReferenceAssetSearchModal } from './ReferenceAssetSearchModal';
+import { VideoAssetFormModal } from '../videos/VideoAssetFormModal';
 import { apiClient } from '@/lib/backend';
 
 interface Category {
   id: number;
   name: string;
   slug: string;
-}
-
-interface Tag {
-  id: number;
-  name: string;
-  slug: string;
-  color: string | null;
 }
 
 export interface ReferenceAssetFormData {
@@ -69,25 +63,9 @@ export function TechniqueForm({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [tags, setTags] = useState<Tag[]>([]);
   const [editingAssetIndex, setEditingAssetIndex] = useState<number | null>(null);
-  const [assetModalMode, setAssetModalMode] = useState<'choice' | 'search' | null>(null);
-
-  // Fetch tags for reference asset tagging
-  useEffect(() => {
-    const fetchTags = async () => {
-      try {
-        // Use API client to fetch tags
-        const tagsData = await apiClient.tags.list({ disciplineId });
-        setTags(Array.isArray(tagsData) ? tagsData : []);
-      } catch (error) {
-        console.error('Failed to load tags:', error);
-        setTags([]);
-      }
-    };
-
-    fetchTags();
-  }, [disciplineId]);
+  const [assetModalMode, setAssetModalMode] = useState<'choice' | 'search' | 'video-form' | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleChange = (field: keyof TechniqueFormData, value: any) => {
     setFormData((prev) => ({
@@ -152,30 +130,54 @@ export function TechniqueForm({
       setAssetModalMode(null);
     } catch (error) {
       console.error('Failed to load asset:', error);
-      alert('Failed to load the selected asset. Please try again.');
+      setFormError('Failed to load the selected asset. Please try again.');
     }
   };
 
   const handleCreateNewAsset = () => {
-    const newIndex = formData.referenceAssets.length;
-    setFormData((prev) => ({
-      ...prev,
-      referenceAssets: [
-        ...prev.referenceAssets,
-        {
-          type: 'web',
-          url: '',
-          title: null,
-          description: null,
-          originator: null,
-          ord: prev.referenceAssets.length,
-          tagIds: [],
-          isExisting: false,
-        },
-      ],
-    }));
-    setEditingAssetIndex(newIndex);
+    // Reset editing index to ensure we create a new asset, not update an existing one
+    setEditingAssetIndex(null);
+    // Open the video form modal instead of inline form
+    setAssetModalMode('video-form');
+  };
+
+  const handleSaveNewAsset = (asset: ReferenceAssetFormData) => {
+    console.log('Adding new asset to technique:', asset);
+    // Add the new asset to the form data
+    setFormData((prev) => {
+      const newAsset = {
+        ...asset,
+        ord: prev.referenceAssets.length,
+        isExisting: false,
+      };
+      console.log('New asset with ord and isExisting:', newAsset);
+      const updatedAssets = [...prev.referenceAssets, newAsset];
+      console.log('Updated assets list:', updatedAssets);
+      return {
+        ...prev,
+        referenceAssets: updatedAssets,
+      };
+    });
     setAssetModalMode(null);
+  };
+
+  const handleUpdateAsset = (asset: ReferenceAssetFormData) => {
+    // Update the existing asset at editingAssetIndex
+    if (editingAssetIndex !== null) {
+      setFormData((prev) => ({
+        ...prev,
+        referenceAssets: prev.referenceAssets.map((a, i) =>
+          i === editingAssetIndex ? { ...asset, ord: a.ord, isExisting: a.isExisting } : a
+        ),
+      }));
+      setEditingAssetIndex(null);
+      setAssetModalMode(null);
+    }
+  };
+
+  const handleEditAsset = (index: number) => {
+    setEditingAssetIndex(index);
+    setAssetModalMode('video-form');
   };
 
   const handleRemoveAsset = (index: number) => {
@@ -190,31 +192,6 @@ export function TechniqueForm({
       // Adjust index if we're removing an asset before the one being edited
       setEditingAssetIndex(editingAssetIndex - 1);
     }
-  };
-
-  const handleAssetChange = (index: number, field: keyof ReferenceAssetFormData, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      referenceAssets: prev.referenceAssets.map((asset, i) =>
-        i === index ? { ...asset, [field]: value } : asset
-      ),
-    }));
-  };
-
-  const handleAssetTagToggle = (assetIndex: number, tagId: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      referenceAssets: prev.referenceAssets.map((asset, i) =>
-        i === assetIndex
-          ? {
-              ...asset,
-              tagIds: asset.tagIds.includes(tagId)
-                ? asset.tagIds.filter((id) => id !== tagId)
-                : [...asset.tagIds, tagId],
-            }
-          : asset
-      ),
-    }));
   };
 
   const validate = (): boolean => {
@@ -260,6 +237,30 @@ export function TechniqueForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Error Banner */}
+      {formError && (
+        <div className="rounded-md bg-destructive/10 border border-destructive/20 p-4">
+          <div className="flex items-start">
+            <svg className="w-5 h-5 text-destructive mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-destructive">Error</h3>
+              <p className="text-sm text-destructive/90 mt-1">{formError}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFormError(null)}
+              className="text-destructive/70 hover:text-destructive"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Basic Information */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-foreground">Basic Information</h3>
@@ -350,213 +351,74 @@ export function TechniqueForm({
         ) : (
           <div className="space-y-2">
             {formData.referenceAssets.map((asset, index) => (
-              <div key={index}>
-                {editingAssetIndex === index ? (
-                  // Edit Form View
-                  <div className="border border-border rounded-md p-4 bg-accent/20 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-foreground">Editing Asset {index + 1}</h4>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setEditingAssetIndex(null)}
-                          className="text-sm text-primary hover:text-primary/80"
+              <div key={index} className="border border-border rounded-md p-3 bg-card hover:bg-accent/20 transition-colors">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1 flex items-center gap-2 min-w-0">
+                    <svg className="w-4 h-4 text-muted-foreground flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={asset.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary hover:underline truncate"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          Done
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveAsset(index)}
-                          className="text-destructive hover:text-destructive/80 text-sm"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">Type</label>
-                        <select
-                          value={asset.type}
-                          onChange={(e) =>
-                            handleAssetChange(index, 'type', e.target.value as 'video' | 'web' | 'image')
-                          }
-                          className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm"
-                        >
-                          <option value="video">Video</option>
-                          <option value="web">Web Link</option>
-                          <option value="image">Image</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">
-                          Originator
-                        </label>
-                        <input
-                          type="text"
-                          value={asset.originator || ''}
-                          onChange={(e) => handleAssetChange(index, 'originator', e.target.value || null)}
-                          className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm"
-                          placeholder="e.g., John Danaher"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Video Type - Only show for video assets */}
-                    {asset.type === 'video' && (
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">
-                          Video Type
-                        </label>
-                        <select
-                          value={asset.videoType || 'instructional'}
-                          onChange={(e) =>
-                            handleAssetChange(index, 'videoType', e.target.value as 'short' | 'full' | 'instructional' | 'seminar')
-                          }
-                          className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm"
-                        >
-                          <option value="short">Short</option>
-                          <option value="full">Full</option>
-                          <option value="instructional">Instructional</option>
-                          <option value="seminar">Seminar</option>
-                        </select>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Select the type of video content
-                        </p>
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-1">URL *</label>
-                      <input
-                        type="url"
-                        value={asset.url}
-                        onChange={(e) => handleAssetChange(index, 'url', e.target.value)}
-                        className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm"
-                        placeholder="https://..."
-                      />
-                      {errors[`asset_${index}_url`] && (
-                        <p className="mt-1 text-sm text-destructive">{errors[`asset_${index}_url`]}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-1">Title</label>
-                      <input
-                        type="text"
-                        value={asset.title || ''}
-                        onChange={(e) => handleAssetChange(index, 'title', e.target.value || null)}
-                        className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm"
-                        placeholder="Optional title"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-1">
-                        Description
-                      </label>
-                      <RichTextEditor
-                        value={asset.description || ''}
-                        onChange={(value) => handleAssetChange(index, 'description', value || null)}
-                        placeholder="Optional description"
-                        className="min-h-[100px]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-1">Tags</label>
-                      <div className="flex flex-wrap gap-1">
-                        {tags.map((tag) => (
-                          <button
-                            key={tag.id}
-                            type="button"
-                            onClick={() => handleAssetTagToggle(index, tag.id)}
-                            className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                              asset.tagIds.includes(tag.id)
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                            }`}
-                          >
-                            {tag.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  // Compact List View
-                  <div className="border border-border rounded-md p-3 bg-card hover:bg-accent/20 transition-colors">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex-1 flex items-center gap-2 min-w-0">
-                        <svg className="w-4 h-4 text-muted-foreground flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                        </svg>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <a
-                              href={asset.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-primary hover:underline truncate"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {asset.title || asset.url}
-                            </a>
-                            {asset.isExisting && (
-                              <span className="flex-shrink-0 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded">
-                                Referenced
-                              </span>
-                            )}
-                            {asset.originator && (
-                              <span className="text-xs text-muted-foreground">
-                                by {asset.originator}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs text-muted-foreground capitalize">{asset.type}</span>
-                            {asset.type === 'video' && asset.videoType && (
-                              <span className="text-xs text-muted-foreground">
-                                • {asset.videoType}
-                              </span>
-                            )}
-                            {asset.tagIds && asset.tagIds.length > 0 && (
-                              <span className="text-xs text-muted-foreground">
-                                • {asset.tagIds.length} tag{asset.tagIds.length > 1 ? 's' : ''}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-1 flex-shrink-0">
-                        {!asset.isExisting && (
-                          <button
-                            type="button"
-                            onClick={() => setEditingAssetIndex(index)}
-                            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors"
-                            title="Edit asset"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
+                          {asset.title || asset.url}
+                        </a>
+                        {asset.isExisting && (
+                          <span className="flex-shrink-0 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded">
+                            Referenced
+                          </span>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveAsset(index)}
-                          className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
-                          title="Remove asset"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                        {asset.originator && (
+                          <span className="text-xs text-muted-foreground">
+                            by {asset.originator}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-muted-foreground capitalize">{asset.type}</span>
+                        {asset.type === 'video' && asset.videoType && (
+                          <span className="text-xs text-muted-foreground">
+                            • {asset.videoType}
+                          </span>
+                        )}
+                        {asset.tagIds && asset.tagIds.length > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            • {asset.tagIds.length} tag{asset.tagIds.length > 1 ? 's' : ''}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
-                )}
+                  <div className="flex gap-1 flex-shrink-0">
+                    {!asset.isExisting && (
+                      <button
+                        type="button"
+                        onClick={() => handleEditAsset(index)}
+                        className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors"
+                        title="Edit asset"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAsset(index)}
+                      className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                      title="Remove asset"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -596,6 +458,19 @@ export function TechniqueForm({
           onSelect={handleSelectExistingAsset}
           onCreateNew={handleCreateNewAsset}
           onClose={() => setAssetModalMode(null)}
+        />
+      )}
+
+      {/* Video Asset Form Modal */}
+      {assetModalMode === 'video-form' && (
+        <VideoAssetFormModal
+          disciplineId={disciplineId}
+          onSave={editingAssetIndex !== null ? handleUpdateAsset : handleSaveNewAsset}
+          onClose={() => {
+            setAssetModalMode(null);
+            setEditingAssetIndex(null);
+          }}
+          initialData={editingAssetIndex !== null ? formData.referenceAssets[editingAssetIndex] : undefined}
         />
       )}
     </form>

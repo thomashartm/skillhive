@@ -1,22 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AppLayout } from '@/lib/components/layout/AppLayout';
 import { VideoAssetSidebarItems } from '@/lib/components/navigation/SidebarConfig';
 import { CreateLink } from '@/lib/components/actionbar';
 import { apiClient, getErrorMessage } from '@/lib/backend';
-
-interface Video {
-  id: number;
-  title: string;
-  url: string;
-  videoType: string;
-  createdAt: string;
-  technique: { id: number; name: string; slug: string } | null;
-  categories: { id: number; name: string; slug: string }[];
-}
+import { ReferenceAsset } from '@/lib/types/api';
 
 interface PaginationInfo {
   page: number;
@@ -26,10 +17,9 @@ interface PaginationInfo {
 }
 
 export default function MyVideosPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [videos, setVideos] = useState<Video[]>([]);
+  const [videos, setVideos] = useState<ReferenceAsset[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({
     page: 1,
     limit: 10,
@@ -41,8 +31,6 @@ export default function MyVideosPage() {
 
   // Filter states
   const [titleFilter, setTitleFilter] = useState(searchParams.get('title') || '');
-  const [techniqueFilter, setTechniqueFilter] = useState(searchParams.get('technique') || '');
-  const [categoryFilter, setCategoryFilter] = useState(searchParams.get('category') || '');
 
   // Sort states
   const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'createdAt');
@@ -64,26 +52,36 @@ export default function MyVideosPage() {
       setLoading(true);
       setError(null);
 
-      // Use getMyVideos for proper pagination support
-      const data = await apiClient.videos.getMyVideos({
+      // Use list() with pagination support for all videos
+      const response = await apiClient.videos.list({
         page: currentPage,
         limit: pageLimit,
         sortBy,
-        sortOrder,
+        sortOrder: sortOrder.toUpperCase() as 'ASC' | 'DESC',
         title: titleFilter || undefined,
-        techniqueName: techniqueFilter || undefined,
-        categoryName: categoryFilter || undefined,
       });
 
-      setVideos(data.videos || []);
-      setPagination(
-        data.pagination || {
+      // Handle paginated response
+      if (response && typeof response === 'object' && 'data' in response) {
+        setVideos(response.data || []);
+        setPagination(
+          response.pagination || {
+            page: currentPage,
+            limit: pageLimit,
+            total: 0,
+            totalPages: 0,
+          }
+        );
+      } else {
+        // Fallback for non-paginated response (shouldn't happen with page/limit params)
+        setVideos([]);
+        setPagination({
           page: currentPage,
           limit: pageLimit,
           total: 0,
           totalPages: 0,
-        }
-      );
+        });
+      }
     } catch (err: any) {
       console.error('Error fetching videos:', err);
       setError(getErrorMessage(err));
@@ -142,7 +140,7 @@ export default function MyVideosPage() {
     <AppLayout sidebarItems={VideoAssetSidebarItems} sidebarTitle="Videos">
       <div className="container mx-auto py-8 px-4">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-foreground">My Videos</h1>
+          <h1 className="text-3xl font-bold text-foreground">All Videos</h1>
           <CreateLink path="/videos/save" title="New Video" />
         </div>
 
@@ -151,7 +149,7 @@ export default function MyVideosPage() {
           onSubmit={handleFilterSubmit}
           className="bg-card border border-border rounded-lg p-6 mb-6"
         >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 gap-4 mb-4">
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-foreground mb-2">
                 Title
@@ -162,34 +160,6 @@ export default function MyVideosPage() {
                 value={titleFilter}
                 onChange={(e) => setTitleFilter(e.target.value)}
                 placeholder="Filter by title..."
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="technique" className="block text-sm font-medium text-foreground mb-2">
-                Technique
-              </label>
-              <input
-                type="text"
-                id="technique"
-                value={techniqueFilter}
-                onChange={(e) => setTechniqueFilter(e.target.value)}
-                placeholder="Filter by technique..."
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="category" className="block text-sm font-medium text-foreground mb-2">
-                Category
-              </label>
-              <input
-                type="text"
-                id="category"
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                placeholder="Filter by category..."
                 className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
               />
             </div>
@@ -206,8 +176,6 @@ export default function MyVideosPage() {
               type="button"
               onClick={() => {
                 setTitleFilter('');
-                setTechniqueFilter('');
-                setCategoryFilter('');
                 setCurrentPage(1);
               }}
               className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80"
@@ -282,18 +250,6 @@ export default function MyVideosPage() {
                     </th>
                     <th
                       className="px-4 py-3 text-left text-sm font-semibold text-foreground cursor-pointer hover:bg-muted"
-                      onClick={() => handleSort('technique')}
-                    >
-                      Technique <SortIcon column="technique" />
-                    </th>
-                    <th
-                      className="px-4 py-3 text-left text-sm font-semibold text-foreground cursor-pointer hover:bg-muted"
-                      onClick={() => handleSort('category')}
-                    >
-                      Categories <SortIcon column="category" />
-                    </th>
-                    <th
-                      className="px-4 py-3 text-left text-sm font-semibold text-foreground cursor-pointer hover:bg-muted"
                       onClick={() => handleSort('createdAt')}
                     >
                       Upload Date <SortIcon column="createdAt" />
@@ -306,7 +262,7 @@ export default function MyVideosPage() {
                 <tbody>
                   {videos.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                      <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
                         No videos found. Try adjusting your filters or add a new video.
                       </td>
                     </tr>
@@ -324,35 +280,7 @@ export default function MyVideosPage() {
                           </a>
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {video.videoType}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-foreground">
-                          {video.technique ? (
-                            <Link
-                              href={`/techniques/${video.technique.slug}`}
-                              className="text-primary hover:underline"
-                            >
-                              {video.technique.name}
-                            </Link>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-foreground">
-                          {video.categories.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {video.categories.map((cat) => (
-                                <span
-                                  key={cat.id}
-                                  className="inline-block px-2 py-0.5 rounded-full text-xs bg-secondary text-secondary-foreground"
-                                >
-                                  {cat.name}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
+                          {video.videoType || 'video'}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {new Date(video.createdAt).toLocaleDateString()}
@@ -412,8 +340,8 @@ export default function MyVideosPage() {
                       key={page}
                       onClick={() => setCurrentPage(page)}
                       className={`px-3 py-1 border rounded-md ${currentPage === page
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-background text-foreground border-border hover:bg-muted'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background text-foreground border-border hover:bg-muted'
                         }`}
                     >
                       {page}
