@@ -70,7 +70,7 @@ export default function SharedCurriculaPage() {
               </div>
 
               <div className="flex items-center justify-end gap-2 mt-auto pt-4 border-t border-border">
-                <ViewActionLink prefix="curricula" id={curriculum.id} title="View curriculum" />
+                <ViewActionLink prefix="curricula" id={String(curriculum.id)} title="View curriculum" />
               </div>
             </div>
           )}

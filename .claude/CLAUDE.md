@@ -131,3 +131,32 @@ The follow this notes and rules. They are considered sacred for this project:
 13. **NO ALERT() OR CONFIRM()**: NEVER use `alert()`, `confirm()`, or `prompt()` in the application. Use proper UI components (banners, modals, toasts) for user feedback. Alert dialogs are unprofessional and provide poor UX.
 14. **BE FULLY HONEST**: You must never claim to have fixed or completed a task unless you can not prove it by successfully testing it. **YOU NEVER LIE OR TAKE SHORTCUTS TO ACCOMPLISH THIS GOAL**
 15. **ALWAYS TEST OUTPUT**: Always verify and test your results before assuming or claiming completeness
+
+## Recent Implementation Patterns
+
+### Video Listing Architecture (December 2025)
+
+The video/reference asset listing functionality follows a clean, parameterized approach:
+
+**API Layer (`apps/api/src/modules/reference-assets/`):**
+- `GET /api/v1/reference-assets` - Lists ALL videos with optional pagination
+  - Supports: `page`, `limit`, `sortBy`, `sortOrder`, `title`, `techniqueId`
+  - Returns: `{ data: ReferenceAsset[], pagination: { page, limit, total, totalPages } }`
+- `GET /api/v1/reference-assets/my-assets` - Lists current user's videos with enhanced filters
+  - Supports: `page`, `limit`, `sortBy`, `sortOrder`, `title`, `techniqueName`, `categoryName`
+  - Returns: `{ videos: Video[], pagination: { page, limit, total, totalPages } }` with joined technique/category data
+
+**Frontend Client (`apps/web/src/lib/backend/resources/videos.ts`):**
+- `videos.list(params: VideoListParams)` - Fetches ALL videos with pagination
+  - Use for system-wide video listings
+  - Returns paginated response when `page` and `limit` are provided
+  - Returns simple array when called without pagination params
+- `videos.getMyVideos(params: MyVideosParams)` - Fetches user's videos with enhanced filtering
+  - Use for user-specific video management
+  - Always returns paginated response with technique/category data
+
+**Key Principles:**
+1. **One function per purpose**: Don't reuse user-specific endpoints for all-videos queries
+2. **Match API capabilities**: Frontend filters should align with what the backend supports
+3. **Type safety**: Use distinct parameter types (`VideoListParams` vs `MyVideosParams`) for different endpoints
+4. **Pagination consistency**: API returns `{ data/videos, pagination }` format, frontend handles both variants

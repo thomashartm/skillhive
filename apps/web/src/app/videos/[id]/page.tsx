@@ -6,26 +6,14 @@ import Link from 'next/link';
 import { AppLayout } from '@/lib/components/layout/AppLayout';
 import { VideoAssetSidebarItems } from '@/lib/components/navigation/SidebarConfig';
 import { apiClient, getErrorMessage } from '@/lib/backend';
-
-interface Video {
-  id: number;
-  title: string;
-  url: string;
-  videoType: string;
-  description: string | null;
-  originator: string | null;
-  createdAt: string;
-  updatedAt: string;
-  technique: { id: number; name: string; slug: string } | null;
-  categories: { id: number; name: string; slug: string }[];
-}
+import { ReferenceAsset } from '@/lib/types/api';
 
 export default function VideoDetailPage() {
   const params = useParams();
   const router = useRouter();
   const videoId = params.id as string;
 
-  const [video, setVideo] = useState<Video | null>(null);
+  const [video, setVideo] = useState<ReferenceAsset | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -170,22 +158,6 @@ export default function VideoDetailPage() {
               >
                 {video.technique.name}
               </Link>
-            </div>
-          )}
-
-          {video.categories && video.categories.length > 0 && (
-            <div>
-              <h2 className="text-sm font-semibold text-foreground mb-2">Categories</h2>
-              <div className="flex flex-wrap gap-2">
-                {video.categories.map((cat) => (
-                  <span
-                    key={cat.id}
-                    className="px-3 py-1 rounded-full text-sm bg-secondary text-secondary-foreground"
-                  >
-                    {cat.name}
-                  </span>
-                ))}
-              </div>
             </div>
           )}
         </div>

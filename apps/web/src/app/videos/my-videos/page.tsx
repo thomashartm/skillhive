@@ -1,22 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AppLayout } from '@/lib/components/layout/AppLayout';
 import { VideoAssetSidebarItems } from '@/lib/components/navigation/SidebarConfig';
 import { CreateLink } from '@/lib/components/actionbar';
 import { apiClient, getErrorMessage } from '@/lib/backend';
-
-interface Video {
-  id: number;
-  title: string;
-  url: string;
-  videoType: string;
-  createdAt: string;
-  technique: { id: number; name: string; slug: string } | null;
-  categories: { id: number; name: string; slug: string }[];
-}
+import { ReferenceAsset } from '@/lib/types/api';
 
 interface PaginationInfo {
   page: number;
@@ -26,10 +17,9 @@ interface PaginationInfo {
 }
 
 export default function MyVideosPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [videos, setVideos] = useState<Video[]>([]);
+  const [videos, setVideos] = useState<ReferenceAsset[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({
     page: 1,
     limit: 10,
@@ -69,10 +59,10 @@ export default function MyVideosPage() {
         page: currentPage,
         limit: pageLimit,
         sortBy,
-        sortOrder,
+        sortOrder: sortOrder.toUpperCase() as 'ASC' | 'DESC',
         title: titleFilter || undefined,
-        technique: techniqueFilter || undefined,
-        category: categoryFilter || undefined,
+        techniqueName: techniqueFilter || undefined,
+        categoryName: categoryFilter || undefined,
       });
 
       setVideos(data.videos || []);
@@ -339,20 +329,7 @@ export default function MyVideosPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm text-foreground">
-                          {video.categories.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {video.categories.map((cat) => (
-                                <span
-                                  key={cat.id}
-                                  className="inline-block px-2 py-0.5 rounded-full text-xs bg-secondary text-secondary-foreground"
-                                >
-                                  {cat.name}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
+                          <span className="text-muted-foreground">-</span>
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {new Date(video.createdAt).toLocaleDateString()}

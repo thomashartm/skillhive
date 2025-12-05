@@ -10,7 +10,6 @@
  * - Request cancellation support
  */
 
-import { getSession } from 'next-auth/react';
 import { ApiError, transformError } from './errors';
 import type { RequestConfig, ApiResponse } from '../types';
 

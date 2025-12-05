@@ -383,3 +383,19 @@ export interface MyVideosParams extends PaginationParams, SortParams {
   techniqueName?: string;
   categoryName?: string;
 }
+
+export interface VideoListParams extends PaginationParams, SortParams {
+  techniqueId?: number;
+  title?: string;
+}
+
+export interface PaginatedVideoResponse<T> {
+  data?: T[];
+  videos?: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '@/lib/backend';
 
 interface Category {
@@ -125,7 +125,7 @@ export function CategoryAutocomplete({
     .map((id) => flatCategories.find((cat) => cat.id === id))
     .filter((cat): cat is Category => cat !== undefined);
 
-  const renderCategoryTree = (cats: Category[], level: number = 0): JSX.Element[] => {
+  const renderCategoryTree = (cats: Category[], level: number = 0): React.JSX.Element[] => {
     return cats.map((cat) => {
       const isSelected = selectedIds.includes(cat.id);
       const paddingLeft = `${level * 1.5}rem`;

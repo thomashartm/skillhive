@@ -129,7 +129,7 @@ export default function EditCurriculumPage() {
 
   if (curriculumLoading || elementsLoading) {
     return (
-      <AppLayout sidebarItems={sidebarItems} sidebarTitle="Curricula">
+      <AppLayout sidebarItems={CurriculumSidebarItems} sidebarTitle="Curricula">
         <div className="container mx-auto py-8 px-4">
           <LoadingState />
         </div>
@@ -139,7 +139,7 @@ export default function EditCurriculumPage() {
 
   if (error || !curriculum) {
     return (
-      <AppLayout sidebarItems={sidebarItems} sidebarTitle="Curricula">
+      <AppLayout sidebarItems={CurriculumSidebarItems} sidebarTitle="Curricula">
         <div className="container mx-auto py-8 px-4">
           <ErrorState
             error={error || 'Curriculum not found'}
@@ -316,7 +316,11 @@ export default function EditCurriculumPage() {
               }
             }}
             onDeleteElement={handleDeleteElement}
-            onReorderElements={reorderElements}
+            onReorderElements={(payload) => {
+              reorderElements(payload.orderedIds).catch((e) => {
+                console.error('Failed to reorder elements:', e);
+              });
+            }}
             onPickTechnique={(elementId) => {
               setTechniqueModal({ open: true, elementId });
               setTechniqueResults([]);
@@ -415,7 +419,8 @@ export default function EditCurriculumPage() {
                 const data = await apiClient.videos.list({
                   title: q || undefined,
                 });
-                setAssetResults(data.videos || []);
+                // videos.list() returns array when no pagination params
+                setAssetResults(Array.isArray(data) ? data : data.videos || []);
               } catch (err) {
                 console.error('Failed to search videos:', err);
                 setAssetResults([]);

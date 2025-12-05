@@ -7,33 +7,36 @@ import type {
   CreateReferenceAssetDto,
   UpdateReferenceAssetDto,
   ReferenceAsset,
-  VideoFilters,
   MyVideosParams,
-  PaginatedResponse,
+  VideoListParams,
+  PaginatedVideoResponse,
 } from '../../types/api';
 
-function buildQueryString(filters?: VideoFilters): string {
-  if (!filters) return '';
+function buildVideoListQueryString(params?: VideoListParams): string {
+  if (!params) return '';
 
-  const params = new URLSearchParams();
+  const urlParams = new URLSearchParams();
 
-  if (filters.disciplineId) {
-    params.append('disciplineId', filters.disciplineId.toString());
+  if (params.page) {
+    urlParams.append('page', params.page.toString());
   }
-  if (filters.techniqueId) {
-    params.append('techniqueId', filters.techniqueId.toString());
+  if (params.limit) {
+    urlParams.append('limit', params.limit.toString());
   }
-  if (filters.search) {
-    params.append('search', filters.search);
+  if (params.techniqueId) {
+    urlParams.append('techniqueId', params.techniqueId.toString());
   }
-  if (filters.ids && filters.ids.length > 0) {
-    params.append('ids', filters.ids.join(','));
+  if (params.title) {
+    urlParams.append('title', params.title);
   }
-  if (filters.include && filters.include.length > 0) {
-    params.append('include', filters.include.join(','));
+  if (params.sortBy) {
+    urlParams.append('sortBy', params.sortBy);
+  }
+  if (params.sortOrder) {
+    urlParams.append('sortOrder', params.sortOrder);
   }
 
-  return params.toString();
+  return urlParams.toString();
 }
 
 function buildMyVideosQueryString(params?: MyVideosParams): string {
@@ -68,12 +71,20 @@ function buildMyVideosQueryString(params?: MyVideosParams): string {
 
 export const videos = {
   /**
-   * List all videos with optional filters (authenticated)
+   * List all videos with optional filters and pagination (authenticated)
+   * Returns paginated response when page/limit are provided, otherwise returns simple array
    */
-  async list(filters?: VideoFilters): Promise<ReferenceAsset[]> {
-    const queryString = buildQueryString(filters);
+  async list(params?: VideoListParams): Promise<PaginatedVideoResponse<ReferenceAsset> | ReferenceAsset[]> {
+    const queryString = buildVideoListQueryString(params);
     const endpoint = `/reference-assets${queryString ? `?${queryString}` : ''}`;
 
+    // If pagination params are provided, expect paginated response
+    if (params?.page && params?.limit) {
+      const response = await httpClient.get<PaginatedVideoResponse<ReferenceAsset>>(endpoint);
+      return response.data;
+    }
+
+    // Otherwise, return simple array
     const response = await httpClient.get<ReferenceAsset[]>(endpoint);
     return response.data;
   },
@@ -92,11 +103,11 @@ export const videos = {
   /**
    * Get current user's videos with pagination and filters (authenticated)
    */
-  async getMyVideos(params?: MyVideosParams): Promise<PaginatedResponse<ReferenceAsset>> {
+  async getMyVideos(params?: MyVideosParams): Promise<PaginatedVideoResponse<ReferenceAsset>> {
     const queryString = buildMyVideosQueryString(params);
     const endpoint = `/reference-assets/my-assets${queryString ? `?${queryString}` : ''}`;
 
-    const response = await httpClient.get<PaginatedResponse<ReferenceAsset>>(endpoint);
+    const response = await httpClient.get<PaginatedVideoResponse<ReferenceAsset>>(endpoint);
     return response.data;
   },
 
