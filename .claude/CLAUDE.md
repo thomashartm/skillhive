@@ -1,162 +1,195 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working with the SkillHive codebase.
 
 ## Project Overview
 
-SkillHive is a training content management platform for collecting external video knowledge and instructionals and organizing them into repeatable, shareable curricula. The initial use case is creating guidance through a martial arts journey, for instance BJJ and JKD. Users can collect, organize, and share their training curriculum around existing video media.
- 
-
-## Specialists
-Use specialist agents for the listed tasks.
-
- - frontend-dev: Expert developer for frontend implementations (React, Next.js, UI components)
+SkillHive is a training content management platform for collecting external video knowledge and instructionals and organizing them into repeatable, shareable curricula. Built for martial arts training (BJJ, JKD), it lets users collect, tag, categorize, and organize video links into structured curricula.
 
 ### Key Concepts
-- Techniques and skills are reflected by referenced assets, which are primarily video links
-- We do not upload or host videos. We just reference streaming platforms and respect their constraints, licenses, and paywalls
-- Users collect video links to all major social media platforms
-- Extract and append title and metadata to organize it
-- Tag the source material and categorize the videos
-- Search for specific videos or video series
-- Create curricula around a selected list of video instructionals
 
-### System Design Decisions
+- Techniques and skills are reflected by referenced assets (primarily video links)
+- We do not upload or host videos — we reference streaming platforms and respect their constraints, licenses, and paywalls
+- Users collect video links, extract metadata, tag and categorize them
+- Curricula are ordered lists of techniques, assets, and text notes
 
-**Web UI (Next.js):**
-- Manage and organize videos, categories, tags, and curricula
-- Main front-facing components and point of interaction for all user roles
-- System is behind login
-- Solely a frontend, interacts with API for all operations
-- No database connectivity on its own
-- All API calls require a valid session token reflecting user ID, role, and privileges
+## Architecture
 
-**API Layer (NestJS):**
-- Provides backend business logic
-- Responsible for CRUD operations to the database
-- Expects successful session auth token
-- Designed to serve multiple frontends
+Two-directory structure at repo root:
 
-**Mobile App (Future):**
-- Not currently in scope
-- Will rely on the REST API
-- Support iOS and Android
+```
+frontend/     Vue 3 SPA (Vite + PrimeVue + Firebase Auth)
+backend/      Go REST API (Chi + Firebase Admin SDK + Firestore)
+```
 
-## Monorepo Structure
+**Web UI (Vue 3):** SPA behind Firebase Auth login. All data comes from the Go API. No direct database access.
 
-This is an npm workspaces monorepo with two apps and three shared packages:
+**API (Go + Chi):** Stateless REST API. Firebase Auth for token verification. Firestore for persistence. Designed to serve multiple frontends.
 
-**Apps:**
-- `apps/web` - Next.js 15 web application (frontend + some API routes for auth)
-- `apps/api` - NestJS REST API (primary CRUD API for all entities)
-
-**Packages:**
-- `packages/shared` - Foundation layer with types (UserRole), utilities (generateSlug, role helpers), and constants
-- `packages/db` - TypeORM entities, migrations, and data source configuration
-- `packages/auth` - NextAuth.js configuration, password hashing, and authorization helpers
-
-**Dependency flow:** `shared` → `db` → `auth` → `apps/api` + `apps/web`
+**Database (Firestore):** Document-based. String IDs (Firestore doc IDs). Owner-based access via `ownerUid` field. Disciplines are system-seeded read-only data.
 
 ## Tech Stack
 
-- **Runtime:** Node.js >=20.0.0, npm >=10.0.0
-- **Web Framework:** Next.js 15.0.0 (App Router)
-- **API Framework:** NestJS 10.3.0
-- **Database:** MySQL 8.0+ via TypeORM 0.3.20
-- **Auth:** NextAuth.js 4.24.5 with JWT sessions
-- **Validation:** Zod (web) + class-validator (API)
-- **API Documentation:** Swagger/OpenAPI 3.0
-- **Styling:** Tailwind CSS 4.1.17
-- **Language:** TypeScript 5.3.3 (strict mode)
-- **Testing:** Vitest 1.2.0
-- **Linting:** ESLint 8.56.0 with Airbnb config
-- **Formatting:** Prettier 3.2.5
+- **Frontend:** Vue 3.5, Vite 7, TypeScript 5.9, PrimeVue 4 (Aura theme), Pinia, vue-router 4, Zod, DOMPurify, marked
+- **Backend:** Go 1.25, Chi v5, Firebase Admin SDK, Firestore, bluemonday
+- **Auth:** Firebase Authentication (Google + email/password)
+- **Database:** Cloud Firestore
+- **Deployment:** Firebase Hosting (frontend), Cloud Run (backend)
+- **CI/CD:** GitHub Actions (`.github/workflows/ci.yml` + `deploy.yml`)
 
-## Documentation
+## Specialists
 
-Detailed documentation is organized into focused topics:
+Use specialist agents for the listed tasks:
 
-### Architecture
+- frontend-dev: Expert developer for Vue 3, PrimeVue, and responsive design
 
-- **[Database Layer](.claude/docs/architecture/database.md)** - TypeORM entities, patterns, and best practices
-- **[NestJS API](.claude/docs/architecture/nestjs-api.md)** - API structure, endpoints, and conventions
-- **[Next.js Web App](.claude/docs/architecture/nextjs-web.md)** - Frontend architecture and patterns
-- **[Authentication & Authorization](.claude/docs/architecture/authentication.md)** - JWT, OAuth, RBAC, and scopes
+## Project Structure
 
-### Development
+### Backend (`backend/`)
 
-- **[Development Commands](.claude/docs/development/commands.md)** - npm scripts and CLI commands
-- **[Common Patterns](.claude/docs/development/patterns.md)** - Frequently used development patterns
-- **[API Module Development](../apps/api/src/modules/CLAUDE.md)** - Mandatory requirements for NestJS API modules (auth, validation, best practices)
+```
+main.go                          Chi router, middleware stack, graceful shutdown
+cmd/seed/main.go                 Firestore seeder for disciplines/categories/techniques
+internal/
+  config/config.go               Env loading (PORT, GCP_PROJECT, FIREBASE_KEY_PATH)
+  middleware/
+    auth.go                      Firebase ID token verification, UID in context
+    cors.go                      CORS config
+    logging.go                   slog request logging
+  handler/
+    health.go                    GET /healthz
+    disciplines.go               GET /api/v1/disciplines (read-only)
+    tags.go                      CRUD /api/v1/tags
+    categories.go                CRUD /api/v1/categories
+    techniques.go                CRUD /api/v1/techniques
+    assets.go                    CRUD /api/v1/assets
+    oembed.go                    POST /api/v1/youtube/resolve
+    curricula.go                 CRUD /api/v1/curricula (+ public listing)
+    curriculum_elements.go       CRUD /api/v1/curricula/{id}/elements (+ reorder)
+    helpers.go                   JSON response/error helpers
+  model/                         Go structs for all entities
+  store/client.go                Firestore + Firebase Auth client init
+  validate/                      String validation, HTML sanitization, slug generation
+Dockerfile                       Multi-stage build (golang:1.22-alpine -> alpine:3.19)
+```
 
-### Setup
+### Frontend (`frontend/`)
 
-- **[Environment Setup](.claude/docs/setup/environment.md)** - Environment variables and initial configuration
+```
+src/
+  main.ts                        App bootstrap (Vue, PrimeVue, router, Pinia)
+  App.vue                        Root component
+  plugins/
+    primevue.ts                  PrimeVue config with Aura preset
+    firebase.ts                  Firebase JS SDK init + emulator connect in dev
+  router/
+    index.ts                     Route definitions (lazy-loaded views)
+    guards.ts                    Auth navigation guard
+  stores/
+    auth.ts                      User state, login/logout actions
+    discipline.ts                Active discipline, discipline list (persisted to localStorage)
+    tags.ts                      Tags CRUD
+    categories.ts                Categories CRUD
+    techniques.ts                Techniques CRUD
+    assets.ts                    Assets CRUD
+    curricula.ts                 Curricula + elements CRUD
+  composables/
+    useApi.ts                    Authenticated fetch wrapper (Bearer token from Firebase)
+    useDebounce.ts               Debounced ref composable
+  views/                         Page-level components (11 views)
+  components/
+    layout/                      AppLayout, AppSidebar, DisciplinePicker
+    common/                      MarkdownRenderer
+    tags/                        TagList, TagForm, TagBadge
+    categories/                  CategoryTree, CategoryForm
+    techniques/                  TechniqueList, TechniqueCard, TechniqueForm
+    assets/                      AssetList, AssetCard, AssetForm, UrlResolver
+    curricula/                   CurriculumList, CurriculumForm, ElementList, ElementCard, AddElementMenu
+    curricula/modals/            TechniqueSearchModal, AssetSearchModal, TextElementModal
+    dashboard/                   QuickStats, RecentCurricula, QuickSaveVideo
+  types/index.ts                 TypeScript interfaces for all entities
+  validation/schemas.ts          Zod schemas + form data types (TagFormData, TechniqueFormData, etc.)
+```
+
+### Firebase Config (repo root)
+
+```
+firebase.json                    Hosting, Firestore rules path, emulator config
+.firebaserc                      Project alias (skillhive)
+firestore.rules                  Security rules (owner-based access)
+firestore.indexes.json           Composite indexes for common queries
+```
+
+## API Routes
+
+All protected routes require Firebase Auth token (`Authorization: Bearer <token>`).
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/healthz` | Health check (public) |
+| GET | `/api/v1/disciplines` | List disciplines |
+| GET/POST | `/api/v1/tags` | List / create tags |
+| GET/PATCH/DELETE | `/api/v1/tags/{id}` | Get / update / delete tag |
+| GET/POST | `/api/v1/categories` | List / create categories |
+| GET/PATCH/DELETE | `/api/v1/categories/{id}` | Get / update / delete category |
+| GET/POST | `/api/v1/techniques` | List / create techniques |
+| GET/PATCH/DELETE | `/api/v1/techniques/{id}` | Get / update / delete technique |
+| GET/POST | `/api/v1/assets` | List / create assets |
+| GET/PATCH/DELETE | `/api/v1/assets/{id}` | Get / update / delete asset |
+| POST | `/api/v1/youtube/resolve` | Resolve YouTube URL to metadata |
+| GET/POST | `/api/v1/curricula` | List / create curricula |
+| GET | `/api/v1/curricula/public` | List public curricula |
+| GET/PATCH/DELETE | `/api/v1/curricula/{id}` | Get / update / delete curriculum |
+| GET/POST | `/api/v1/curricula/{id}/elements` | List / create elements |
+| PUT/DELETE | `/api/v1/curricula/{id}/elements/{elemId}` | Update / delete element |
+| PUT | `/api/v1/curricula/{id}/elements/reorder` | Reorder elements |
+
+## Important Rules
+
+1. **Slug uniqueness**: Slugs are unique per discipline, not globally
+2. **Hierarchical categories**: Prevent self-reference and validate parent existence
+3. **Owner-based access**: All user entities have `ownerUid` field; only owner can update/delete
+4. **Firestore IDs**: All IDs are strings (Firestore document IDs), never numeric
+5. **Discipline store**: File is `stores/discipline.ts` (singular). Exports `activeDisciplineId` (ref) and `activeDiscipline` (computed)
+6. **Form data types**: `TechniqueFormData`, `AssetFormData`, etc. live in `validation/schemas.ts`, NOT in `types/index.ts`
+7. **Port conflicts**: If ports are in use, kill the existing process. Don't start on different ports
+8. **NO ALERT() OR CONFIRM()**: Use PrimeVue Toast, ConfirmDialog, and Dialog components
+9. **BE FULLY HONEST**: Never claim to have fixed or completed a task without testing it
+10. **ALWAYS TEST OUTPUT**: Verify results before claiming completeness
 
 ## Quick Start
 
 ```bash
-# Install dependencies
+# Backend
+cd backend
+cp .env.example .env
+go run .                           # Starts on :8080
+
+# Frontend
+cd frontend
 npm install
+npm run dev                        # Starts on :5173
 
-# Build all packages
-npm run build
+# Firebase emulators (requires Java)
+npx firebase-tools emulators:start
 
-# Seed the database (optional)
-npm run db:seed
-
-# Run both web app and API
-npm run dev:all
+# Seed Firestore
+cd backend && go run cmd/seed/main.go
 ```
 
-Web app: http://localhost:3000
-API: http://localhost:3001
-API docs: http://localhost:3001/api/docs
+## Environment Variables
 
-## Important Mandatory Rules
-The follow this notes and rules. They are considered sacred for this project:
+### Backend (`backend/.env`)
+- `PORT` — Server port (default: 8080)
+- `GCP_PROJECT` — Firebase project ID
+- `FIREBASE_KEY_PATH` — Path to service account key JSON
+- `CORS_ALLOWED_ORIGINS` — Comma-separated allowed origins
+- `ENV` — development | production
 
-1. **Two-app architecture**: Monorepo contains both Next.js web app and NestJS API
-2. **API migration**: Legacy Next.js API routes are being migrated to NestJS API
-3. **Always build packages first**: Run `npm run build` to compile packages before running apps
-4. **Module resolution**: NestJS API uses CommonJS, packages use ESM (be careful with imports)
-5. **Slug uniqueness**: Slugs are unique per discipline, not globally
-6. **Hierarchical categories**: Prevent self-reference and validate parent existence
-7. **JWT sessions**: Sessions are JWT-based, not database-backed
-8. **Auto-sync in dev**: Database schema auto-syncs in development (synchronize: true)
-9. **Password security**: Use bcryptjs from `@trainhive/auth`
-10. **OpenAPI documentation**: Always update openapi.yaml when adding/modifying endpoints
-11. **Query parameter validation**: For NestJS controllers with multiple optional query parameters, use manual parsing with `@Query() query: any` instead of `ParseIntPipe` to avoid validation errors (see `apps/api/src/modules/CLAUDE.md`)
-12. **Port conflicts**: If ports 3000/3001 are in use then kill the existing process and restart the server. Do not spin off new servers on different ports.
-13. **NO ALERT() OR CONFIRM()**: NEVER use `alert()`, `confirm()`, or `prompt()` in the application. Use proper UI components (banners, modals, toasts) for user feedback. Alert dialogs are unprofessional and provide poor UX.
-14. **BE FULLY HONEST**: You must never claim to have fixed or completed a task unless you can not prove it by successfully testing it. **YOU NEVER LIE OR TAKE SHORTCUTS TO ACCOMPLISH THIS GOAL**
-15. **ALWAYS TEST OUTPUT**: Always verify and test your results before assuming or claiming completeness
+### Frontend (`frontend/.env`)
+- `VITE_API_URL` — Backend API URL (default: http://localhost:8080)
+- `VITE_FIREBASE_API_KEY` — Firebase web API key (for Auth only)
+- `VITE_FIREBASE_AUTH_DOMAIN` — Firebase auth domain
+- `VITE_FIREBASE_PROJECT_ID` — Firebase project ID
 
-## Recent Implementation Patterns
-
-### Video Listing Architecture (December 2025)
-
-The video/reference asset listing functionality follows a clean, parameterized approach:
-
-**API Layer (`apps/api/src/modules/reference-assets/`):**
-- `GET /api/v1/reference-assets` - Lists ALL videos with optional pagination
-  - Supports: `page`, `limit`, `sortBy`, `sortOrder`, `title`, `techniqueId`
-  - Returns: `{ data: ReferenceAsset[], pagination: { page, limit, total, totalPages } }`
-- `GET /api/v1/reference-assets/my-assets` - Lists current user's videos with enhanced filters
-  - Supports: `page`, `limit`, `sortBy`, `sortOrder`, `title`, `techniqueName`, `categoryName`
-  - Returns: `{ videos: Video[], pagination: { page, limit, total, totalPages } }` with joined technique/category data
-
-**Frontend Client (`apps/web/src/lib/backend/resources/videos.ts`):**
-- `videos.list(params: VideoListParams)` - Fetches ALL videos with pagination
-  - Use for system-wide video listings
-  - Returns paginated response when `page` and `limit` are provided
-  - Returns simple array when called without pagination params
-- `videos.getMyVideos(params: MyVideosParams)` - Fetches user's videos with enhanced filtering
-  - Use for user-specific video management
-  - Always returns paginated response with technique/category data
-
-**Key Principles:**
-1. **One function per purpose**: Don't reuse user-specific endpoints for all-videos queries
-2. **Match API capabilities**: Frontend filters should align with what the backend supports
-3. **Type safety**: Use distinct parameter types (`VideoListParams` vs `MyVideosParams`) for different endpoints
-4. **Pagination consistency**: API returns `{ data/videos, pagination }` format, frontend handles both variants
+> The frontend has NO direct access to Firestore, Storage, or any cloud infrastructure. All data flows through the Go API. Firebase is only used client-side for authentication.
