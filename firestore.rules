@@ -1,0 +1,72 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: check if the user owns the document
+    function isOwner(resource) {
+      return isAuthenticated() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // Helper: check if the request sets ownerUid to the current user
+    function setsOwnUid() {
+      return request.resource.data.ownerUid == request.auth.uid;
+    }
+
+    // Disciplines — read-only for authenticated users (seeded data)
+    match /disciplines/{disciplineId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // Tags — owner-based CRUD
+    match /tags/{tagId} {
+      allow read: if isAuthenticated() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isAuthenticated() && setsOwnUid();
+      allow update, delete: if isOwner(resource);
+    }
+
+    // Categories — owner-based CRUD
+    match /categories/{categoryId} {
+      allow read: if isAuthenticated() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isAuthenticated() && setsOwnUid();
+      allow update, delete: if isOwner(resource);
+    }
+
+    // Techniques — owner-based CRUD
+    match /techniques/{techniqueId} {
+      allow read: if isAuthenticated() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isAuthenticated() && setsOwnUid();
+      allow update, delete: if isOwner(resource);
+    }
+
+    // Assets — owner-based CRUD
+    match /assets/{assetId} {
+      allow read: if isAuthenticated() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isAuthenticated() && setsOwnUid();
+      allow update, delete: if isOwner(resource);
+    }
+
+    // Curricula — owner-based CRUD + public read
+    match /curricula/{curriculumId} {
+      allow read: if isAuthenticated() &&
+        (resource.data.ownerUid == request.auth.uid || resource.data.isPublic == true);
+      allow create: if isAuthenticated() && setsOwnUid();
+      allow update, delete: if isOwner(resource);
+
+      // Curriculum elements subcollection
+      match /elements/{elementId} {
+        allow read: if isAuthenticated() &&
+          (get(/databases/$(database)/documents/curricula/$(curriculumId)).data.ownerUid == request.auth.uid ||
+           get(/databases/$(database)/documents/curricula/$(curriculumId)).data.isPublic == true);
+        allow create, update, delete: if isAuthenticated() &&
+          get(/databases/$(database)/documents/curricula/$(curriculumId)).data.ownerUid == request.auth.uid;
+      }
+    }
+  }
+}
