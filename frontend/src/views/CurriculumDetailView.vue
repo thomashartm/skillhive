@@ -1,0 +1,362 @@
+<template>
+  <div class="container mx-auto px-4 py-8">
+    <div v-if="loading" class="py-6">
+      <div class="flex items-center gap-3 mb-4">
+        <Skeleton shape="circle" size="2.5rem" />
+        <Skeleton width="50%" height="2rem" />
+      </div>
+      <Skeleton width="80%" height="1rem" class="mb-3" />
+      <Skeleton width="5rem" height="1.5rem" border-radius="1rem" class="mb-6" />
+      <Skeleton width="8rem" height="2.5rem" class="mb-6" />
+      <Skeleton width="100%" height="4rem" class="mb-3" />
+      <Skeleton width="100%" height="4rem" class="mb-3" />
+      <Skeleton width="100%" height="4rem" />
+    </div>
+
+    <div v-else-if="curriculum">
+      <div class="flex items-start justify-between mb-6">
+        <div class="flex-1">
+          <div class="flex items-center gap-3 mb-2">
+            <Button
+              icon="pi pi-arrow-left"
+              severity="secondary"
+              text
+              @click="router.push('/curricula')"
+              title="Back to Curricula"
+            />
+            <h1 class="text-3xl font-bold">{{ curriculum.title }}</h1>
+            <Button
+              icon="pi pi-pencil"
+              severity="secondary"
+              text
+              @click="handleEditCurriculum"
+              title="Edit Curriculum"
+            />
+          </div>
+          <p v-if="curriculum.description" class="text-gray-600 mb-2">
+            {{ curriculum.description }}
+          </p>
+          <Tag
+            :value="curriculum.isPublic ? 'Public' : 'Private'"
+            :severity="curriculum.isPublic ? 'success' : 'secondary'"
+          />
+        </div>
+      </div>
+
+      <div class="mb-6">
+        <AddElementMenu
+          @add-technique="showTechniqueModal = true"
+          @add-asset="showAssetModal = true"
+          @add-text="showTextModal = true"
+        />
+      </div>
+
+      <div v-if="elementsLoading" class="py-4 space-y-3">
+        <Skeleton width="100%" height="4rem" />
+        <Skeleton width="100%" height="4rem" />
+        <Skeleton width="100%" height="4rem" />
+      </div>
+
+      <ElementList
+        v-else
+        :elements="elements"
+        :editable="true"
+        @reorder="handleReorder"
+        @edit-element="handleEditElement"
+        @delete-element="handleDeleteElement"
+      />
+    </div>
+
+    <div v-else class="text-center py-12 text-gray-500">
+      Curriculum not found
+    </div>
+
+    <CurriculumForm
+      :visible="showCurriculumForm"
+      :curriculum="curriculum"
+      @save="handleSaveCurriculum"
+      @close="showCurriculumForm = false"
+    />
+
+    <TechniqueSearchModal
+      :visible="showTechniqueModal"
+      @select="handleAddTechnique"
+      @close="showTechniqueModal = false"
+    />
+
+    <AssetSearchModal
+      :visible="showAssetModal"
+      @select="handleAddAsset"
+      @close="showAssetModal = false"
+    />
+
+    <TextElementModal
+      :visible="showTextModal"
+      :element="editingElement"
+      @save="handleSaveTextElement"
+      @close="handleCloseTextModal"
+    />
+
+    <Toast />
+    <ConfirmDialog />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import Button from 'primevue/button'
+import Tag from 'primevue/tag'
+import Toast from 'primevue/toast'
+import ConfirmDialog from 'primevue/confirmdialog'
+import Skeleton from 'primevue/skeleton'
+import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
+import ElementList from '../components/curricula/ElementList.vue'
+import AddElementMenu from '../components/curricula/AddElementMenu.vue'
+import CurriculumForm from '../components/curricula/CurriculumForm.vue'
+import TechniqueSearchModal from '../components/curricula/modals/TechniqueSearchModal.vue'
+import AssetSearchModal from '../components/curricula/modals/AssetSearchModal.vue'
+import TextElementModal from '../components/curricula/modals/TextElementModal.vue'
+import { useCurriculumStore } from '../stores/curricula'
+import type { Curriculum, CurriculumElement, Technique, Asset } from '../types'
+import type { CurriculumFormData } from '../validation/schemas'
+
+const route = useRoute()
+const router = useRouter()
+const toast = useToast()
+const confirm = useConfirm()
+const curriculumStore = useCurriculumStore()
+
+const {
+  getCurriculum,
+  updateCurriculum,
+  fetchElements,
+  createElement,
+  updateElement,
+  deleteElement,
+  reorderElements
+} = curriculumStore
+
+const id = route.params.id as string
+
+const curriculum = ref<Curriculum | null>(null)
+const elements = ref<CurriculumElement[]>([])
+const loading = ref(true)
+const elementsLoading = ref(false)
+
+const showCurriculumForm = ref(false)
+const showTechniqueModal = ref(false)
+const showAssetModal = ref(false)
+const showTextModal = ref(false)
+const editingElement = ref<CurriculumElement | null>(null)
+
+onMounted(async () => {
+  await loadCurriculum()
+})
+
+const loadCurriculum = async () => {
+  loading.value = true
+  try {
+    curriculum.value = await getCurriculum(id)
+    await loadElements()
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.message || 'Failed to load curriculum',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadElements = async () => {
+  elementsLoading.value = true
+  try {
+    elements.value = await fetchElements(id)
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.message || 'Failed to load elements',
+      life: 3000
+    })
+  } finally {
+    elementsLoading.value = false
+  }
+}
+
+const handleEditCurriculum = () => {
+  showCurriculumForm.value = true
+}
+
+const handleSaveCurriculum = async (data: CurriculumFormData) => {
+  try {
+    curriculum.value = await updateCurriculum(id, data)
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Curriculum updated successfully',
+      life: 3000
+    })
+    showCurriculumForm.value = false
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.message || 'Failed to update curriculum',
+      life: 3000
+    })
+  }
+}
+
+const handleAddTechnique = async (technique: Technique) => {
+  try {
+    await createElement(id, {
+      type: 'technique',
+      techniqueId: technique.id
+    })
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Technique added to curriculum',
+      life: 3000
+    })
+    await loadElements()
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.message || 'Failed to add technique',
+      life: 3000
+    })
+  }
+}
+
+const handleAddAsset = async (asset: Asset) => {
+  try {
+    await createElement(id, {
+      type: 'asset',
+      assetId: asset.id
+    })
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Asset added to curriculum',
+      life: 3000
+    })
+    await loadElements()
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.message || 'Failed to add asset',
+      life: 3000
+    })
+  }
+}
+
+const handleSaveTextElement = async (data: { title: string; details: string }) => {
+  try {
+    if (editingElement.value) {
+      await updateElement(id, editingElement.value.id, data)
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Text note updated successfully',
+        life: 3000
+      })
+    } else {
+      await createElement(id, {
+        type: 'text',
+        title: data.title,
+        details: data.details
+      })
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Text note added to curriculum',
+        life: 3000
+      })
+    }
+    handleCloseTextModal()
+    await loadElements()
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.message || 'Failed to save text note',
+      life: 3000
+    })
+  }
+}
+
+const handleCloseTextModal = () => {
+  showTextModal.value = false
+  editingElement.value = null
+}
+
+const handleEditElement = (element: CurriculumElement) => {
+  if (element.type === 'text') {
+    editingElement.value = element
+    showTextModal.value = true
+  } else {
+    toast.add({
+      severity: 'info',
+      summary: 'Info',
+      detail: 'Only text notes can be edited. Technique and asset elements are snapshots.',
+      life: 3000
+    })
+  }
+}
+
+const handleDeleteElement = (elementId: string) => {
+  confirm.require({
+    message: 'Are you sure you want to remove this element from the curriculum?',
+    header: 'Confirm Delete',
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      try {
+        await deleteElement(id, elementId)
+        toast.add({
+          severity: 'success',
+          summary: 'Success',
+          detail: 'Element removed from curriculum',
+          life: 3000
+        })
+        await loadElements()
+      } catch (error: any) {
+        toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: error.message || 'Failed to delete element',
+          life: 3000
+        })
+      }
+    }
+  })
+}
+
+const handleReorder = async (orderedIds: string[]) => {
+  try {
+    await reorderElements(id, orderedIds)
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Elements reordered successfully',
+      life: 3000
+    })
+    await loadElements()
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.message || 'Failed to reorder elements',
+      life: 3000
+    })
+  }
+}
+</script>

@@ -1,4 +1,0 @@
-bearer:
-  scheme: bearer
-  bearerFormat: JWT
-  type: http
