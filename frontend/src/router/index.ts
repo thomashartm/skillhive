@@ -31,6 +31,11 @@ const router = createRouter({
           component: () => import('../views/CategoriesView.vue'),
         },
         {
+          path: 'categories/:id',
+          name: 'category-detail',
+          component: () => import('../views/CategoryDetailView.vue'),
+        },
+        {
           path: 'techniques',
           name: 'techniques',
           component: () => import('../views/TechniquesView.vue'),
@@ -51,6 +56,11 @@ const router = createRouter({
           component: () => import('../views/SaveAssetView.vue'),
         },
         {
+          path: 'assets/:id',
+          name: 'asset-detail',
+          component: () => import('../views/AssetDetailView.vue'),
+        },
+        {
           path: 'assets/:id/edit',
           name: 'asset-edit',
           component: () => import('../views/SaveAssetView.vue'),
@@ -69,6 +79,17 @@ const router = createRouter({
           path: 'curricula/:id',
           name: 'curriculum-detail',
           component: () => import('../views/CurriculumDetailView.vue'),
+        },
+        {
+          path: 'profile',
+          name: 'profile',
+          component: () => import('../views/ProfileView.vue'),
+        },
+        {
+          path: 'admin',
+          name: 'admin',
+          component: () => import('../views/AdminView.vue'),
+          meta: { requiresRole: 'admin' },
         },
       ],
     },

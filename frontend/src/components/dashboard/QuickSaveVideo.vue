@@ -5,7 +5,7 @@
     </template>
     <template #content>
       <div class="space-y-4">
-        <p class="text-sm text-gray-600">
+        <p class="text-sm text-slate-400">
           Quickly save a YouTube video to your collection
         </p>
         <div class="flex flex-col gap-3">
@@ -79,7 +79,6 @@ const handleSave = async () => {
       title: metadata.title,
       thumbnailUrl: metadata.thumbnail_url || null,
       type: 'video',
-      disciplineId: activeDisciplineId.value
     })
 
     toast.add({

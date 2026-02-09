@@ -50,6 +50,7 @@ func main() {
 	oembedHandler := handler.NewOEmbedHandler()
 	curriculumHandler := handler.NewCurriculumHandler(clients.Firestore)
 	elementHandler := handler.NewElementHandler(clients.Firestore)
+	adminHandler := handler.NewAdminHandler(clients.Auth, clients.Firestore)
 
 	// Protected API routes
 	r.Route("/api/v1", func(r chi.Router) {
@@ -103,6 +104,16 @@ func main() {
 		r.Put("/curricula/{id}/elements/{elemId}", elementHandler.UpdateElement)
 		r.Delete("/curricula/{id}/elements/{elemId}", elementHandler.DeleteElement)
 		r.Put("/curricula/{id}/elements/reorder", elementHandler.ReorderElements)
+
+		// Admin routes (additional RequireAnyAdmin gate)
+		r.Route("/admin", func(r chi.Router) {
+			r.Use(middleware.RequireAnyAdmin)
+			r.Get("/users", adminHandler.ListUsers)
+			r.Get("/users/search", adminHandler.SearchUsers)
+			r.Get("/users/{uid}", adminHandler.GetUser)
+			r.Put("/users/{uid}/role", adminHandler.SetRole)
+			r.Delete("/users/{uid}/role", adminHandler.RevokeRole)
+		})
 	})
 
 	addr := fmt.Sprintf(":%s", cfg.Port)

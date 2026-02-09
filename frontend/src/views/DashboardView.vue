@@ -1,19 +1,19 @@
 <template>
-  <div class="container mx-auto px-4 py-6">
+  <div class="dashboard-view">
     <!-- Header -->
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold">Dashboard</h1>
+    <div class="view-header">
+      <h1 class="view-title">Dashboard</h1>
     </div>
 
     <!-- No Discipline Warning -->
     <div v-if="!activeDisciplineId" class="mb-6">
-      <Card class="bg-yellow-50 border-yellow-200">
+      <Card class="bg-yellow-900/20 border-yellow-700/40">
         <template #content>
           <div class="flex items-center gap-3">
-            <i class="pi pi-exclamation-triangle text-yellow-600 text-2xl"></i>
+            <i class="pi pi-exclamation-triangle text-yellow-400 text-2xl"></i>
             <div>
-              <p class="font-semibold text-yellow-800">No Discipline Selected</p>
-              <p class="text-sm text-yellow-700">Please select a discipline to view your dashboard</p>
+              <p class="font-semibold text-yellow-300">No Discipline Selected</p>
+              <p class="text-sm text-yellow-400/80">Please select a discipline to view your dashboard</p>
             </div>
           </div>
         </template>

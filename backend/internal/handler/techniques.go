@@ -26,7 +26,6 @@ func NewTechniqueHandler(fs *firestore.Client) *TechniqueHandler {
 
 func (h *TechniqueHandler) List(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	disciplineID := r.URL.Query().Get("disciplineId")
 
 	if disciplineID == "" {
@@ -35,8 +34,7 @@ func (h *TechniqueHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := h.fs.Collection("techniques").
-		Where("disciplineId", "==", disciplineID).
-		Where("ownerUid", "in", []string{uid, "system"})
+		Where("disciplineId", "==", disciplineID)
 
 	// Filter by category (array-contains)
 	categoryID := r.URL.Query().Get("categoryId")
@@ -91,6 +89,14 @@ func (h *TechniqueHandler) List(w http.ResponseWriter, r *http.Request) {
 		}
 		t.ID = doc.Ref.ID
 
+		// Normalize nil slices to empty arrays for JSON
+		if t.CategoryIDs == nil {
+			t.CategoryIDs = []string{}
+		}
+		if t.TagIDs == nil {
+			t.TagIDs = []string{}
+		}
+
 		// Client-side text filter if search query provided
 		if searchQuery != "" {
 			lower := validate.GenerateSlug(searchQuery)
@@ -122,7 +128,6 @@ func (h *TechniqueHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *TechniqueHandler) Get(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	id := chi.URLParam(r, "id")
 
 	doc, err := h.fs.Collection("techniques").Doc(id).Get(ctx)
@@ -142,9 +147,12 @@ func (h *TechniqueHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	t.ID = doc.Ref.ID
 
-	if t.OwnerUID != uid && t.OwnerUID != "system" {
-		writeError(w, http.StatusNotFound, "technique not found")
-		return
+	// Normalize nil slices
+	if t.CategoryIDs == nil {
+		t.CategoryIDs = []string{}
+	}
+	if t.TagIDs == nil {
+		t.TagIDs = []string{}
 	}
 
 	// Resolve categories
@@ -192,6 +200,11 @@ func (h *TechniqueHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := middleware.RequireEditor(ctx, disciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "editor role required")
+		return
+	}
+
 	var req model.CreateTechniqueRequest
 	if err := decodeJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -212,7 +225,6 @@ func (h *TechniqueHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// Check slug uniqueness
 	existing := h.fs.Collection("techniques").
 		Where("disciplineId", "==", disciplineID).
-		Where("ownerUid", "==", uid).
 		Where("slug", "==", slug).
 		Limit(1).
 		Documents(ctx)
@@ -285,10 +297,12 @@ func (h *TechniqueHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if existing.OwnerUID != uid {
-		writeError(w, http.StatusNotFound, "technique not found")
+	if err := middleware.RequireEditor(ctx, existing.DisciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "editor role required")
 		return
 	}
+
+	_ = uid // kept for ownership transfer below
 
 	var req model.UpdateTechniqueRequest
 	if err := decodeJSON(r, &req); err != nil {
@@ -298,6 +312,11 @@ func (h *TechniqueHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	updates := []firestore.Update{
 		{Path: "updatedAt", Value: time.Now()},
+	}
+
+	// Transfer ownership from system to user on edit
+	if existing.OwnerUID == "system" {
+		updates = append(updates, firestore.Update{Path: "ownerUid", Value: uid})
 	}
 
 	if req.Name != nil {
@@ -339,13 +358,18 @@ func (h *TechniqueHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	updated.ID = id
+	if updated.CategoryIDs == nil {
+		updated.CategoryIDs = []string{}
+	}
+	if updated.TagIDs == nil {
+		updated.TagIDs = []string{}
+	}
 
 	writeJSON(w, http.StatusOK, updated)
 }
 
 func (h *TechniqueHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	id := chi.URLParam(r, "id")
 
 	ref := h.fs.Collection("techniques").Doc(id)
@@ -365,8 +389,8 @@ func (h *TechniqueHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if existing.OwnerUID != uid {
-		writeError(w, http.StatusNotFound, "technique not found")
+	if err := middleware.RequireEditor(ctx, existing.DisciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "editor role required")
 		return
 	}
 

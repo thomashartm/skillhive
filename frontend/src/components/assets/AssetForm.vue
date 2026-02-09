@@ -160,7 +160,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted } from 'vue'
+import { reactive, watch, onMounted } from 'vue'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
@@ -232,20 +232,28 @@ const formData = reactive<AssetFormData>({
 const errors = reactive<Record<string, string>>({})
 
 // Initialize form with asset data or initial URL
+const populateForm = (asset: Asset) => {
+  Object.assign(formData, {
+    url: asset.url,
+    title: asset.title,
+    description: asset.description || '',
+    type: asset.type,
+    videoType: asset.videoType,
+    originator: asset.originator || '',
+    thumbnailUrl: asset.thumbnailUrl || '',
+    techniqueIds: asset.techniqueIds || [],
+    tagIds: asset.tagIds || [],
+  })
+}
+
+watch(() => props.asset, (newAsset) => {
+  if (newAsset) {
+    populateForm(newAsset)
+  }
+}, { immediate: true })
+
 onMounted(() => {
-  if (props.asset) {
-    Object.assign(formData, {
-      url: props.asset.url,
-      title: props.asset.title,
-      description: props.asset.description || '',
-      type: props.asset.type,
-      videoType: props.asset.videoType,
-      originator: props.asset.originator || '',
-      thumbnailUrl: props.asset.thumbnailUrl || '',
-      techniqueIds: props.asset.techniqueIds || [],
-      tagIds: props.asset.tagIds || [],
-    })
-  } else if (props.initialUrl) {
+  if (!props.asset && props.initialUrl) {
     formData.url = props.initialUrl
   }
 })
@@ -279,9 +287,9 @@ function handleSubmit() {
 
   if (!result.success) {
     // Map Zod errors to form errors
-    result.error.errors.forEach(err => {
-      if (err.path.length > 0) {
-        errors[err.path[0] as string] = err.message
+    result.error.issues.forEach((issue) => {
+      if (issue.path.length > 0) {
+        errors[String(issue.path[0])] = issue.message
       }
     })
     return

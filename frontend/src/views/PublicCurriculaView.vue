@@ -35,12 +35,13 @@ const formatDate = (dateStr: string) => {
 
 <template>
   <div class="public-curricula-view">
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-3xl font-bold text-gray-900">Public Curricula</h2>
+    <div class="view-header">
+      <h1 class="view-title">Public Curricula</h1>
       <Button
         label="Back"
         icon="pi pi-arrow-left"
         severity="secondary"
+        size="small"
         @click="router.push('/curricula')"
       />
     </div>
@@ -56,29 +57,26 @@ const formatDate = (dateStr: string) => {
       paginator
       :rows="10"
       data-key="id"
-      class="p-datatable-sm"
+      class="public-curriculum-list"
     >
       <template #empty>
-        <div class="text-center py-8 text-gray-500">
+        <div class="text-center py-8 text-slate-400">
           No public curricula found yet.
         </div>
       </template>
 
       <Column field="title" header="Title" sortable>
         <template #body="{ data }">
-          <button
-            class="font-semibold text-blue-600 hover:underline cursor-pointer bg-transparent border-none p-0"
-            @click="handleView(data)"
-          >
+          <a class="public-name" @click.prevent="handleView(data)">
             {{ data.title }}
-          </button>
+          </a>
         </template>
       </Column>
 
       <Column field="description" header="Description">
         <template #body="{ data }">
-          <span class="text-gray-600 text-sm">
-            {{ data.description ? data.description.substring(0, 100) + (data.description.length > 100 ? '...' : '') : '—' }}
+          <span class="text-slate-400 text-sm block truncate max-w-md">
+            {{ data.description || '—' }}
           </span>
         </template>
       </Column>
@@ -91,7 +89,7 @@ const formatDate = (dateStr: string) => {
 
       <Column field="updatedAt" header="Updated" sortable style="width: 120px">
         <template #body="{ data }">
-          <span class="text-gray-500 text-sm">{{ formatDate(data.updatedAt) }}</span>
+          <span class="text-slate-500 text-sm">{{ formatDate(data.updatedAt) }}</span>
         </template>
       </Column>
     </DataTable>
@@ -100,8 +98,20 @@ const formatDate = (dateStr: string) => {
 
 <style scoped>
 .public-curricula-view {
-  padding: 1.5rem;
-  max-width: 1200px;
-  margin: 0 auto;
+}
+
+.public-curriculum-list {
+  width: 100%;
+}
+
+.public-name {
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.public-name:hover {
+  color: var(--primary-color);
 }
 </style>

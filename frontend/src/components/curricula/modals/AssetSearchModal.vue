@@ -9,23 +9,22 @@
   >
     <div class="space-y-4">
       <div>
-        <InputText
-          v-model="searchTerm"
-          placeholder="Search assets..."
-          class="w-full"
-          @input="handleSearch"
-        >
-          <template #prefix>
-            <i class="pi pi-search"></i>
-          </template>
-        </InputText>
+        <IconField>
+          <InputIcon class="pi pi-search" />
+          <InputText
+            v-model="searchTerm"
+            placeholder="Search assets..."
+            class="w-full"
+            @input="handleSearch"
+          />
+        </IconField>
       </div>
 
       <div v-if="loading" class="text-center py-8">
         <ProgressSpinner style="width: 50px; height: 50px" />
       </div>
 
-      <div v-else-if="assets.length === 0" class="text-center py-8 text-gray-500">
+      <div v-else-if="assets.length === 0" class="text-center py-8 text-slate-400">
         No assets found. Try a different search term.
       </div>
 
@@ -33,7 +32,7 @@
         <div
           v-for="asset in assets"
           :key="asset.id"
-          class="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors flex gap-3"
+          class="p-3 border border-white/10 hover:bg-white/5 cursor-pointer transition-colors flex gap-3"
           @click="handleSelect(asset)"
         >
           <img
@@ -44,10 +43,10 @@
           />
           <div class="flex-1 min-w-0">
             <div class="font-medium">{{ asset.title }}</div>
-            <div v-if="asset.description" class="text-sm text-gray-600 mt-1 truncate">
+            <div v-if="asset.description" class="text-sm text-slate-400 mt-1 truncate">
               {{ asset.description }}
             </div>
-            <div class="text-xs text-gray-400 mt-1">{{ asset.type }}</div>
+            <div class="text-xs text-slate-500 mt-1">{{ asset.type }}</div>
           </div>
         </div>
       </div>
@@ -63,6 +62,8 @@
 import { ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useAssetStore } from '../../../stores/assets'
@@ -83,7 +84,7 @@ const searchTerm = ref('')
 const assets = ref<Asset[]>([])
 const loading = ref(false)
 
-let searchTimeout: NodeJS.Timeout
+let searchTimeout: ReturnType<typeof setTimeout>
 
 const handleSearch = () => {
   clearTimeout(searchTimeout)
@@ -95,7 +96,8 @@ const handleSearch = () => {
 const fetchAssets = async () => {
   loading.value = true
   try {
-    assets.value = await assetStore.fetchAssets({ q: searchTerm.value })
+    await assetStore.fetchAssets({ q: searchTerm.value })
+    assets.value = assetStore.assets
   } catch (error) {
     console.error('Failed to fetch assets:', error)
     assets.value = []

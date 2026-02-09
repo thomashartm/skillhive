@@ -7,6 +7,7 @@ import { useDisciplineStore } from './discipline'
 export const useTagStore = defineStore('tags', () => {
   const tags = ref<Tag[]>([])
   const loading = ref(false)
+  const error = ref<string | null>(null)
 
   async function fetchTags() {
     const api = useApi()
@@ -14,10 +15,14 @@ export const useTagStore = defineStore('tags', () => {
     if (!discipline.activeDisciplineId) return
 
     loading.value = true
+    error.value = null
     try {
       tags.value = await api.get<Tag[]>(
         `/api/v1/tags?disciplineId=${discipline.activeDisciplineId}`
       )
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : 'Failed to load tags'
+      console.error('fetchTags error:', e)
     } finally {
       loading.value = false
     }
@@ -48,5 +53,5 @@ export const useTagStore = defineStore('tags', () => {
     tags.value = tags.value.filter((t) => t.id !== id)
   }
 
-  return { tags, loading, fetchTags, createTag, updateTag, deleteTag }
+  return { tags, loading, error, fetchTags, createTag, updateTag, deleteTag }
 })

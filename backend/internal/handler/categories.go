@@ -26,7 +26,6 @@ func NewCategoryHandler(fs *firestore.Client) *CategoryHandler {
 
 func (h *CategoryHandler) List(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	disciplineID := r.URL.Query().Get("disciplineId")
 	asTree := r.URL.Query().Get("tree") == "true"
 
@@ -37,7 +36,6 @@ func (h *CategoryHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	query := h.fs.Collection("categories").
 		Where("disciplineId", "==", disciplineID).
-		Where("ownerUid", "in", []string{uid, "system"}).
 		OrderBy("name", firestore.Asc)
 
 	iter := query.Documents(ctx)
@@ -80,29 +78,29 @@ func buildCategoryTree(flat []model.Category) []model.Category {
 		byID[flat[i].ID] = &flat[i]
 	}
 
-	var roots []model.Category
+	var rootPtrs []*model.Category
 	for i := range flat {
 		if flat[i].ParentID == nil || *flat[i].ParentID == "" {
-			roots = append(roots, flat[i])
+			rootPtrs = append(rootPtrs, &flat[i])
 		} else {
 			parent, ok := byID[*flat[i].ParentID]
 			if ok {
 				parent.Children = append(parent.Children, flat[i])
 			} else {
-				roots = append(roots, flat[i])
+				rootPtrs = append(rootPtrs, &flat[i])
 			}
 		}
 	}
 
-	if roots == nil {
-		roots = []model.Category{}
+	roots := make([]model.Category, 0, len(rootPtrs))
+	for _, p := range rootPtrs {
+		roots = append(roots, *p)
 	}
 	return roots
 }
 
 func (h *CategoryHandler) Get(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	id := chi.URLParam(r, "id")
 
 	doc, err := h.fs.Collection("categories").Doc(id).Get(ctx)
@@ -122,11 +120,6 @@ func (h *CategoryHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	c.ID = doc.Ref.ID
 
-	if c.OwnerUID != uid && c.OwnerUID != "system" {
-		writeError(w, http.StatusNotFound, "category not found")
-		return
-	}
-
 	writeJSON(w, http.StatusOK, c)
 }
 
@@ -137,6 +130,11 @@ func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	if disciplineID == "" {
 		writeError(w, http.StatusBadRequest, "disciplineId query parameter is required")
+		return
+	}
+
+	if err := middleware.RequireEditor(ctx, disciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "editor role required")
 		return
 	}
 
@@ -174,7 +172,6 @@ func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// Check slug uniqueness
 	existing := h.fs.Collection("categories").
 		Where("disciplineId", "==", disciplineID).
-		Where("ownerUid", "==", uid).
 		Where("slug", "==", slug).
 		Limit(1).
 		Documents(ctx)
@@ -240,10 +237,12 @@ func (h *CategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if existing.OwnerUID != uid {
-		writeError(w, http.StatusNotFound, "category not found")
+	if err := middleware.RequireEditor(ctx, existing.DisciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "editor role required")
 		return
 	}
+
+	_ = uid // kept for ownership transfer below
 
 	var req model.UpdateCategoryRequest
 	if err := decodeJSON(r, &req); err != nil {
@@ -253,6 +252,11 @@ func (h *CategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	updates := []firestore.Update{
 		{Path: "updatedAt", Value: time.Now()},
+	}
+
+	// Transfer ownership from system to user on edit
+	if existing.OwnerUID == "system" {
+		updates = append(updates, firestore.Update{Path: "ownerUid", Value: uid})
 	}
 
 	if req.Name != nil {
@@ -339,7 +343,6 @@ func isCircular(ctx context.Context, fs *firestore.Client, targetID, parentID st
 
 func (h *CategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	id := chi.URLParam(r, "id")
 
 	ref := h.fs.Collection("categories").Doc(id)
@@ -359,8 +362,8 @@ func (h *CategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if existing.OwnerUID != uid {
-		writeError(w, http.StatusNotFound, "category not found")
+	if err := middleware.RequireEditor(ctx, existing.DisciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "editor role required")
 		return
 	}
 

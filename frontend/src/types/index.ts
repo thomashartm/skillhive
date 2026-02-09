@@ -1,5 +1,14 @@
 // All entity interfaces — ported from v1 api.ts with Firestore adaptations
-// Key changes: IDs are strings, ownerUid replaces createdBy, no UserRole
+// Key changes: IDs are strings, ownerUid replaces createdBy
+
+export type UserRole = 'viewer' | 'editor' | 'admin'
+
+export interface UserInfo {
+  uid: string
+  email: string
+  displayName: string
+  roles: Record<string, UserRole>
+}
 
 export interface TimestampFields {
   createdAt: string

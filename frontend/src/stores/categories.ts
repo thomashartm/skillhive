@@ -8,6 +8,7 @@ export const useCategoryStore = defineStore('categories', () => {
   const categories = ref<Category[]>([])
   const tree = ref<CategoryTree[]>([])
   const loading = ref(false)
+  const error = ref<string | null>(null)
 
   async function fetchCategories() {
     const api = useApi()
@@ -15,10 +16,14 @@ export const useCategoryStore = defineStore('categories', () => {
     if (!discipline.activeDisciplineId) return
 
     loading.value = true
+    error.value = null
     try {
       categories.value = await api.get<Category[]>(
         `/api/v1/categories?disciplineId=${discipline.activeDisciplineId}`
       )
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : 'Failed to load categories'
+      console.error('fetchCategories error:', e)
     } finally {
       loading.value = false
     }
@@ -30,10 +35,14 @@ export const useCategoryStore = defineStore('categories', () => {
     if (!discipline.activeDisciplineId) return
 
     loading.value = true
+    error.value = null
     try {
       tree.value = await api.get<CategoryTree[]>(
         `/api/v1/categories?disciplineId=${discipline.activeDisciplineId}&tree=true`
       )
+    } catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : 'Failed to load categories'
+      console.error('fetchTree error:', e)
     } finally {
       loading.value = false
     }
@@ -64,5 +73,5 @@ export const useCategoryStore = defineStore('categories', () => {
     categories.value = categories.value.filter((c) => c.id !== id)
   }
 
-  return { categories, tree, loading, fetchCategories, fetchTree, createCategory, updateCategory, deleteCategory }
+  return { categories, tree, loading, error, fetchCategories, fetchTree, createCategory, updateCategory, deleteCategory }
 })

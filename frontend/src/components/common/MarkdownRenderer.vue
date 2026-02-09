@@ -38,7 +38,6 @@ const renderedHtml = computed(() => {
 .markdown-content :deep(code) {
   background: var(--surface-100);
   padding: 0.125rem 0.25rem;
-  border-radius: 4px;
   font-size: 0.875em;
 }
 </style>

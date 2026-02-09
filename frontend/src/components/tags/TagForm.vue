@@ -42,6 +42,16 @@ const formData = ref<TagFormData>({
 const errors = ref<Record<string, string>>({})
 const colorValue = ref('6B7280') // ColorPicker uses hex without #
 
+const resetForm = () => {
+  formData.value = {
+    name: '',
+    description: '',
+    color: '#6B7280',
+  }
+  colorValue.value = '6B7280'
+  errors.value = {}
+}
+
 // Watch for tag changes (edit mode)
 watch(
   () => props.tag,
@@ -66,16 +76,6 @@ watch(colorValue, (newColor) => {
 })
 
 const dialogTitle = computed(() => (props.tag ? 'Edit Tag' : 'New Tag'))
-
-const resetForm = () => {
-  formData.value = {
-    name: '',
-    description: '',
-    color: '#6B7280',
-  }
-  colorValue.value = '6B7280'
-  errors.value = {}
-}
 
 const validateForm = (): boolean => {
   try {
@@ -150,10 +150,10 @@ const handleClose = () => {
         <div class="flex items-center gap-3">
           <ColorPicker v-model="colorValue" format="hex" />
           <div
-            class="w-20 h-10 rounded border border-gray-300"
-            :style="{ backgroundColor: formData.color }"
+            class="w-20 h-10 border border-white/20"
+            :style="{ backgroundColor: formData.color ?? '#6B7280' }"
           />
-          <span class="text-sm text-gray-600">{{ formData.color }}</span>
+          <span class="text-sm text-slate-400">{{ formData.color }}</span>
         </div>
         <small v-if="errors.color" class="text-red-500">{{ errors.color }}</small>
       </div>

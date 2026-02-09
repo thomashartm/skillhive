@@ -23,10 +23,29 @@ func NewElementHandler(fs *firestore.Client) *ElementHandler {
 	return &ElementHandler{fs: fs}
 }
 
-// verifyCurriculumOwner checks if the authenticated user owns the curriculum
-func (h *ElementHandler) verifyCurriculumOwner(w http.ResponseWriter, r *http.Request) (string, bool) {
+// verifyCurriculumAccess checks if the curriculum exists and the user can view it.
+// Returns (curriculumID, ok).
+func (h *ElementHandler) verifyCurriculumAccess(w http.ResponseWriter, r *http.Request) (string, bool) {
+	curriculumID := chi.URLParam(r, "id")
+
+	doc, err := h.fs.Collection("curricula").Doc(curriculumID).Get(r.Context())
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			writeError(w, http.StatusNotFound, "curriculum not found")
+		} else {
+			writeError(w, http.StatusInternalServerError, "failed to get curriculum")
+		}
+		return "", false
+	}
+
+	_ = doc // curriculum exists, any authenticated user can read
+	return curriculumID, true
+}
+
+// verifyCurriculumEditor checks if the curriculum exists and the user has editor+ role.
+// Returns (curriculumID, ok).
+func (h *ElementHandler) verifyCurriculumEditor(w http.ResponseWriter, r *http.Request) (string, bool) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	curriculumID := chi.URLParam(r, "id")
 
 	doc, err := h.fs.Collection("curricula").Doc(curriculumID).Get(ctx)
@@ -39,14 +58,11 @@ func (h *ElementHandler) verifyCurriculumOwner(w http.ResponseWriter, r *http.Re
 		return "", false
 	}
 
-	ownerUID, _ := doc.DataAt("ownerUid")
-	isPublic, _ := doc.DataAt("isPublic")
+	disciplineID, _ := doc.DataAt("disciplineId")
+	disciplineStr, _ := disciplineID.(string)
 
-	ownerStr, _ := ownerUID.(string)
-	publicBool, _ := isPublic.(bool)
-
-	if ownerStr != uid && !publicBool {
-		writeError(w, http.StatusNotFound, "curriculum not found")
+	if err := middleware.RequireEditor(ctx, disciplineStr); err != nil {
+		writeError(w, http.StatusForbidden, "editor role required")
 		return "", false
 	}
 
@@ -55,7 +71,7 @@ func (h *ElementHandler) verifyCurriculumOwner(w http.ResponseWriter, r *http.Re
 
 func (h *ElementHandler) ListElements(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	curriculumID, ok := h.verifyCurriculumOwner(w, r)
+	curriculumID, ok := h.verifyCurriculumAccess(w, r)
 	if !ok {
 		return
 	}
@@ -92,23 +108,8 @@ func (h *ElementHandler) ListElements(w http.ResponseWriter, r *http.Request) {
 
 func (h *ElementHandler) CreateElement(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
-	curriculumID := chi.URLParam(r, "id")
-
-	// Verify ownership (not just read access)
-	doc, err := h.fs.Collection("curricula").Doc(curriculumID).Get(ctx)
-	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			writeError(w, http.StatusNotFound, "curriculum not found")
-		} else {
-			writeError(w, http.StatusInternalServerError, "failed to get curriculum")
-		}
-		return
-	}
-
-	ownerUID, _ := doc.DataAt("ownerUid")
-	if ownerUID != uid {
-		writeError(w, http.StatusForbidden, "not authorized to modify this curriculum")
+	curriculumID, ok := h.verifyCurriculumEditor(w, r)
+	if !ok {
 		return
 	}
 
@@ -212,28 +213,14 @@ func (h *ElementHandler) CreateElement(w http.ResponseWriter, r *http.Request) {
 
 func (h *ElementHandler) UpdateElement(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
-	curriculumID := chi.URLParam(r, "id")
+	curriculumID, ok := h.verifyCurriculumEditor(w, r)
+	if !ok {
+		return
+	}
 	elemID := chi.URLParam(r, "elemId")
 
-	// Verify ownership
-	cDoc, err := h.fs.Collection("curricula").Doc(curriculumID).Get(ctx)
-	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			writeError(w, http.StatusNotFound, "curriculum not found")
-		} else {
-			writeError(w, http.StatusInternalServerError, "failed to get curriculum")
-		}
-		return
-	}
-	ownerUID, _ := cDoc.DataAt("ownerUid")
-	if ownerUID != uid {
-		writeError(w, http.StatusForbidden, "not authorized")
-		return
-	}
-
 	ref := h.fs.Collection("curricula").Doc(curriculumID).Collection("elements").Doc(elemID)
-	_, err = ref.Get(ctx)
+	_, err := ref.Get(ctx)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
 			writeError(w, http.StatusNotFound, "element not found")
@@ -284,25 +271,11 @@ func (h *ElementHandler) UpdateElement(w http.ResponseWriter, r *http.Request) {
 
 func (h *ElementHandler) DeleteElement(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
-	curriculumID := chi.URLParam(r, "id")
+	curriculumID, ok := h.verifyCurriculumEditor(w, r)
+	if !ok {
+		return
+	}
 	elemID := chi.URLParam(r, "elemId")
-
-	// Verify ownership
-	cDoc, err := h.fs.Collection("curricula").Doc(curriculumID).Get(ctx)
-	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			writeError(w, http.StatusNotFound, "curriculum not found")
-		} else {
-			writeError(w, http.StatusInternalServerError, "failed to get curriculum")
-		}
-		return
-	}
-	ownerUID, _ := cDoc.DataAt("ownerUid")
-	if ownerUID != uid {
-		writeError(w, http.StatusForbidden, "not authorized")
-		return
-	}
 
 	ref := h.fs.Collection("curricula").Doc(curriculumID).Collection("elements").Doc(elemID)
 	if _, err := ref.Delete(ctx); err != nil {
@@ -316,22 +289,8 @@ func (h *ElementHandler) DeleteElement(w http.ResponseWriter, r *http.Request) {
 
 func (h *ElementHandler) ReorderElements(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
-	curriculumID := chi.URLParam(r, "id")
-
-	// Verify ownership
-	cDoc, err := h.fs.Collection("curricula").Doc(curriculumID).Get(ctx)
-	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			writeError(w, http.StatusNotFound, "curriculum not found")
-		} else {
-			writeError(w, http.StatusInternalServerError, "failed to get curriculum")
-		}
-		return
-	}
-	ownerUID, _ := cDoc.DataAt("ownerUid")
-	if ownerUID != uid {
-		writeError(w, http.StatusForbidden, "not authorized")
+	curriculumID, ok := h.verifyCurriculumEditor(w, r)
+	if !ok {
 		return
 	}
 

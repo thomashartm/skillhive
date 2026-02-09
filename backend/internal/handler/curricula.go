@@ -25,11 +25,14 @@ func NewCurriculumHandler(fs *firestore.Client) *CurriculumHandler {
 
 func (h *CurriculumHandler) List(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
+	disciplineID := r.URL.Query().Get("disciplineId")
 
-	query := h.fs.Collection("curricula").
-		Where("ownerUid", "==", uid).
-		OrderBy("updatedAt", firestore.Desc)
+	query := h.fs.Collection("curricula").OrderBy("updatedAt", firestore.Desc)
+	if disciplineID != "" {
+		query = h.fs.Collection("curricula").
+			Where("disciplineId", "==", disciplineID).
+			OrderBy("updatedAt", firestore.Desc)
+	}
 
 	iter := query.Documents(ctx)
 	defer iter.Stop()
@@ -112,7 +115,6 @@ func (h *CurriculumHandler) ListPublic(w http.ResponseWriter, r *http.Request) {
 
 func (h *CurriculumHandler) Get(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	id := chi.URLParam(r, "id")
 
 	doc, err := h.fs.Collection("curricula").Doc(id).Get(ctx)
@@ -132,11 +134,6 @@ func (h *CurriculumHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	c.ID = doc.Ref.ID
 
-	if c.OwnerUID != uid && !c.IsPublic {
-		writeError(w, http.StatusNotFound, "curriculum not found")
-		return
-	}
-
 	writeJSON(w, http.StatusOK, c)
 }
 
@@ -147,6 +144,11 @@ func (h *CurriculumHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	if disciplineID == "" {
 		writeError(w, http.StatusBadRequest, "disciplineId query parameter is required")
+		return
+	}
+
+	if err := middleware.RequireEditor(ctx, disciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "editor role required")
 		return
 	}
 
@@ -199,7 +201,6 @@ func (h *CurriculumHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *CurriculumHandler) Update(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	id := chi.URLParam(r, "id")
 
 	ref := h.fs.Collection("curricula").Doc(id)
@@ -219,8 +220,8 @@ func (h *CurriculumHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if existing.OwnerUID != uid {
-		writeError(w, http.StatusNotFound, "curriculum not found")
+	if err := middleware.RequireEditor(ctx, existing.DisciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "editor role required")
 		return
 	}
 
@@ -273,7 +274,6 @@ func (h *CurriculumHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h *CurriculumHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	id := chi.URLParam(r, "id")
 
 	ref := h.fs.Collection("curricula").Doc(id)
@@ -293,8 +293,8 @@ func (h *CurriculumHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if existing.OwnerUID != uid {
-		writeError(w, http.StatusNotFound, "curriculum not found")
+	if err := middleware.RequireEditor(ctx, existing.DisciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "editor role required")
 		return
 	}
 

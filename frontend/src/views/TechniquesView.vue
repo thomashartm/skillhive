@@ -1,33 +1,30 @@
 <template>
-  <div class="techniques-view p-6">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-bold">Techniques</h1>
+  <div class="techniques-view">
+    <div class="view-header">
+      <h1 class="view-title">Techniques</h1>
       <Button
+        v-if="authStore.canEdit"
         label="New Technique"
         icon="pi pi-plus"
+        size="small"
         @click="openCreateDialog"
       />
     </div>
 
-    <div class="flex gap-4 mb-4">
-      <div class="flex-1">
-        <span class="p-input-icon-left w-full">
-          <i class="pi pi-search" />
-          <InputText
-            v-model="searchTerm"
-            placeholder="Search techniques..."
-            class="w-full"
-          />
-        </span>
-      </div>
+    <div class="filter-bar">
+      <InputText
+        v-model="searchTerm"
+        placeholder="Search techniques..."
+        class="filter-search"
+      />
       <Dropdown
         v-model="selectedCategoryId"
         :options="categoryOptions"
         option-label="label"
         option-value="value"
-        placeholder="Filter by category"
+        placeholder="Category"
         :show-clear="true"
-        class="w-64"
+        class="filter-dropdown"
         @change="handleFilterChange"
       />
       <Dropdown
@@ -35,19 +32,21 @@
         :options="tagOptions"
         option-label="label"
         option-value="value"
-        placeholder="Filter by tag"
+        placeholder="Tag"
         :show-clear="true"
-        class="w-64"
+        class="filter-dropdown"
         @change="handleFilterChange"
       />
     </div>
 
     <TechniqueList
       :techniques="techniques"
+      :categories="categories"
       :loading="loading"
       @edit="handleEdit"
       @delete="handleDelete"
       @view="handleView"
+      @filter-category="handleCategoryFilter"
     />
 
     <TechniqueForm
@@ -59,8 +58,6 @@
       @close="closeDialog"
     />
 
-    <Toast />
-    <ConfirmDialog />
   </div>
 </template>
 
@@ -71,14 +68,13 @@ import { storeToRefs } from 'pinia'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
-import Toast from 'primevue/toast'
-import ConfirmDialog from 'primevue/confirmdialog'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import TechniqueList from '../components/techniques/TechniqueList.vue'
 import TechniqueForm from '../components/techniques/TechniqueForm.vue'
 import { useTechniqueStore } from '../stores/techniques'
 import { useDisciplineStore } from '../stores/discipline'
+import { useAuthStore } from '../stores/auth'
 import { useCategoryStore } from '../stores/categories'
 import { useTagStore } from '../stores/tags'
 import { useDebouncedRef } from '../composables/useDebounce'
@@ -89,6 +85,7 @@ const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
 
+const authStore = useAuthStore()
 const techniqueStore = useTechniqueStore()
 const disciplineStore = useDisciplineStore()
 const categoryStore = useCategoryStore()
@@ -138,6 +135,11 @@ watch(debouncedSearch, () => {
 })
 
 const handleFilterChange = () => {
+  fetchData()
+}
+
+const handleCategoryFilter = (categoryId: string) => {
+  selectedCategoryId.value = categoryId
   fetchData()
 }
 
@@ -235,16 +237,17 @@ watch(activeDisciplineId, () => {
 </script>
 
 <style scoped>
-.techniques-view {
-  max-width: 1400px;
-  margin: 0 auto;
+.filter-bar {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
-.p-input-icon-left {
-  display: block;
+.filter-search {
+  width: 16rem;
 }
 
-.p-input-icon-left > input {
-  width: 100%;
+.filter-dropdown {
+  width: 12rem;
 }
 </style>

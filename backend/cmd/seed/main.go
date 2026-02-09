@@ -44,6 +44,11 @@ func main() {
 
 	fs := clients.Firestore
 
+	// Bootstrap admin if ADMIN_EMAIL is set
+	if adminEmail := os.Getenv("ADMIN_EMAIL"); adminEmail != "" {
+		bootstrapAdmin(ctx, clients, adminEmail)
+	}
+
 	// Seed disciplines
 	disciplines := []seedDiscipline{
 		{
@@ -180,4 +185,32 @@ func seedTechniqueDoc(ctx context.Context, fs *firestore.Client, disciplineID st
 		return
 	}
 	slog.Info("seeded technique", "slug", t.Slug)
+}
+
+func bootstrapAdmin(ctx context.Context, clients *store.FirebaseClients, email string) {
+	u, err := clients.Auth.GetUserByEmail(ctx, email)
+	if err != nil {
+		slog.Error("failed to find admin user by email", "email", email, "error", err)
+		return
+	}
+
+	claims := u.CustomClaims
+	if claims == nil {
+		claims = map[string]interface{}{}
+	}
+
+	// Set admin for all seeded disciplines
+	roles, _ := claims["roles"].(map[string]interface{})
+	if roles == nil {
+		roles = map[string]interface{}{}
+	}
+	roles["bjj"] = "admin"
+	roles["jkd"] = "admin"
+	claims["roles"] = roles
+
+	if err := clients.Auth.SetCustomUserClaims(ctx, u.UID, claims); err != nil {
+		slog.Error("failed to set admin claims", "email", email, "error", err)
+		return
+	}
+	slog.Info("bootstrapped admin user", "email", email, "uid", u.UID)
 }

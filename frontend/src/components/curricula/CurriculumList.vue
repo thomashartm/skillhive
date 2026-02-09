@@ -7,29 +7,29 @@
     :rowsPerPageOptions="[5, 10, 20, 50]"
     sortField="updatedAt"
     :sortOrder="-1"
-    class="p-datatable-sm"
+    class="curriculum-list"
   >
     <template #empty>
-      <div class="text-center py-8 text-gray-500">
+      <div class="text-center py-8 text-slate-400">
         No curricula found. Create your first curriculum to get started.
       </div>
     </template>
 
     <Column field="title" header="Title" :sortable="true" style="min-width: 200px">
       <template #body="{ data }">
-        <div class="font-medium">{{ data.title }}</div>
+        <a class="curriculum-name" @click.prevent="$emit('view', data.id)">{{ data.title }}</a>
       </template>
     </Column>
 
     <Column field="description" header="Description" style="min-width: 300px">
       <template #body="{ data }">
-        <div class="text-sm text-gray-600 truncate">{{ data.description || '-' }}</div>
+        <div class="text-sm text-slate-400 truncate">{{ data.description || '-' }}</div>
       </template>
     </Column>
 
     <Column field="elementCount" header="Elements" :sortable="true" style="width: 100px">
       <template #body="{ data }">
-        <div class="text-center">{{ data.elementCount || 0 }}</div>
+        <div class="text-center text-sm text-slate-400">{{ data.elementCount || 0 }}</div>
       </template>
     </Column>
 
@@ -37,7 +37,7 @@
       <template #body="{ data }">
         <div class="text-center">
           <i v-if="data.isPublic" class="pi pi-globe text-green-600" title="Public"></i>
-          <i v-else class="pi pi-lock text-gray-400" title="Private"></i>
+          <i v-else class="pi pi-lock text-slate-500" title="Private"></i>
         </div>
       </template>
     </Column>
@@ -48,32 +48,24 @@
       </template>
     </Column>
 
-    <Column header="Actions" style="width: 150px">
+    <Column v-if="authStore.canEdit" header="" style="width: 80px">
       <template #body="{ data }">
-        <div class="flex gap-2">
-          <Button
-            icon="pi pi-eye"
-            severity="info"
-            size="small"
-            outlined
-            @click="$emit('view', data.id)"
-            title="View"
-          />
+        <div class="flex gap-1 justify-end">
           <Button
             icon="pi pi-pencil"
             severity="secondary"
             size="small"
-            outlined
+            text
             @click="$emit('edit', data)"
-            title="Edit"
+            v-tooltip.top="'Edit'"
           />
           <Button
             icon="pi pi-trash"
             severity="danger"
             size="small"
-            outlined
+            text
             @click="$emit('delete', data.id)"
-            title="Delete"
+            v-tooltip.top="'Delete'"
           />
         </div>
       </template>
@@ -86,6 +78,9 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import type { Curriculum } from '../../types'
+import { useAuthStore } from '../../stores/auth'
+
+const authStore = useAuthStore()
 
 defineProps<{
   curricula: Curriculum[]
@@ -107,3 +102,20 @@ const formatDate = (dateString: string) => {
   }).format(date)
 }
 </script>
+
+<style scoped>
+.curriculum-list {
+  width: 100%;
+}
+
+.curriculum-name {
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.curriculum-name:hover {
+  color: var(--primary-color);
+}
+</style>

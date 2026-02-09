@@ -11,6 +11,7 @@ import (
 type contextKey string
 
 const UserUIDKey contextKey = "userUID"
+const UserRolesKey contextKey = "userRoles"
 
 func FirebaseAuth(authClient *auth.Client) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -34,6 +35,18 @@ func FirebaseAuth(authClient *auth.Client) func(http.Handler) http.Handler {
 			}
 
 			ctx := context.WithValue(r.Context(), UserUIDKey, token.UID)
+
+			// Parse roles from custom claims
+			roles := make(map[string]string)
+			if claimRoles, ok := token.Claims["roles"].(map[string]interface{}); ok {
+				for k, v := range claimRoles {
+					if roleStr, ok := v.(string); ok {
+						roles[k] = roleStr
+					}
+				}
+			}
+			ctx = context.WithValue(ctx, UserRolesKey, roles)
+
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -42,4 +55,20 @@ func FirebaseAuth(authClient *auth.Client) func(http.Handler) http.Handler {
 func GetUserUID(ctx context.Context) string {
 	uid, _ := ctx.Value(UserUIDKey).(string)
 	return uid
+}
+
+func GetUserRoles(ctx context.Context) map[string]string {
+	roles, _ := ctx.Value(UserRolesKey).(map[string]string)
+	if roles == nil {
+		return map[string]string{}
+	}
+	return roles
+}
+
+func GetUserRole(ctx context.Context, disciplineID string) string {
+	roles := GetUserRoles(ctx)
+	if role, ok := roles[disciplineID]; ok {
+		return role
+	}
+	return "viewer"
 }

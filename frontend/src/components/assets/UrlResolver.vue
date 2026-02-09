@@ -5,7 +5,7 @@
         :model-value="modelValue"
         placeholder="Enter YouTube URL..."
         class="flex-1"
-        @update:model-value="emit('update:modelValue', $event)"
+        @update:model-value="emit('update:modelValue', $event ?? '')"
         @paste="handlePaste"
       />
       <Button
@@ -118,7 +118,7 @@ async function handleResolve() {
   }
 }
 
-function handlePaste(event: ClipboardEvent) {
+function handlePaste(_event: ClipboardEvent) {
   // Auto-resolve after paste with a small delay
   setTimeout(() => {
     if (isValidUrl.value && !loading.value) {

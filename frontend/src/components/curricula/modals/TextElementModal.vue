@@ -49,7 +49,6 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
-import { curriculumElementSchema, type CurriculumElementFormData } from '../../../validation/schemas'
 import type { CurriculumElement } from '../../../types'
 
 const props = defineProps<{

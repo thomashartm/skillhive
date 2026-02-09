@@ -25,7 +25,6 @@ func NewTagHandler(fs *firestore.Client) *TagHandler {
 
 func (h *TagHandler) List(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	disciplineID := r.URL.Query().Get("disciplineId")
 
 	if disciplineID == "" {
@@ -35,7 +34,6 @@ func (h *TagHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	query := h.fs.Collection("tags").
 		Where("disciplineId", "==", disciplineID).
-		Where("ownerUid", "==", uid).
 		OrderBy("name", firestore.Asc)
 
 	iter := query.Documents(ctx)
@@ -67,7 +65,6 @@ func (h *TagHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *TagHandler) Get(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	id := chi.URLParam(r, "id")
 
 	doc, err := h.fs.Collection("tags").Doc(id).Get(ctx)
@@ -88,11 +85,6 @@ func (h *TagHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	t.ID = doc.Ref.ID
 
-	if t.OwnerUID != uid {
-		writeError(w, http.StatusNotFound, "tag not found")
-		return
-	}
-
 	writeJSON(w, http.StatusOK, t)
 }
 
@@ -103,6 +95,11 @@ func (h *TagHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	if disciplineID == "" {
 		writeError(w, http.StatusBadRequest, "disciplineId query parameter is required")
+		return
+	}
+
+	if err := middleware.RequireEditor(ctx, disciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "editor role required")
 		return
 	}
 
@@ -127,10 +124,9 @@ func (h *TagHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	slug := validate.GenerateSlug(req.Name)
 
-	// Check slug uniqueness within discipline for this user
+	// Check slug uniqueness within discipline
 	existing := h.fs.Collection("tags").
 		Where("disciplineId", "==", disciplineID).
-		Where("ownerUid", "==", uid).
 		Where("slug", "==", slug).
 		Limit(1).
 		Documents(ctx)
@@ -195,10 +191,12 @@ func (h *TagHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if existing.OwnerUID != uid {
-		writeError(w, http.StatusNotFound, "tag not found")
+	if err := middleware.RequireEditor(ctx, existing.DisciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "editor role required")
 		return
 	}
+
+	_ = uid // kept for ownership transfer below
 
 	var req model.UpdateTagRequest
 	if err := decodeJSON(r, &req); err != nil {
@@ -208,6 +206,11 @@ func (h *TagHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	updates := []firestore.Update{
 		{Path: "updatedAt", Value: time.Now()},
+	}
+
+	// Transfer ownership from system to user on edit
+	if existing.OwnerUID == "system" {
+		updates = append(updates, firestore.Update{Path: "ownerUid", Value: uid})
 	}
 
 	if req.Name != nil {
@@ -222,7 +225,6 @@ func (h *TagHandler) Update(w http.ResponseWriter, r *http.Request) {
 		if slug != existing.Slug {
 			check := h.fs.Collection("tags").
 				Where("disciplineId", "==", existing.DisciplineID).
-				Where("ownerUid", "==", uid).
 				Where("slug", "==", slug).
 				Limit(1).
 				Documents(ctx)
@@ -275,7 +277,6 @@ func (h *TagHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h *TagHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	id := chi.URLParam(r, "id")
 
 	ref := h.fs.Collection("tags").Doc(id)
@@ -295,8 +296,8 @@ func (h *TagHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if existing.OwnerUID != uid {
-		writeError(w, http.StatusNotFound, "tag not found")
+	if err := middleware.RequireEditor(ctx, existing.DisciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "editor role required")
 		return
 	}
 
