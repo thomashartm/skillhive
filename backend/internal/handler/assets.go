@@ -26,7 +26,6 @@ func NewAssetHandler(fs *firestore.Client) *AssetHandler {
 
 func (h *AssetHandler) List(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	disciplineID := r.URL.Query().Get("disciplineId")
 
 	if disciplineID == "" {
@@ -35,8 +34,7 @@ func (h *AssetHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := h.fs.Collection("assets").
-		Where("disciplineId", "==", disciplineID).
-		Where("ownerUid", "==", uid)
+		Where("disciplineId", "==", disciplineID)
 
 	techniqueID := r.URL.Query().Get("techniqueId")
 	tagID := r.URL.Query().Get("tagId")
@@ -88,6 +86,14 @@ func (h *AssetHandler) List(w http.ResponseWriter, r *http.Request) {
 		}
 		a.ID = doc.Ref.ID
 
+		// Normalize nil slices
+		if a.TechniqueIDs == nil {
+			a.TechniqueIDs = []string{}
+		}
+		if a.TagIDs == nil {
+			a.TagIDs = []string{}
+		}
+
 		// Client-side title search
 		if searchQuery != "" {
 			slug := validate.GenerateSlug(searchQuery)
@@ -105,7 +111,6 @@ func (h *AssetHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *AssetHandler) Get(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	id := chi.URLParam(r, "id")
 
 	doc, err := h.fs.Collection("assets").Doc(id).Get(ctx)
@@ -125,9 +130,12 @@ func (h *AssetHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	a.ID = doc.Ref.ID
 
-	if a.OwnerUID != uid {
-		writeError(w, http.StatusNotFound, "asset not found")
-		return
+	// Normalize nil slices
+	if a.TechniqueIDs == nil {
+		a.TechniqueIDs = []string{}
+	}
+	if a.TagIDs == nil {
+		a.TagIDs = []string{}
 	}
 
 	writeJSON(w, http.StatusOK, a)
@@ -140,6 +148,11 @@ func (h *AssetHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	if disciplineID == "" {
 		writeError(w, http.StatusBadRequest, "disciplineId query parameter is required")
+		return
+	}
+
+	if err := middleware.RequireEditor(ctx, disciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "editor role required")
 		return
 	}
 
@@ -222,7 +235,6 @@ func (h *AssetHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *AssetHandler) Update(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	id := chi.URLParam(r, "id")
 
 	ref := h.fs.Collection("assets").Doc(id)
@@ -242,8 +254,8 @@ func (h *AssetHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if existing.OwnerUID != uid {
-		writeError(w, http.StatusNotFound, "asset not found")
+	if err := middleware.RequireEditor(ctx, existing.DisciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "editor role required")
 		return
 	}
 
@@ -312,13 +324,18 @@ func (h *AssetHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	updated.ID = id
+	if updated.TechniqueIDs == nil {
+		updated.TechniqueIDs = []string{}
+	}
+	if updated.TagIDs == nil {
+		updated.TagIDs = []string{}
+	}
 
 	writeJSON(w, http.StatusOK, updated)
 }
 
 func (h *AssetHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	uid := middleware.GetUserUID(ctx)
 	id := chi.URLParam(r, "id")
 
 	ref := h.fs.Collection("assets").Doc(id)
@@ -338,8 +355,8 @@ func (h *AssetHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if existing.OwnerUID != uid {
-		writeError(w, http.StatusNotFound, "asset not found")
+	if err := middleware.RequireEditor(ctx, existing.DisciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "editor role required")
 		return
 	}
 

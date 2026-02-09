@@ -1,8 +1,8 @@
 <template>
-  <div class="container mx-auto px-4 py-8">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-bold">Curricula</h1>
-      <Button label="New Curriculum" icon="pi pi-plus" @click="showForm = true" />
+  <div class="curricula-view">
+    <div class="view-header">
+      <h1 class="view-title">Curricula</h1>
+      <Button v-if="authStore.canEdit" label="New Curriculum" icon="pi pi-plus" size="small" @click="showForm = true" />
     </div>
 
     <CurriculumList
@@ -20,8 +20,6 @@
       @close="handleCloseForm"
     />
 
-    <Toast />
-    <ConfirmDialog />
   </div>
 </template>
 
@@ -29,19 +27,19 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
-import Toast from 'primevue/toast'
-import ConfirmDialog from 'primevue/confirmdialog'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import CurriculumList from '../components/curricula/CurriculumList.vue'
 import CurriculumForm from '../components/curricula/CurriculumForm.vue'
 import { useCurriculumStore } from '../stores/curricula'
+import { useAuthStore } from '../stores/auth'
 import type { Curriculum } from '../types'
 import type { CurriculumFormData } from '../validation/schemas'
 
 const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
+const authStore = useAuthStore()
 const curriculumStore = useCurriculumStore()
 
 const { curricula, loading, fetchCurricula, createCurriculum, updateCurriculum, deleteCurriculum } = curriculumStore

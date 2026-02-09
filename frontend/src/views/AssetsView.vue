@@ -7,39 +7,38 @@
 
     <template v-else>
       <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-3xl font-bold">Assets</h1>
+      <div class="view-header">
+        <h1 class="view-title">Assets</h1>
         <Button
+          v-if="authStore.canEdit"
           label="New Asset"
           icon="pi pi-plus"
+          size="small"
           @click="handleCreate"
         />
       </div>
 
       <!-- Search -->
-      <div class="mb-6">
+      <div class="mb-4">
         <InputText
           v-model="searchQuery"
           placeholder="Search assets..."
-          class="w-full md:w-96"
-        >
-          <template #prefix>
-            <i class="pi pi-search" />
-          </template>
-        </InputText>
+          class="filter-search"
+        />
       </div>
 
       <!-- Asset List -->
       <AssetList
         :assets="filteredAssets"
+        :techniques="techniques"
+        :tags="tags"
         :loading="loading"
+        @view="handleView"
         @edit="handleEdit"
         @delete="handleDeleteConfirm"
+        @view-technique="handleViewTechnique"
       />
     </template>
-
-    <!-- Delete Confirmation Dialog -->
-    <ConfirmDialog />
   </div>
 </template>
 
@@ -52,19 +51,26 @@ import { useConfirm } from 'primevue/useconfirm'
 import Message from 'primevue/message'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
-import ConfirmDialog from 'primevue/confirmdialog'
 import AssetList from '../components/assets/AssetList.vue'
 import { useAssetStore } from '../stores/assets'
+import { useTechniqueStore } from '../stores/techniques'
+import { useTagStore } from '../stores/tags'
 import { useDisciplineStore } from '../stores/discipline'
+import { useAuthStore } from '../stores/auth'
 import { useDebouncedRef } from '../composables/useDebounce'
 import type { Asset } from '../types'
 
 const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
+const authStore = useAuthStore()
 const assetStore = useAssetStore()
+const techniqueStore = useTechniqueStore()
+const tagStore = useTagStore()
 const disciplineStore = useDisciplineStore()
 const { activeDisciplineId } = storeToRefs(disciplineStore)
+const { techniques } = storeToRefs(techniqueStore)
+const { tags } = storeToRefs(tagStore)
 
 const searchQuery = ref('')
 const debouncedSearch = useDebouncedRef(searchQuery, 300)
@@ -84,25 +90,27 @@ const filteredAssets = computed(() => {
   )
 })
 
-// Fetch assets when component mounts or discipline changes
 watch(activeDisciplineId, async (newId) => {
   if (newId) {
-    await loadAssets()
+    await loadData()
   }
 })
 
 onMounted(() => {
   if (activeDisciplineId.value) {
-    loadAssets()
+    loadData()
   }
 })
 
-async function loadAssets() {
+async function loadData() {
   loading.value = true
   try {
-    await assetStore.fetchAssets()
+    await Promise.all([
+      assetStore.fetchAssets(),
+      techniqueStore.fetchTechniques(),
+      tagStore.fetchTags(),
+    ])
   } catch (error) {
-    console.error('Failed to load assets:', error)
     toast.add({
       severity: 'error',
       summary: 'Error',
@@ -118,8 +126,16 @@ function handleCreate() {
   router.push('/assets/new')
 }
 
+function handleView(asset: Asset) {
+  router.push(`/assets/${asset.id}`)
+}
+
 function handleEdit(asset: Asset) {
   router.push(`/assets/${asset.id}/edit`)
+}
+
+function handleViewTechnique(techniqueId: string) {
+  router.push(`/techniques/${techniqueId}`)
 }
 
 function handleDeleteConfirm(asset: Asset) {
@@ -142,7 +158,6 @@ async function handleDelete(asset: Asset) {
       life: 3000,
     })
   } catch (error) {
-    console.error('Failed to delete asset:', error)
     toast.add({
       severity: 'error',
       summary: 'Error',
@@ -154,9 +169,7 @@ async function handleDelete(asset: Asset) {
 </script>
 
 <style scoped>
-.assets-view {
-  padding: 1.5rem;
-  max-width: 1400px;
-  margin: 0 auto;
+.filter-search {
+  width: 16rem;
 }
 </style>

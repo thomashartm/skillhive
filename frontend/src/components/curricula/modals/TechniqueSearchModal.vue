@@ -9,23 +9,22 @@
   >
     <div class="space-y-4">
       <div>
-        <InputText
-          v-model="searchTerm"
-          placeholder="Search techniques..."
-          class="w-full"
-          @input="handleSearch"
-        >
-          <template #prefix>
-            <i class="pi pi-search"></i>
-          </template>
-        </InputText>
+        <IconField>
+          <InputIcon class="pi pi-search" />
+          <InputText
+            v-model="searchTerm"
+            placeholder="Search techniques..."
+            class="w-full"
+            @input="handleSearch"
+          />
+        </IconField>
       </div>
 
       <div v-if="loading" class="text-center py-8">
         <ProgressSpinner style="width: 50px; height: 50px" />
       </div>
 
-      <div v-else-if="techniques.length === 0" class="text-center py-8 text-gray-500">
+      <div v-else-if="techniques.length === 0" class="text-center py-8 text-slate-400">
         No techniques found. Try a different search term.
       </div>
 
@@ -33,11 +32,11 @@
         <div
           v-for="technique in techniques"
           :key="technique.id"
-          class="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+          class="p-3 border border-white/10 hover:bg-white/5 cursor-pointer transition-colors"
           @click="handleSelect(technique)"
         >
           <div class="font-medium">{{ technique.name }}</div>
-          <div v-if="technique.description" class="text-sm text-gray-600 mt-1">
+          <div v-if="technique.description" class="text-sm text-slate-400 mt-1">
             {{ technique.description }}
           </div>
         </div>
@@ -54,6 +53,8 @@
 import { ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useTechniqueStore } from '../../../stores/techniques'
@@ -74,7 +75,7 @@ const searchTerm = ref('')
 const techniques = ref<Technique[]>([])
 const loading = ref(false)
 
-let searchTimeout: NodeJS.Timeout
+let searchTimeout: ReturnType<typeof setTimeout>
 
 const handleSearch = () => {
   clearTimeout(searchTimeout)
@@ -86,7 +87,8 @@ const handleSearch = () => {
 const fetchTechniques = async () => {
   loading.value = true
   try {
-    techniques.value = await techniqueStore.fetchTechniques({ q: searchTerm.value })
+    await techniqueStore.fetchTechniques({ q: searchTerm.value })
+    techniques.value = techniqueStore.techniques
   } catch (error) {
     console.error('Failed to fetch techniques:', error)
     techniques.value = []

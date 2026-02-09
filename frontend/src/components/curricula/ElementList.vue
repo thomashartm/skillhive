@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-3">
-    <div v-if="elements.length === 0" class="text-center py-8 text-gray-500 border-2 border-dashed rounded-lg">
+    <div v-if="elements.length === 0" class="text-center py-8 text-slate-400 border-2 border-dashed border-white/10">
       No elements yet. Add techniques, assets, or text notes to build your curriculum.
     </div>
     <div
@@ -67,6 +67,7 @@ const handleDrop = (dropIndex: number) => {
 
   const items = [...sortedElements.value]
   const draggedItem = items[draggedIndex.value]
+  if (!draggedItem) return
 
   items.splice(draggedIndex.value, 1)
   items.splice(dropIndex, 0, draggedItem)

@@ -4,10 +4,12 @@ import { storeToRefs } from 'pinia'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+import Message from 'primevue/message'
 import TagList from '../components/tags/TagList.vue'
 import TagForm from '../components/tags/TagForm.vue'
 import { useTagStore } from '../stores/tags'
 import { useDisciplineStore } from '../stores/discipline'
+import { useAuthStore } from '../stores/auth'
 import type { Tag } from '../types'
 import type { TagFormData } from '../validation/schemas'
 
@@ -22,9 +24,10 @@ import type { TagFormData } from '../validation/schemas'
  * - Auto-refresh when discipline changes
  */
 
+const authStore = useAuthStore()
 const tagStore = useTagStore()
 const disciplineStore = useDisciplineStore()
-const { tags, loading } = storeToRefs(tagStore)
+const { tags, loading, error } = storeToRefs(tagStore)
 const { activeDisciplineId } = storeToRefs(disciplineStore)
 
 const toast = useToast()
@@ -134,11 +137,13 @@ const handleCloseDialog = () => {
 <template>
   <div class="tags-view">
     <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-3xl font-bold text-gray-900">Tags</h2>
+    <div class="view-header">
+      <h1 class="view-title">Tags</h1>
       <Button
+        v-if="authStore.canEdit"
         label="New Tag"
         icon="pi pi-plus"
+        size="small"
         @click="handleNew"
         :disabled="!activeDisciplineId"
       />
@@ -147,13 +152,18 @@ const handleCloseDialog = () => {
     <!-- No discipline selected message -->
     <div
       v-if="!activeDisciplineId"
-      class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6"
+      class="bg-yellow-900/20 border border-yellow-700/40 p-4 mb-6"
     >
       <div class="flex items-center gap-2">
-        <i class="pi pi-info-circle text-yellow-600"></i>
-        <span class="text-yellow-800">Please select a discipline to view tags.</span>
+        <i class="pi pi-info-circle text-yellow-400"></i>
+        <span class="text-yellow-300">Please select a discipline to view tags.</span>
       </div>
     </div>
+
+    <!-- Error state -->
+    <Message v-if="error" severity="error" :closable="false" class="mb-4">
+      {{ error }}
+    </Message>
 
     <!-- Tag list -->
     <TagList
@@ -176,8 +186,5 @@ const handleCloseDialog = () => {
 
 <style scoped>
 .tags-view {
-  padding: 1.5rem;
-  max-width: 1200px;
-  margin: 0 auto;
 }
 </style>

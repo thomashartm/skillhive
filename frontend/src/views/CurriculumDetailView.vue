@@ -1,12 +1,12 @@
 <template>
-  <div class="container mx-auto px-4 py-8">
-    <div v-if="loading" class="py-6">
+  <div class="curriculum-detail-view">
+    <div v-if="loading">
       <div class="flex items-center gap-3 mb-4">
         <Skeleton shape="circle" size="2.5rem" />
         <Skeleton width="50%" height="2rem" />
       </div>
       <Skeleton width="80%" height="1rem" class="mb-3" />
-      <Skeleton width="5rem" height="1.5rem" border-radius="1rem" class="mb-6" />
+      <Skeleton width="5rem" height="1.5rem" class="mb-6" />
       <Skeleton width="8rem" height="2.5rem" class="mb-6" />
       <Skeleton width="100%" height="4rem" class="mb-3" />
       <Skeleton width="100%" height="4rem" class="mb-3" />
@@ -24,8 +24,9 @@
               @click="router.push('/curricula')"
               title="Back to Curricula"
             />
-            <h1 class="text-3xl font-bold">{{ curriculum.title }}</h1>
+            <h1 class="view-title">{{ curriculum.title }}</h1>
             <Button
+              v-if="authStore.canEdit"
               icon="pi pi-pencil"
               severity="secondary"
               text
@@ -33,7 +34,7 @@
               title="Edit Curriculum"
             />
           </div>
-          <p v-if="curriculum.description" class="text-gray-600 mb-2">
+          <p v-if="curriculum.description" class="text-slate-400 mb-2">
             {{ curriculum.description }}
           </p>
           <Tag
@@ -43,7 +44,7 @@
         </div>
       </div>
 
-      <div class="mb-6">
+      <div v-if="authStore.canEdit" class="mb-6">
         <AddElementMenu
           @add-technique="showTechniqueModal = true"
           @add-asset="showAssetModal = true"
@@ -60,14 +61,14 @@
       <ElementList
         v-else
         :elements="elements"
-        :editable="true"
+        :editable="authStore.canEdit"
         @reorder="handleReorder"
         @edit-element="handleEditElement"
         @delete-element="handleDeleteElement"
       />
     </div>
 
-    <div v-else class="text-center py-12 text-gray-500">
+    <div v-else class="text-center py-12 text-slate-400">
       Curriculum not found
     </div>
 
@@ -97,8 +98,6 @@
       @close="handleCloseTextModal"
     />
 
-    <Toast />
-    <ConfirmDialog />
   </div>
 </template>
 
@@ -107,8 +106,6 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
-import Toast from 'primevue/toast'
-import ConfirmDialog from 'primevue/confirmdialog'
 import Skeleton from 'primevue/skeleton'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -119,6 +116,7 @@ import TechniqueSearchModal from '../components/curricula/modals/TechniqueSearch
 import AssetSearchModal from '../components/curricula/modals/AssetSearchModal.vue'
 import TextElementModal from '../components/curricula/modals/TextElementModal.vue'
 import { useCurriculumStore } from '../stores/curricula'
+import { useAuthStore } from '../stores/auth'
 import type { Curriculum, CurriculumElement, Technique, Asset } from '../types'
 import type { CurriculumFormData } from '../validation/schemas'
 
@@ -126,6 +124,7 @@ const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
+const authStore = useAuthStore()
 const curriculumStore = useCurriculumStore()
 
 const {

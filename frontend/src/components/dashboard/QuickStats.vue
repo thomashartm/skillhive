@@ -4,11 +4,11 @@
     <Card>
       <template #content>
         <div class="flex items-center gap-4">
-          <div class="bg-blue-100 p-3 rounded-full">
-            <i class="pi pi-bookmark text-blue-600 text-2xl"></i>
+          <div class="bg-blue-900/40 p-3">
+            <i class="pi pi-bookmark text-blue-400 text-2xl"></i>
           </div>
           <div>
-            <div class="text-gray-500 text-sm">Techniques</div>
+            <div class="text-slate-400 text-sm">Techniques</div>
             <div class="text-3xl font-bold">{{ techniqueCount }}</div>
           </div>
         </div>
@@ -19,11 +19,11 @@
     <Card>
       <template #content>
         <div class="flex items-center gap-4">
-          <div class="bg-purple-100 p-3 rounded-full">
-            <i class="pi pi-video text-purple-600 text-2xl"></i>
+          <div class="bg-purple-900/40 p-3">
+            <i class="pi pi-video text-purple-400 text-2xl"></i>
           </div>
           <div>
-            <div class="text-gray-500 text-sm">Assets</div>
+            <div class="text-slate-400 text-sm">Assets</div>
             <div class="text-3xl font-bold">{{ assetCount }}</div>
           </div>
         </div>
@@ -34,11 +34,11 @@
     <Card>
       <template #content>
         <div class="flex items-center gap-4">
-          <div class="bg-green-100 p-3 rounded-full">
-            <i class="pi pi-list text-green-600 text-2xl"></i>
+          <div class="bg-green-900/40 p-3">
+            <i class="pi pi-list text-green-400 text-2xl"></i>
           </div>
           <div>
-            <div class="text-gray-500 text-sm">Curricula</div>
+            <div class="text-slate-400 text-sm">Curricula</div>
             <div class="text-3xl font-bold">{{ curriculumCount }}</div>
           </div>
         </div>

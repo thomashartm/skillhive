@@ -1,23 +1,23 @@
 <template>
-  <div class="technique-detail-view p-6">
-    <div v-if="loading" class="max-w-4xl mx-auto">
+  <div class="technique-detail-view">
+    <div v-if="loading">
       <div class="flex items-center gap-4 mb-6">
         <Skeleton shape="circle" size="3rem" />
         <Skeleton width="60%" height="2rem" />
       </div>
-      <div class="p-4 border rounded-lg">
+      <div class="p-4 border border-white/10">
         <Skeleton width="100%" height="1rem" class="mb-3" />
         <Skeleton width="80%" height="1rem" class="mb-3" />
         <Skeleton width="90%" height="1rem" class="mb-6" />
         <div class="flex gap-2">
-          <Skeleton width="5rem" height="1.5rem" border-radius="1rem" />
-          <Skeleton width="5rem" height="1.5rem" border-radius="1rem" />
-          <Skeleton width="5rem" height="1.5rem" border-radius="1rem" />
+          <Skeleton width="5rem" height="1.5rem" />
+          <Skeleton width="5rem" height="1.5rem" />
+          <Skeleton width="5rem" height="1.5rem" />
         </div>
       </div>
     </div>
 
-    <div v-else-if="technique" class="max-w-4xl mx-auto">
+    <div v-else-if="technique">
       <div class="flex items-center gap-4 mb-6">
         <Button
           icon="pi pi-arrow-left"
@@ -27,14 +27,16 @@
           @click="goBack"
           aria-label="Go back"
         />
-        <h1 class="text-3xl font-bold flex-1">{{ technique.name }}</h1>
+        <h1 class="view-title flex-1">{{ technique.name }}</h1>
         <Button
+          v-if="authStore.canEdit"
           icon="pi pi-pencil"
           label="Edit"
           severity="info"
           @click="openEditDialog"
         />
         <Button
+          v-if="authStore.canEdit"
           icon="pi pi-trash"
           label="Delete"
           severity="danger"
@@ -51,7 +53,7 @@
                 {{ technique.description }}
               </div>
             </div>
-            <div v-else class="text-gray-500 italic">
+            <div v-else class="text-slate-400 italic">
               No description available
             </div>
 
@@ -70,7 +72,7 @@
               v-else-if="technique.categoryIds && technique.categoryIds.length > 0"
             >
               <h3 class="text-lg font-semibold mb-2">Categories</h3>
-              <div class="text-sm text-gray-600">
+              <div class="text-sm text-slate-400">
                 {{ technique.categoryIds.length }} categories assigned
               </div>
             </div>
@@ -88,12 +90,12 @@
             </div>
             <div v-else-if="technique.tagIds && technique.tagIds.length > 0">
               <h3 class="text-lg font-semibold mb-2">Tags</h3>
-              <div class="text-sm text-gray-600">
+              <div class="text-sm text-slate-400">
                 {{ technique.tagIds.length }} tags assigned
               </div>
             </div>
 
-            <div class="flex gap-4 text-sm text-gray-500 mt-4 pt-4 border-t">
+            <div class="flex gap-4 text-sm text-slate-400 mt-4 pt-4 border-t border-white/10">
               <div>
                 <span class="font-semibold">Created:</span>
                 {{ formatDate(technique.createdAt) }}
@@ -109,7 +111,7 @@
     </div>
 
     <div v-else class="text-center py-12">
-      <p class="text-xl text-gray-500">Technique not found</p>
+      <p class="text-xl text-slate-400">Technique not found</p>
       <Button
         label="Go back"
         severity="secondary"
@@ -127,8 +129,6 @@
       @close="closeEditDialog"
     />
 
-    <Toast />
-    <ConfirmDialog />
   </div>
 </template>
 
@@ -140,14 +140,13 @@ import Button from 'primevue/button'
 import Card from 'primevue/card'
 import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
-import Toast from 'primevue/toast'
-import ConfirmDialog from 'primevue/confirmdialog'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import TechniqueForm from '../components/techniques/TechniqueForm.vue'
 import { useTechniqueStore } from '../stores/techniques'
 import { useCategoryStore } from '../stores/categories'
 import { useTagStore } from '../stores/tags'
+import { useAuthStore } from '../stores/auth'
 import type { Technique } from '../types'
 import type { TechniqueFormData } from '../validation/schemas'
 
@@ -156,6 +155,7 @@ const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
 
+const authStore = useAuthStore()
 const techniqueStore = useTechniqueStore()
 const categoryStore = useCategoryStore()
 const tagStore = useTagStore()
@@ -271,12 +271,10 @@ onMounted(async () => {
 
 <style scoped>
 .technique-detail-view {
-  max-width: 1400px;
-  margin: 0 auto;
 }
 
 .prose {
-  color: #374151;
+  color: #cbd5e1;
   line-height: 1.75;
 }
 </style>

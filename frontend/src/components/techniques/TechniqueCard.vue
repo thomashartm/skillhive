@@ -33,16 +33,16 @@
     </template>
     <template #content>
       <div class="flex flex-col gap-3">
-        <p class="text-sm text-gray-600 line-clamp-3">
+        <p class="text-sm text-slate-400 line-clamp-3">
           {{ technique.description || 'No description' }}
         </p>
         <div class="flex gap-4 text-sm">
           <div class="flex items-center gap-2">
-            <i class="pi pi-folder text-gray-500"></i>
+            <i class="pi pi-folder text-slate-400"></i>
             <span>{{ technique.categoryIds?.length || 0 }} categories</span>
           </div>
           <div class="flex items-center gap-2">
-            <i class="pi pi-tags text-gray-500"></i>
+            <i class="pi pi-tags text-slate-400"></i>
             <span>{{ technique.tagIds?.length || 0 }} tags</span>
           </div>
         </div>

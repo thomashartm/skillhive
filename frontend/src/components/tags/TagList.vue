@@ -3,6 +3,9 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import type { Tag } from '../../types'
+import { useAuthStore } from '../../stores/auth'
+
+const authStore = useAuthStore()
 
 /**
  * TagList - DataTable displaying all tags
@@ -45,60 +48,56 @@ const handleDelete = (tag: Tag) => {
     paginator
     :rows="10"
     data-key="id"
-    class="p-datatable-sm"
+    class="tag-list"
   >
     <template #empty>
-      <div class="text-center py-8 text-gray-500">
+      <div class="text-center py-8 text-slate-400">
         No tags found. Create your first tag to get started.
       </div>
     </template>
 
     <Column field="name" header="Name" sortable>
       <template #body="{ data }">
-        <span class="font-semibold">{{ data.name }}</span>
+        <span class="text-sm">{{ data.name }}</span>
       </template>
     </Column>
 
-    <Column field="color" header="Color" style="width: 120px">
+    <Column field="color" header="Color" style="width: 60px">
       <template #body="{ data }">
-        <div class="flex items-center gap-2">
-          <div
-            class="w-6 h-6 rounded-full border border-gray-300"
-            :style="{ backgroundColor: data.color || '#6B7280' }"
-          />
-          <span class="text-xs text-gray-600">{{ data.color || '#6B7280' }}</span>
-        </div>
+        <div
+          class="w-5 h-5 border border-white/20"
+          :style="{ backgroundColor: data.color || '#6B7280' }"
+          v-tooltip.top="data.color || '#6B7280'"
+        />
       </template>
     </Column>
 
     <Column field="description" header="Description">
       <template #body="{ data }">
-        <span class="text-gray-600 text-sm">
+        <span class="text-slate-400 text-sm">
           {{ data.description || '—' }}
         </span>
       </template>
     </Column>
 
-    <Column header="Actions" style="width: 120px">
+    <Column v-if="authStore.canEdit" header="" style="width: 80px">
       <template #body="{ data }">
-        <div class="flex gap-2">
+        <div class="flex gap-1 justify-end">
           <Button
             icon="pi pi-pencil"
-            severity="info"
+            severity="secondary"
             size="small"
             text
-            rounded
             @click="handleEdit(data)"
-            v-tooltip.top="'Edit tag'"
+            v-tooltip.top="'Edit'"
           />
           <Button
             icon="pi pi-trash"
             severity="danger"
             size="small"
             text
-            rounded
             @click="handleDelete(data)"
-            v-tooltip.top="'Delete tag'"
+            v-tooltip.top="'Delete'"
           />
         </div>
       </template>
@@ -107,5 +106,7 @@ const handleDelete = (tag: Tag) => {
 </template>
 
 <style scoped>
-/* PrimeVue DataTable handles styling */
+.tag-list {
+  width: 100%;
+}
 </style>

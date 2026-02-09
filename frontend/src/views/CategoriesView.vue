@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+import Message from 'primevue/message'
 import CategoryTree from '../components/categories/CategoryTree.vue'
 import CategoryForm from '../components/categories/CategoryForm.vue'
 import { useCategoryStore } from '../stores/categories'
 import { useDisciplineStore } from '../stores/discipline'
+import { useAuthStore } from '../stores/auth'
 import type { Category } from '../types'
 import type { CategoryFormData } from '../validation/schemas'
 
@@ -23,9 +26,11 @@ import type { CategoryFormData } from '../validation/schemas'
  * - Prevents circular references in parent selection
  */
 
+const router = useRouter()
+const authStore = useAuthStore()
 const categoryStore = useCategoryStore()
 const disciplineStore = useDisciplineStore()
-const { categories, tree, loading } = storeToRefs(categoryStore)
+const { categories, tree, loading, error } = storeToRefs(categoryStore)
 const { activeDisciplineId } = storeToRefs(disciplineStore)
 
 const toast = useToast()
@@ -145,6 +150,11 @@ const handleDelete = (category: Category) => {
   })
 }
 
+// Navigate to category detail
+const handleView = (category: Category) => {
+  router.push(`/categories/${category.id}`)
+}
+
 // Close dialog
 const handleCloseDialog = () => {
   showDialog.value = false
@@ -155,11 +165,13 @@ const handleCloseDialog = () => {
 <template>
   <div class="categories-view">
     <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-3xl font-bold text-gray-900">Categories</h2>
+    <div class="view-header">
+      <h1 class="view-title">Categories</h1>
       <Button
+        v-if="authStore.canEdit"
         label="New Category"
         icon="pi pi-plus"
+        size="small"
         @click="handleNew"
         :disabled="!activeDisciplineId"
       />
@@ -168,13 +180,18 @@ const handleCloseDialog = () => {
     <!-- No discipline selected message -->
     <div
       v-if="!activeDisciplineId"
-      class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6"
+      class="bg-yellow-900/20 border border-yellow-700/40 p-4 mb-6"
     >
       <div class="flex items-center gap-2">
-        <i class="pi pi-info-circle text-yellow-600"></i>
-        <span class="text-yellow-800">Please select a discipline to view categories.</span>
+        <i class="pi pi-info-circle text-yellow-400"></i>
+        <span class="text-yellow-300">Please select a discipline to view categories.</span>
       </div>
     </div>
+
+    <!-- Error state -->
+    <Message v-if="error" severity="error" :closable="false" class="mb-4">
+      {{ error }}
+    </Message>
 
     <!-- Category tree -->
     <CategoryTree
@@ -183,6 +200,7 @@ const handleCloseDialog = () => {
       :loading="loading"
       @edit="handleEdit"
       @delete="handleDelete"
+      @view="handleView"
     />
 
     <!-- Category form dialog -->
@@ -198,8 +216,5 @@ const handleCloseDialog = () => {
 
 <style scoped>
 .categories-view {
-  padding: 1.5rem;
-  max-width: 1200px;
-  margin: 0 auto;
 }
 </style>

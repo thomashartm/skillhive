@@ -1,21 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import Tree from 'primevue/tree'
 import Button from 'primevue/button'
-import type { TreeNode } from 'primevue/tree'
 import type { CategoryTree } from '../../types'
+import { useAuthStore } from '../../stores/auth'
 
-/**
- * CategoryTree - Tree component displaying hierarchical categories
- *
- * @example
- * <CategoryTree
- *   :categories="tree"
- *   :loading="loading"
- *   @edit="handleEdit"
- *   @delete="handleDelete"
- * />
- */
+const authStore = useAuthStore()
 
 interface Props {
   categories: CategoryTree[]
@@ -27,104 +16,136 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   edit: [category: CategoryTree]
   delete: [category: CategoryTree]
+  view: [category: CategoryTree]
 }>()
 
-/**
- * Transform CategoryTree to PrimeVue TreeNode format
- * Recursively maps children and attaches original category data
- */
-const treeNodes = computed<TreeNode[]>(() => {
-  const transform = (category: CategoryTree): TreeNode => {
-    return {
-      key: category.id,
-      label: category.name,
-      data: category, // Attach original category for actions
-      children: category.children?.map(transform) || [],
+interface FlatRow {
+  category: CategoryTree
+  depth: number
+  hasChildren: boolean
+}
+
+const flatRows = computed<FlatRow[]>(() => {
+  const rows: FlatRow[] = []
+  const walk = (list: CategoryTree[], depth: number) => {
+    for (const cat of list) {
+      const hasChildren = cat.children && cat.children.length > 0
+      rows.push({ category: cat, depth, hasChildren })
+      if (hasChildren) {
+        walk(cat.children, depth + 1)
+      }
     }
   }
-
-  return props.categories.map(transform)
+  walk(props.categories, 0)
+  return rows
 })
-
-const handleEdit = (node: TreeNode) => {
-  if (node.data) {
-    emit('edit', node.data)
-  }
-}
-
-const handleDelete = (node: TreeNode) => {
-  if (node.data) {
-    emit('delete', node.data)
-  }
-}
 </script>
 
 <template>
-  <div class="category-tree">
-    <Tree
-      v-if="!loading && treeNodes.length > 0"
-      :value="treeNodes"
-      class="w-full"
-    >
-      <template #default="{ node }">
-        <div class="flex items-center justify-between w-full pr-2">
-          <span class="font-medium">{{ node.label }}</span>
-          <div class="flex gap-1">
+  <div class="category-list">
+    <!-- Rows -->
+    <template v-if="!loading && flatRows.length > 0">
+      <div
+        v-for="row in flatRows"
+        :key="row.category.id"
+        class="cat-row"
+        :class="{ 'cat-row-alt': flatRows.indexOf(row) % 2 === 1 }"
+      >
+        <div class="cat-row-inner" :style="{ paddingLeft: (row.depth * 1.5) + 'rem' }">
+          <i
+            class="pi text-xs text-slate-500"
+            :class="row.hasChildren ? 'pi-folder' : 'pi-file'"
+          ></i>
+          <div class="cat-info" @click="emit('view', row.category)">
+            <span class="cat-name">{{ row.category.name }}</span>
+            <span v-if="row.category.description" class="cat-desc">{{ row.category.description }}</span>
+          </div>
+          <div v-if="authStore.canEdit" class="cat-actions">
             <Button
               icon="pi pi-pencil"
-              severity="info"
+              severity="secondary"
               size="small"
               text
-              rounded
-              @click.stop="handleEdit(node)"
-              v-tooltip.top="'Edit category'"
+              @click.stop="emit('edit', row.category)"
+              v-tooltip.top="'Edit'"
             />
             <Button
               icon="pi pi-trash"
               severity="danger"
               size="small"
               text
-              rounded
-              @click.stop="handleDelete(node)"
-              v-tooltip.top="'Delete category'"
+              @click.stop="emit('delete', row.category)"
+              v-tooltip.top="'Delete'"
             />
           </div>
         </div>
-      </template>
-    </Tree>
+      </div>
+    </template>
 
     <!-- Loading state -->
-    <div
-      v-if="loading"
-      class="flex items-center justify-center py-12 text-gray-500"
-    >
+    <div v-if="loading" class="flex items-center justify-center py-12 text-slate-400">
       <i class="pi pi-spin pi-spinner text-2xl"></i>
       <span class="ml-3">Loading categories...</span>
     </div>
 
     <!-- Empty state -->
     <div
-      v-if="!loading && treeNodes.length === 0"
-      class="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300"
+      v-if="!loading && flatRows.length === 0"
+      class="text-center py-8 text-slate-400"
     >
-      <i class="pi pi-folder-open text-4xl mb-3 block"></i>
-      <p class="text-lg font-medium">No categories found</p>
-      <p class="text-sm mt-1">Create your first category to get started.</p>
+      No categories found. Create your first category to get started.
     </div>
   </div>
 </template>
 
 <style scoped>
-.category-tree {
-  min-height: 200px;
+.cat-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-/* Override PrimeVue Tree to allow full-width action buttons */
-:deep(.p-tree-node-content) {
-  width: 100%;
+.cat-row-alt {
+  background: rgba(255, 255, 255, 0.02);
 }
 
-:deep(.p-tree-node-label) {
-  width: 100%;
+.cat-row-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  min-height: 2.5rem;
+}
+
+.cat-info {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.cat-info:hover .cat-name {
+  color: var(--primary-color);
+}
+
+.cat-name {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: #e2e8f0;
+  transition: color 0.15s ease;
+}
+
+.cat-desc {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cat-actions {
+  display: flex;
+  gap: 0.125rem;
+  flex-shrink: 0;
 }
 </style>

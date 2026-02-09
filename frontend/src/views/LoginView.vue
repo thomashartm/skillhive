@@ -13,18 +13,24 @@ const route = useRoute()
 
 const email = ref('')
 const password = ref('')
+const displayName = ref('')
 const error = ref('')
 const loading = ref(false)
+const isRegister = ref(false)
 
-async function handleEmailLogin() {
+async function handleSubmit() {
   error.value = ''
   loading.value = true
   try {
-    await authStore.loginWithEmail(email.value, password.value)
+    if (isRegister.value) {
+      await authStore.register(email.value, password.value, displayName.value || undefined)
+    } else {
+      await authStore.loginWithEmail(email.value, password.value)
+    }
     const redirect = (route.query.redirect as string) || '/'
     router.push(redirect)
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Login failed'
+    error.value = e instanceof Error ? e.message : (isRegister.value ? 'Registration failed' : 'Login failed')
   } finally {
     loading.value = false
   }
@@ -49,13 +55,23 @@ async function handleGoogleLogin() {
   <div class="login-container">
     <div class="login-card">
       <h1 class="login-title">SkillHive</h1>
-      <p class="login-subtitle">Manage your training curriculum</p>
+      <p class="login-subtitle">{{ isRegister ? 'Create your account' : 'Manage your training curriculum' }}</p>
 
       <Message v-if="error" severity="error" :closable="false" class="mb-3">
         {{ error }}
       </Message>
 
-      <form @submit.prevent="handleEmailLogin" class="login-form">
+      <form @submit.prevent="handleSubmit" class="login-form">
+        <div v-if="isRegister" class="field">
+          <label for="displayName">Display Name</label>
+          <InputText
+            id="displayName"
+            v-model="displayName"
+            placeholder="Enter your name"
+            class="w-full"
+          />
+        </div>
+
         <div class="field">
           <label for="email">Email</label>
           <InputText
@@ -73,9 +89,9 @@ async function handleGoogleLogin() {
           <Password
             id="password"
             v-model="password"
-            placeholder="Enter your password"
+            :placeholder="isRegister ? 'Choose a password' : 'Enter your password'"
             class="w-full"
-            :feedback="false"
+            :feedback="isRegister"
             toggleMask
             required
           />
@@ -83,12 +99,19 @@ async function handleGoogleLogin() {
 
         <Button
           type="submit"
-          label="Sign In"
-          icon="pi pi-sign-in"
+          :label="isRegister ? 'Create Account' : 'Sign In'"
+          :icon="isRegister ? 'pi pi-user-plus' : 'pi pi-sign-in'"
           class="w-full"
           :loading="loading"
         />
       </form>
+
+      <p class="toggle-text">
+        {{ isRegister ? 'Already have an account?' : "Don't have an account?" }}
+        <a class="toggle-link" @click.prevent="isRegister = !isRegister; error = ''">
+          {{ isRegister ? 'Sign in' : 'Register' }}
+        </a>
+      </p>
 
       <div class="divider">
         <span>or</span>
@@ -113,16 +136,15 @@ async function handleGoogleLogin() {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: var(--surface-50);
+  background: #0a0a0a;
 }
 
 .login-card {
-  background: var(--surface-0);
-  border-radius: 12px;
+  background: #111;
   padding: 2.5rem;
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .login-title {
@@ -154,6 +176,23 @@ async function handleGoogleLogin() {
 .field label {
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+.toggle-text {
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--text-color-secondary);
+  margin: 1rem 0 0;
+}
+
+.toggle-link {
+  color: var(--primary-color);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.toggle-link:hover {
+  text-decoration: underline;
 }
 
 .divider {

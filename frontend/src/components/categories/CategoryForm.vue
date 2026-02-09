@@ -84,6 +84,15 @@ const parentOptions = computed(() => {
   ]
 })
 
+const resetForm = () => {
+  formData.value = {
+    name: '',
+    description: '',
+    parentId: null,
+  }
+  errors.value = {}
+}
+
 // Watch for category changes (edit mode)
 watch(
   () => props.category,
@@ -102,15 +111,6 @@ watch(
 )
 
 const dialogTitle = computed(() => (props.category ? 'Edit Category' : 'New Category'))
-
-const resetForm = () => {
-  formData.value = {
-    name: '',
-    description: '',
-    parentId: null,
-  }
-  errors.value = {}
-}
 
 const validateForm = (): boolean => {
   try {
@@ -191,7 +191,7 @@ const handleClose = () => {
           placeholder="Select parent category"
           class="w-full"
         />
-        <small class="text-gray-500">
+        <small class="text-slate-400">
           Leave empty to create a top-level category
         </small>
         <small v-if="errors.parentId" class="text-red-500">{{ errors.parentId }}</small>

@@ -4,7 +4,7 @@
       <h2 class="text-xl font-semibold">Recent Curricula</h2>
     </template>
     <template #content>
-      <div v-if="curricula.length === 0" class="text-center py-8 text-gray-500">
+      <div v-if="curricula.length === 0" class="text-center py-8 text-slate-400">
         <i class="pi pi-inbox text-4xl mb-4"></i>
         <p>No curricula yet. Create your first curriculum!</p>
       </div>
@@ -12,16 +12,16 @@
         <div
           v-for="curriculum in curricula"
           :key="curriculum.id"
-          class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+          class="border border-white/10 p-4 hover:bg-white/5 cursor-pointer transition-colors"
           @click="handleView(curriculum)"
         >
           <div class="flex items-start justify-between">
-            <div class="flex-1">
-              <h3 class="font-semibold text-lg mb-1">{{ curriculum.title }}</h3>
-              <p v-if="curriculum.description" class="text-gray-600 text-sm mb-2">
+            <div class="flex-1 min-w-0">
+              <h3 class="font-semibold text-lg mb-1 truncate">{{ curriculum.title }}</h3>
+              <p v-if="curriculum.description" class="text-slate-400 text-sm mb-2 truncate">
                 {{ curriculum.description }}
               </p>
-              <div class="flex items-center gap-3 text-sm text-gray-500">
+              <div class="flex items-center gap-3 text-sm text-slate-500">
                 <span v-if="curriculum.elementCount !== undefined">
                   <i class="pi pi-list mr-1"></i>
                   {{ curriculum.elementCount }} element{{ curriculum.elementCount !== 1 ? 's' : '' }}
