@@ -18,6 +18,33 @@ const error = ref('')
 const loading = ref(false)
 const isRegister = ref(false)
 
+function friendlyAuthError(e: unknown): string {
+  if (e instanceof Error) {
+    const code = (e as { code?: string }).code
+    switch (code) {
+      case 'auth/popup-closed-by-user':
+      case 'auth/cancelled-popup-request':
+        return 'Sign-in was cancelled. Please try again.'
+      case 'auth/popup-blocked':
+        return 'Pop-up was blocked by your browser. Please allow pop-ups and try again.'
+      case 'auth/unauthorized-domain':
+        return 'This domain is not authorized for sign-in. Please contact the administrator.'
+      case 'auth/invalid-api-key':
+      case 'auth/api-key-not-valid.-please-pass-a-valid-api-key.':
+        return 'Authentication configuration error. Please contact the administrator.'
+      case 'auth/network-request-failed':
+        return 'Network error. Please check your connection and try again.'
+      case 'auth/user-disabled':
+        return 'This account has been disabled.'
+      case 'auth/account-exists-with-different-credential':
+        return 'An account already exists with the same email. Try signing in with a different method.'
+      default:
+        return e.message
+    }
+  }
+  return 'An unexpected error occurred. Please try again.'
+}
+
 async function handleSubmit() {
   error.value = ''
   loading.value = true
@@ -30,7 +57,7 @@ async function handleSubmit() {
     const redirect = (route.query.redirect as string) || '/'
     router.push(redirect)
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : (isRegister.value ? 'Registration failed' : 'Login failed')
+    error.value = friendlyAuthError(e) || (isRegister.value ? 'Registration failed' : 'Login failed')
   } finally {
     loading.value = false
   }
@@ -44,7 +71,7 @@ async function handleGoogleLogin() {
     const redirect = (route.query.redirect as string) || '/'
     router.push(redirect)
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Google login failed'
+    error.value = friendlyAuthError(e) || 'Google sign-in failed. Please try again.'
   } finally {
     loading.value = false
   }
@@ -57,7 +84,7 @@ async function handleGoogleLogin() {
       <h1 class="login-title">SkillHive</h1>
       <p class="login-subtitle">{{ isRegister ? 'Create your account' : 'Manage your training curriculum' }}</p>
 
-      <Message v-if="error" severity="error" :closable="false" class="mb-3">
+      <Message v-if="error" severity="error" :closable="true" class="mb-3" @close="error = ''">
         {{ error }}
       </Message>
 

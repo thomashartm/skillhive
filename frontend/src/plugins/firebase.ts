@@ -3,7 +3,7 @@ import { getAuth, connectAuthEmulator } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'demo-key',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'skillhive.firebaseapp.com',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'www.skillhive.cloud',
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'skillhive',
 }
 

@@ -13,8 +13,8 @@ export REGION="europe-west1"
 # =============================================================================
 # Domain Configuration
 # =============================================================================
-export API_DOMAIN="skillhive.thartm.net"
-export FRONTEND_URL="https://level-dragon-478821-t3.web.app"
+export API_DOMAIN="api.skillhive.cloud"
+export FRONTEND_URL="https://www.skillhive.cloud"
 
 # =============================================================================
 # GitHub Configuration (for Workload Identity Federation)
