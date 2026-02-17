@@ -13,11 +13,11 @@ const route = useRoute()
 
 const baseNavItems = [
   { label: 'Dashboard', icon: 'pi pi-home', to: '/', exact: true },
+  { label: 'Curricula', icon: 'pi pi-book', to: '/curricula', exact: true },
   { label: 'Techniques', icon: 'pi pi-bolt', to: '/techniques' },
   { label: 'Assets', icon: 'pi pi-video', to: '/assets' },
   { label: 'Categories', icon: 'pi pi-folder', to: '/categories' },
   { label: 'Tags', icon: 'pi pi-tags', to: '/tags' },
-  { label: 'Curricula', icon: 'pi pi-book', to: '/curricula', exact: true },
   { label: 'Public', icon: 'pi pi-globe', to: '/curricula/public' },
 ]
 

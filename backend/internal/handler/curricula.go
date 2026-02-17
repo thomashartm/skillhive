@@ -83,8 +83,7 @@ func (h *CurriculumHandler) ListPublic(w http.ResponseWriter, r *http.Request) {
 
 	query := h.fs.Collection("curricula").
 		Where("isPublic", "==", true).
-		OrderBy("updatedAt", firestore.Desc).
-		Limit(50)
+		OrderBy("updatedAt", firestore.Desc)
 
 	iter := query.Documents(ctx)
 	defer iter.Stop()

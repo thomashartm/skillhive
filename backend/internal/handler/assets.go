@@ -37,30 +37,30 @@ func (h *AssetHandler) List(w http.ResponseWriter, r *http.Request) {
 		Where("disciplineId", "==", disciplineID)
 
 	techniqueID := r.URL.Query().Get("techniqueId")
+	categoryID := r.URL.Query().Get("categoryId")
 	tagID := r.URL.Query().Get("tagId")
 
 	if techniqueID != "" {
 		query = query.Where("techniqueIds", "array-contains", techniqueID)
+	} else if categoryID != "" {
+		query = query.Where("categoryIds", "array-contains", categoryID)
 	} else if tagID != "" {
 		query = query.Where("tagIds", "array-contains", tagID)
 	}
 
 	query = query.OrderBy("createdAt", firestore.Desc)
 
-	limit := 20
-	offset := 0
+	// Pagination (optional - no limit by default, returns all)
 	if l := r.URL.Query().Get("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 100 {
-			limit = parsed
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			query = query.Limit(parsed)
 		}
 	}
 	if o := r.URL.Query().Get("offset"); o != "" {
-		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
-			offset = parsed
+		if parsed, err := strconv.Atoi(o); err == nil && parsed > 0 {
+			query = query.Offset(parsed)
 		}
 	}
-
-	query = query.Offset(offset).Limit(limit)
 
 	iter := query.Documents(ctx)
 	defer iter.Stop()
@@ -89,6 +89,9 @@ func (h *AssetHandler) List(w http.ResponseWriter, r *http.Request) {
 		// Normalize nil slices
 		if a.TechniqueIDs == nil {
 			a.TechniqueIDs = []string{}
+		}
+		if a.CategoryIDs == nil {
+			a.CategoryIDs = []string{}
 		}
 		if a.TagIDs == nil {
 			a.TagIDs = []string{}
@@ -133,6 +136,9 @@ func (h *AssetHandler) Get(w http.ResponseWriter, r *http.Request) {
 	// Normalize nil slices
 	if a.TechniqueIDs == nil {
 		a.TechniqueIDs = []string{}
+	}
+	if a.CategoryIDs == nil {
+		a.CategoryIDs = []string{}
 	}
 	if a.TagIDs == nil {
 		a.TagIDs = []string{}
@@ -185,6 +191,9 @@ func (h *AssetHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if req.TechniqueIDs == nil {
 		req.TechniqueIDs = []string{}
 	}
+	if req.CategoryIDs == nil {
+		req.CategoryIDs = []string{}
+	}
 	if req.TagIDs == nil {
 		req.TagIDs = []string{}
 	}
@@ -200,6 +209,7 @@ func (h *AssetHandler) Create(w http.ResponseWriter, r *http.Request) {
 		"originator":   req.Originator,
 		"thumbnailUrl": req.ThumbnailURL,
 		"techniqueIds": req.TechniqueIDs,
+		"categoryIds":  req.CategoryIDs,
 		"tagIds":       req.TagIDs,
 		"ownerUid":     uid,
 		"createdAt":    now,
@@ -224,6 +234,7 @@ func (h *AssetHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Originator:   req.Originator,
 		ThumbnailURL: req.ThumbnailURL,
 		TechniqueIDs: req.TechniqueIDs,
+		CategoryIDs:  req.CategoryIDs,
 		TagIDs:       req.TagIDs,
 		OwnerUID:     uid,
 		CreatedAt:    now,
@@ -302,6 +313,9 @@ func (h *AssetHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.TechniqueIDs != nil {
 		updates = append(updates, firestore.Update{Path: "techniqueIds", Value: req.TechniqueIDs})
 	}
+	if req.CategoryIDs != nil {
+		updates = append(updates, firestore.Update{Path: "categoryIds", Value: req.CategoryIDs})
+	}
 	if req.TagIDs != nil {
 		updates = append(updates, firestore.Update{Path: "tagIds", Value: req.TagIDs})
 	}
@@ -326,6 +340,9 @@ func (h *AssetHandler) Update(w http.ResponseWriter, r *http.Request) {
 	updated.ID = id
 	if updated.TechniqueIDs == nil {
 		updated.TechniqueIDs = []string{}
+	}
+	if updated.CategoryIDs == nil {
+		updated.CategoryIDs = []string{}
 	}
 	if updated.TagIDs == nil {
 		updated.TagIDs = []string{}

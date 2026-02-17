@@ -30,6 +30,7 @@ type Asset struct {
 	Originator   *string   `json:"originator" firestore:"originator,omitempty"`
 	ThumbnailURL *string   `json:"thumbnailUrl" firestore:"thumbnailUrl,omitempty"`
 	TechniqueIDs []string  `json:"techniqueIds" firestore:"techniqueIds"`
+	CategoryIDs  []string  `json:"categoryIds" firestore:"categoryIds"`
 	TagIDs       []string  `json:"tagIds" firestore:"tagIds"`
 	OwnerUID     string    `json:"ownerUid" firestore:"ownerUid"`
 	CreatedAt    time.Time `json:"createdAt" firestore:"createdAt"`
@@ -45,6 +46,7 @@ type CreateAssetRequest struct {
 	Originator   *string  `json:"originator"`
 	ThumbnailURL *string  `json:"thumbnailUrl"`
 	TechniqueIDs []string `json:"techniqueIds"`
+	CategoryIDs  []string `json:"categoryIds"`
 	TagIDs       []string `json:"tagIds"`
 }
 
@@ -57,6 +59,7 @@ type UpdateAssetRequest struct {
 	Originator   *string  `json:"originator"`
 	ThumbnailURL *string  `json:"thumbnailUrl"`
 	TechniqueIDs []string `json:"techniqueIds"`
+	CategoryIDs  []string `json:"categoryIds"`
 	TagIDs       []string `json:"tagIds"`
 }
 
