@@ -39,7 +39,7 @@ func main() {
 	r.Use(middleware.Logging)
 
 	// Public routes
-	r.Get("/healthz", handler.HealthCheck)
+	r.Get("/health", handler.HealthCheck)
 
 	// Handlers
 	disciplineHandler := handler.NewDisciplineHandler(clients.Firestore)
