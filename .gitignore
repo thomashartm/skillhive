@@ -44,3 +44,9 @@ deploy/secrets/secrets.yaml
 /deploy/secrets/CLAUDE.md
 /deploy/setup/CLAUDE.md
 /deploy/CLAUDE.md
+/backend/cmd/seed/CLAUDE.md
+/backend/internal/handler/CLAUDE.md
+/backend/internal/model/CLAUDE.md
+/backend/internal/validate/CLAUDE.md
+/backend/data/playlist-raw.json
+/backend/data/playlist-enriched.json

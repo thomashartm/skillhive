@@ -108,6 +108,55 @@
           </div>
         </template>
       </Card>
+
+      <!-- Associated Assets -->
+      <div class="mt-6">
+        <h2 class="text-lg font-semibold mb-4">Associated Assets</h2>
+
+        <div v-if="assetsLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div v-for="n in 3" :key="n" class="p-3 border border-white/10 rounded">
+            <Skeleton width="100%" height="7rem" class="mb-3" />
+            <Skeleton width="70%" height="1rem" class="mb-2" />
+            <Skeleton width="100%" height="0.75rem" />
+          </div>
+        </div>
+
+        <div v-else-if="assets.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div
+            v-for="asset in assets"
+            :key="asset.id"
+            class="asset-card"
+            @click="router.push(`/assets/${asset.id}`)"
+          >
+            <div class="asset-thumbnail">
+              <img
+                v-if="asset.thumbnailUrl"
+                :src="asset.thumbnailUrl"
+                :alt="asset.title"
+                class="w-full h-full object-cover"
+              />
+              <div v-else class="asset-thumbnail-placeholder">
+                <i class="pi pi-play-circle text-2xl text-slate-500"></i>
+              </div>
+            </div>
+            <div class="asset-body">
+              <div class="flex items-start justify-between gap-2 mb-1">
+                <span class="asset-title">{{ asset.title }}</span>
+                <Tag
+                  v-if="asset.videoType"
+                  :value="asset.videoType"
+                  severity="secondary"
+                  class="shrink-0 text-xs"
+                />
+              </div>
+              <p v-if="asset.description" class="asset-description">{{ asset.description }}</p>
+              <p v-if="asset.originator" class="asset-originator">{{ asset.originator }}</p>
+            </div>
+          </div>
+        </div>
+
+        <p v-else class="text-sm text-slate-500 italic">No assets linked to this technique</p>
+      </div>
     </div>
 
     <div v-else class="text-center py-12">
@@ -147,7 +196,9 @@ import { useTechniqueStore } from '../stores/techniques'
 import { useCategoryStore } from '../stores/categories'
 import { useTagStore } from '../stores/tags'
 import { useAuthStore } from '../stores/auth'
-import type { Technique } from '../types'
+import { useDisciplineStore } from '../stores/discipline'
+import { useApi } from '../composables/useApi'
+import type { Technique, Asset } from '../types'
 import type { TechniqueFormData } from '../validation/schemas'
 
 const route = useRoute()
@@ -159,13 +210,18 @@ const authStore = useAuthStore()
 const techniqueStore = useTechniqueStore()
 const categoryStore = useCategoryStore()
 const tagStore = useTagStore()
+const disciplineStore = useDisciplineStore()
+const { get } = useApi()
 
 const { categories } = storeToRefs(categoryStore)
 const { tags } = storeToRefs(tagStore)
+const { activeDisciplineId } = storeToRefs(disciplineStore)
 
 const technique = ref<Technique | null>(null)
 const loading = ref(true)
 const showEditDialog = ref(false)
+const assets = ref<Asset[]>([])
+const assetsLoading = ref(false)
 
 const id = computed(() => route.params.id as string)
 
@@ -260,11 +316,34 @@ const fetchTechnique = async () => {
   }
 }
 
+const fetchAssets = async () => {
+  if (!activeDisciplineId.value) return
+  try {
+    assetsLoading.value = true
+    const params = new URLSearchParams({
+      disciplineId: activeDisciplineId.value,
+      techniqueId: id.value,
+    })
+    const response = await get<{ data: Asset[] } | Asset[]>(`/api/v1/assets?${params.toString()}`)
+    assets.value = Array.isArray(response) ? response : response.data ?? []
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.message || 'Failed to load assets',
+      life: 3000,
+    })
+  } finally {
+    assetsLoading.value = false
+  }
+}
+
 onMounted(async () => {
   await Promise.all([
     fetchTechnique(),
     categoryStore.fetchCategories(),
     tagStore.fetchTags(),
+    fetchAssets(),
   ])
 })
 </script>
@@ -276,5 +355,71 @@ onMounted(async () => {
 .prose {
   color: #cbd5e1;
   line-height: 1.75;
+}
+
+.asset-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.asset-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.asset-thumbnail {
+  width: 100%;
+  height: 7rem;
+  background: rgba(255, 255, 255, 0.04);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.asset-thumbnail-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asset-body {
+  padding: 0.625rem 0.75rem;
+  flex: 1;
+}
+
+.asset-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #e2e8f0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.asset-description {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 0.25rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.5;
+}
+
+.asset-originator {
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-top: 0.375rem;
+  font-style: italic;
 }
 </style>

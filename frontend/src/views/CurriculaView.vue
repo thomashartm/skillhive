@@ -25,6 +25,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
@@ -42,7 +43,8 @@ const confirm = useConfirm()
 const authStore = useAuthStore()
 const curriculumStore = useCurriculumStore()
 
-const { curricula, loading, fetchCurricula, createCurriculum, updateCurriculum, deleteCurriculum } = curriculumStore
+const { curricula, loading } = storeToRefs(curriculumStore)
+const { fetchCurricula, createCurriculum, updateCurriculum, deleteCurriculum } = curriculumStore
 
 const showForm = ref(false)
 const editingCurriculum = ref<Curriculum | null>(null)

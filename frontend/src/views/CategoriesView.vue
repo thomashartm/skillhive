@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import Message from 'primevue/message'
@@ -11,7 +12,7 @@ import CategoryForm from '../components/categories/CategoryForm.vue'
 import { useCategoryStore } from '../stores/categories'
 import { useDisciplineStore } from '../stores/discipline'
 import { useAuthStore } from '../stores/auth'
-import type { Category } from '../types'
+import type { Category, CategoryTree as CategoryTreeType } from '../types'
 import type { CategoryFormData } from '../validation/schemas'
 
 /**
@@ -39,6 +40,28 @@ const confirm = useConfirm()
 // Dialog state
 const showDialog = ref(false)
 const editingCategory = ref<Category | null>(null)
+
+// Search
+const searchTerm = ref('')
+
+function filterTree(nodes: CategoryTreeType[], query: string): CategoryTreeType[] {
+  const lower = query.toLowerCase()
+  const result: CategoryTreeType[] = []
+  for (const node of nodes) {
+    const filteredChildren = node.children ? filterTree(node.children, query) : []
+    const nameMatch = node.name.toLowerCase().includes(lower)
+    const descMatch = node.description?.toLowerCase().includes(lower) ?? false
+    if (nameMatch || descMatch || filteredChildren.length > 0) {
+      result.push({ ...node, children: filteredChildren.length > 0 ? filteredChildren : node.children && nameMatch ? node.children : filteredChildren })
+    }
+  }
+  return result
+}
+
+const filteredTree = computed(() => {
+  if (!searchTerm.value.trim()) return tree.value
+  return filterTree(tree.value, searchTerm.value.trim())
+})
 
 // Fetch categories on mount and when discipline changes
 onMounted(() => {
@@ -193,10 +216,19 @@ const handleCloseDialog = () => {
       {{ error }}
     </Message>
 
+    <!-- Search -->
+    <div v-if="activeDisciplineId" class="filter-bar">
+      <InputText
+        v-model="searchTerm"
+        placeholder="Search categories..."
+        class="filter-search"
+      />
+    </div>
+
     <!-- Category tree -->
     <CategoryTree
       v-if="activeDisciplineId"
-      :categories="tree"
+      :categories="filteredTree"
       :loading="loading"
       @edit="handleEdit"
       @delete="handleDelete"
@@ -216,5 +248,15 @@ const handleCloseDialog = () => {
 
 <style scoped>
 .categories-view {
+}
+
+.filter-bar {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.filter-search {
+  width: 16rem;
 }
 </style>

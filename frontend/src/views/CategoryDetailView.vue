@@ -85,6 +85,55 @@
         No subcategories or techniques in this category.
       </div>
 
+      <!-- Assets in this category -->
+      <div class="mb-6">
+        <h2 class="detail-label mb-3">Assets</h2>
+
+        <div v-if="assetsLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div v-for="n in 3" :key="n" class="p-3 border border-white/10 rounded">
+            <Skeleton width="100%" height="7rem" class="mb-3" />
+            <Skeleton width="70%" height="1rem" class="mb-2" />
+            <Skeleton width="100%" height="0.75rem" />
+          </div>
+        </div>
+
+        <div v-else-if="assets.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div
+            v-for="asset in assets"
+            :key="asset.id"
+            class="asset-card"
+            @click="router.push(`/assets/${asset.id}`)"
+          >
+            <div class="asset-thumbnail">
+              <img
+                v-if="asset.thumbnailUrl"
+                :src="asset.thumbnailUrl"
+                :alt="asset.title"
+                class="w-full h-full object-cover"
+              />
+              <div v-else class="asset-thumbnail-placeholder">
+                <i class="pi pi-play-circle text-2xl text-slate-500"></i>
+              </div>
+            </div>
+            <div class="asset-body">
+              <div class="flex items-start justify-between gap-2 mb-1">
+                <span class="asset-title">{{ asset.title }}</span>
+                <Tag
+                  v-if="asset.videoType"
+                  :value="asset.videoType"
+                  severity="secondary"
+                  class="shrink-0 text-xs"
+                />
+              </div>
+              <p v-if="asset.description" class="asset-description">{{ asset.description }}</p>
+              <p v-if="asset.originator" class="asset-originator">{{ asset.originator }}</p>
+            </div>
+          </div>
+        </div>
+
+        <p v-else class="text-sm text-slate-500 italic">No assets in this category</p>
+      </div>
+
       <!-- Metadata -->
       <div class="text-xs text-slate-500 pt-4 border-t border-white/10 space-y-1">
         <div>Created: {{ formatDate(category.createdAt) }}</div>
@@ -115,14 +164,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
+import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
 import CategoryForm from '../components/categories/CategoryForm.vue'
 import { useCategoryStore } from '../stores/categories'
 import { useTechniqueStore } from '../stores/techniques'
 import { useAuthStore } from '../stores/auth'
-import type { Category, Technique } from '../types'
+import { useDisciplineStore } from '../stores/discipline'
+import { useApi } from '../composables/useApi'
+import type { Category, Technique, Asset } from '../types'
 import type { CategoryFormData } from '../validation/schemas'
 
 const route = useRoute()
@@ -131,12 +184,18 @@ const toast = useToast()
 const authStore = useAuthStore()
 const categoryStore = useCategoryStore()
 const techniqueStore = useTechniqueStore()
+const disciplineStore = useDisciplineStore()
+const { get } = useApi()
+
+const { activeDisciplineId } = storeToRefs(disciplineStore)
 
 const category = ref<Category | null>(null)
 const loading = ref(true)
 const showEditDialog = ref(false)
 const allCategories = ref<Category[]>([])
 const techniques = ref<Technique[]>([])
+const assets = ref<Asset[]>([])
+const assetsLoading = ref(false)
 
 const id = computed(() => route.params.id as string)
 
@@ -201,6 +260,28 @@ const handleSave = async (data: CategoryFormData) => {
   }
 }
 
+const fetchAssets = async () => {
+  if (!activeDisciplineId.value) return
+  try {
+    assetsLoading.value = true
+    const params = new URLSearchParams({
+      disciplineId: activeDisciplineId.value,
+      categoryId: id.value,
+    })
+    const response = await get<{ data: Asset[] } | Asset[]>(`/api/v1/assets?${params.toString()}`)
+    assets.value = Array.isArray(response) ? response : response.data ?? []
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.message || 'Failed to load assets',
+      life: 3000,
+    })
+  } finally {
+    assetsLoading.value = false
+  }
+}
+
 const loadData = async () => {
   loading.value = true
   try {
@@ -217,6 +298,9 @@ const loadData = async () => {
     // Load techniques that belong to this category
     await techniqueStore.fetchTechniques({ categoryId: id.value })
     techniques.value = techniqueStore.techniques
+
+    // Load assets tagged with this category
+    await fetchAssets()
   } catch (error: any) {
     toast.add({
       severity: 'error',
@@ -295,5 +379,71 @@ watch(id, () => {
   font-weight: 600;
   color: rgba(255, 255, 255, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.asset-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.asset-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.asset-thumbnail {
+  width: 100%;
+  height: 7rem;
+  background: rgba(255, 255, 255, 0.04);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.asset-thumbnail-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asset-body {
+  padding: 0.625rem 0.75rem;
+  flex: 1;
+}
+
+.asset-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #e2e8f0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.asset-description {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 0.25rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.5;
+}
+
+.asset-originator {
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-top: 0.375rem;
+  font-style: italic;
 }
 </style>

@@ -13,7 +13,6 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "disciplineId", "order": "ASCENDING" },
-        { "fieldPath": "ownerUid", "order": "ASCENDING" },
         { "fieldPath": "name", "order": "ASCENDING" }
       ]
     },
@@ -30,16 +29,6 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "disciplineId", "order": "ASCENDING" },
-        { "fieldPath": "ownerUid", "order": "ASCENDING" },
-        { "fieldPath": "name", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "techniques",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "disciplineId", "order": "ASCENDING" },
-        { "fieldPath": "ownerUid", "order": "ASCENDING" },
         { "fieldPath": "name", "order": "ASCENDING" }
       ]
     },
@@ -56,7 +45,14 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "disciplineId", "order": "ASCENDING" },
-        { "fieldPath": "ownerUid", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "techniques",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "disciplineId", "order": "ASCENDING" },
         { "fieldPath": "categoryIds", "arrayConfig": "CONTAINS" },
         { "fieldPath": "name", "order": "ASCENDING" }
       ]
@@ -66,7 +62,6 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "disciplineId", "order": "ASCENDING" },
-        { "fieldPath": "ownerUid", "order": "ASCENDING" },
         { "fieldPath": "tagIds", "arrayConfig": "CONTAINS" },
         { "fieldPath": "name", "order": "ASCENDING" }
       ]
@@ -76,8 +71,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "disciplineId", "order": "ASCENDING" },
-        { "fieldPath": "ownerUid", "order": "ASCENDING" },
-        { "fieldPath": "title", "order": "ASCENDING" }
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
@@ -85,16 +79,33 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "disciplineId", "order": "ASCENDING" },
-        { "fieldPath": "ownerUid", "order": "ASCENDING" },
         { "fieldPath": "techniqueIds", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "title", "order": "ASCENDING" }
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "assets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "disciplineId", "order": "ASCENDING" },
+        { "fieldPath": "categoryIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "assets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "disciplineId", "order": "ASCENDING" },
+        { "fieldPath": "tagIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "curricula",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "ownerUid", "order": "ASCENDING" },
+        { "fieldPath": "disciplineId", "order": "ASCENDING" },
         { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]
     },

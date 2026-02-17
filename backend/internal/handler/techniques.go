@@ -49,21 +49,17 @@ func (h *TechniqueHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	query = query.OrderBy("name", firestore.Asc)
 
-	// Pagination
-	limit := 20
-	offset := 0
+	// Pagination (optional - no limit by default, returns all)
 	if l := r.URL.Query().Get("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 100 {
-			limit = parsed
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			query = query.Limit(parsed)
 		}
 	}
 	if o := r.URL.Query().Get("offset"); o != "" {
-		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
-			offset = parsed
+		if parsed, err := strconv.Atoi(o); err == nil && parsed > 0 {
+			query = query.Offset(parsed)
 		}
 	}
-
-	query = query.Offset(offset).Limit(limit)
 
 	iter := query.Documents(ctx)
 	defer iter.Stop()

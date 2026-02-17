@@ -74,6 +74,7 @@ export interface Asset extends TimestampFields {
   originator: string | null
   thumbnailUrl: string | null
   techniqueIds: string[]
+  categoryIds: string[]
   tagIds: string[]
   ownerUid: string
 }
