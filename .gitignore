@@ -34,3 +34,12 @@ frontend/node_modules/
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+
+# Deployment
+deploy/env.sh
+deploy/secrets/secrets.yaml
+/.github/workflows/CLAUDE.md
+/backend/CLAUDE.md
+/deploy/secrets/CLAUDE.md
+/deploy/setup/CLAUDE.md
+/deploy/CLAUDE.md

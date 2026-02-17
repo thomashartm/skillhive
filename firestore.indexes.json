@@ -105,13 +105,6 @@
         { "fieldPath": "isPublic", "order": "ASCENDING" },
         { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]
-    },
-    {
-      "collectionGroup": "elements",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "ord", "order": "ASCENDING" }
-      ]
     }
   ],
   "fieldOverrides": []

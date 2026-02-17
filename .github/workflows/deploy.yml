@@ -3,6 +3,19 @@ name: Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag for the deployment'
+        required: false
+        default: 'latest'
+
+env:
+  PROJECT_ID: level-dragon-478821-t3
+  REGION: europe-west1
+  SERVICE_NAME: skillhive-api
+  AR_REPOSITORY: skillhive
+  IMAGE_NAME: europe-west1-docker.pkg.dev/level-dragon-478821-t3/skillhive/api
 
 jobs:
   deploy-backend:
@@ -11,61 +24,139 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    outputs:
+      service_url: ${{ steps.deploy.outputs.url }}
     steps:
       - uses: actions/checkout@v4
 
-      - uses: google-github-actions/auth@v2
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
-      - uses: google-github-actions/setup-gcloud@v2
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
 
       - name: Build and push Docker image
         run: |
+          VERSION="${{ github.event.inputs.version || 'latest' }}"
           gcloud builds submit backend \
-            --tag gcr.io/${{ secrets.GCP_PROJECT }}/skillhive-api \
+            --tag ${IMAGE_NAME}:${VERSION} \
+            --tag ${IMAGE_NAME}:${{ github.sha }} \
             --quiet
 
-      - name: Deploy to Cloud Run
+      - name: Fetch CORS origins from Secret Manager
+        id: secrets
         run: |
-          gcloud run deploy skillhive-api \
-            --image gcr.io/${{ secrets.GCP_PROJECT }}/skillhive-api \
-            --region europe-west1 \
+          CORS_ORIGINS=$(gcloud secrets versions access latest --secret=skillhive-cors-origins)
+          echo "cors_origins=${CORS_ORIGINS}" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        run: |
+          VERSION="${{ github.event.inputs.version || 'latest' }}"
+          gcloud run deploy ${SERVICE_NAME} \
+            --image ${IMAGE_NAME}:${VERSION} \
+            --region ${REGION} \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "GCP_PROJECT=${{ secrets.GCP_PROJECT }},ENV=production,CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ORIGINS }}" \
+            --port 8080 \
+            --cpu 1 \
+            --memory 512Mi \
+            --min-instances 0 \
+            --max-instances 10 \
+            --set-env-vars "GCP_PROJECT=${PROJECT_ID},ENV=production" \
+            --set-secrets "CORS_ALLOWED_ORIGINS=skillhive-cors-origins:latest" \
             --quiet
+          
+          URL=$(gcloud run services describe ${SERVICE_NAME} --region ${REGION} --format='value(status.url)')
+          echo "url=${URL}" >> $GITHUB_OUTPUT
+
+      - name: Verify deployment
+        run: |
+          echo "Service URL: ${{ steps.deploy.outputs.url }}"
+          curl -sf "${{ steps.deploy.outputs.url }}/health" || echo "Health check pending..."
+
+  deploy-firestore:
+    name: Deploy Firestore Rules & Indexes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy Firestore rules and indexes
+        run: |
+          firebase deploy --only firestore:rules,firestore:indexes --project ${PROJECT_ID}
 
   deploy-frontend:
     name: Deploy Vue App to Firebase Hosting
     runs-on: ubuntu-latest
     needs: deploy-backend
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Fetch secrets from Secret Manager
+        id: secrets
+        run: |
+          echo "VITE_API_URL=$(gcloud secrets versions access latest --secret=skillhive-api-url)" >> $GITHUB_ENV
+          echo "VITE_FIREBASE_API_KEY=$(gcloud secrets versions access latest --secret=skillhive-firebase-api-key)" >> $GITHUB_ENV
+          echo "VITE_FIREBASE_AUTH_DOMAIN=$(gcloud secrets versions access latest --secret=skillhive-firebase-auth-domain)" >> $GITHUB_ENV
+          echo "VITE_FIREBASE_PROJECT_ID=$(gcloud secrets versions access latest --secret=skillhive-firebase-project-id)" >> $GITHUB_ENV
+          echo "VITE_FIREBASE_STORAGE_BUCKET=$(gcloud secrets versions access latest --secret=skillhive-firebase-storage-bucket)" >> $GITHUB_ENV
+          echo "VITE_FIREBASE_MESSAGING_SENDER_ID=$(gcloud secrets versions access latest --secret=skillhive-firebase-messaging-sender-id)" >> $GITHUB_ENV
+          echo "VITE_FIREBASE_APP_ID=$(gcloud secrets versions access latest --secret=skillhive-firebase-app-id)" >> $GITHUB_ENV
+
       - name: Install dependencies
         run: cd frontend && npm ci
 
       - name: Build
-        run: cd frontend && npx vite build
-        env:
-          VITE_API_URL: ${{ secrets.API_URL }}
-          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+        run: cd frontend && npm run build
 
-      - uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          channelId: live
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy to Firebase Hosting
+        run: firebase deploy --only hosting --project ${PROJECT_ID}

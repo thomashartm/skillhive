@@ -1,0 +1,9 @@
+{
+  "videoId": "dQw4w9WgXcQ",
+  "title": "Example Training Video",
+  "description": "This is a sample video for testing the enrichment pipeline.",
+  "channelTitle": "Example Channel",
+  "duration": "PT5M30S",
+  "thumbnailUrl": "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+  "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+}
