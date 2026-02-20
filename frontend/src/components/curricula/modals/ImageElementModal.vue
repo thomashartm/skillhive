@@ -1,7 +1,7 @@
 <template>
   <Dialog
     :visible="visible"
-    :header="element ? 'Edit Text Note' : 'Add Text Note'"
+    :header="element ? 'Edit Image' : 'Add Image'"
     :modal="true"
     :closable="true"
     :style="{ width: '500px' }"
@@ -9,28 +9,40 @@
   >
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div>
-        <label for="title" class="block text-sm font-medium mb-2">
-          Title <span class="text-red-500">*</span>
+        <label for="imageUrl" class="block text-sm font-medium mb-2">
+          Image URL <span class="text-red-500">*</span>
         </label>
+        <InputText
+          id="imageUrl"
+          v-model="formData.imageUrl"
+          :class="{ 'p-invalid': errors.imageUrl }"
+          class="w-full"
+          placeholder="https://..."
+        />
+        <small v-if="errors.imageUrl" class="text-red-500">{{ errors.imageUrl }}</small>
+      </div>
+
+      <div>
+        <label for="title" class="block text-sm font-medium mb-2">Caption</label>
         <InputText
           id="title"
           v-model="formData.title"
           :class="{ 'p-invalid': errors.title }"
           class="w-full"
-          placeholder="Enter note title"
+          placeholder="Image caption"
         />
         <small v-if="errors.title" class="text-red-500">{{ errors.title }}</small>
       </div>
 
       <div>
-        <label for="details" class="block text-sm font-medium mb-2">Details</label>
+        <label for="details" class="block text-sm font-medium mb-2">Additional Notes</label>
         <Textarea
           id="details"
           v-model="formData.details"
           :class="{ 'p-invalid': errors.details }"
           class="w-full"
-          rows="6"
-          placeholder="Enter note details"
+          rows="4"
+          placeholder="Additional notes"
         />
         <small class="text-slate-400">Supports Markdown (bold, italic, links, lists)</small>
         <small v-if="errors.details" class="text-red-500">{{ errors.details }}</small>
@@ -68,11 +80,12 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  save: [data: { title: string; details: string; duration: string }]
+  save: [data: { imageUrl: string; title: string; details: string; duration: string }]
   close: []
 }>()
 
-const formData = ref<{ title: string; details: string; duration: string }>({
+const formData = ref<{ imageUrl: string; title: string; details: string; duration: string }>({
+  imageUrl: '',
   title: '',
   details: '',
   duration: ''
@@ -87,12 +100,14 @@ watch(
     if (newVal) {
       if (props.element) {
         formData.value = {
+          imageUrl: props.element.imageUrl || '',
           title: props.element.title || '',
           details: props.element.details || '',
           duration: props.element.duration || ''
         }
       } else {
         formData.value = {
+          imageUrl: '',
           title: '',
           details: '',
           duration: ''
@@ -103,16 +118,30 @@ watch(
   }
 )
 
+const isValidUrl = (value: string): boolean => {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 const handleSubmit = async () => {
   errors.value = {}
 
-  if (!formData.value.title.trim()) {
-    errors.value.title = 'Title is required'
+  if (!formData.value.imageUrl.trim()) {
+    errors.value.imageUrl = 'Image URL is required'
+    return
+  }
+
+  if (!isValidUrl(formData.value.imageUrl.trim())) {
+    errors.value.imageUrl = 'Must be a valid URL (http:// or https://)'
     return
   }
 
   if (formData.value.title.length > 200) {
-    errors.value.title = 'Title must be 200 characters or less'
+    errors.value.title = 'Caption must be 200 characters or less'
     return
   }
 

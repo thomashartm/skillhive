@@ -77,6 +77,10 @@ export interface Asset extends TimestampFields {
   categoryIds: string[]
   tagIds: string[]
   ownerUid: string
+  active: boolean
+  processingStatus: '' | 'pending' | 'enriching' | 'completed' | 'failed'
+  processingError: string | null
+  duration: string | null
 }
 
 export interface Curriculum extends TimestampFields {
@@ -89,7 +93,7 @@ export interface Curriculum extends TimestampFields {
   elementCount?: number
 }
 
-export type ElementType = 'technique' | 'asset' | 'text'
+export type ElementType = 'technique' | 'asset' | 'text' | 'image' | 'list'
 
 export interface CurriculumElement extends TimestampFields {
   id: string
@@ -98,6 +102,9 @@ export interface CurriculumElement extends TimestampFields {
   assetId: string | null
   title: string | null
   details: string | null
+  imageUrl?: string | null
+  duration?: string | null
+  items?: string[]
   ord: number
   snapshot?: {
     name?: string

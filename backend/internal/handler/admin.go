@@ -1,15 +1,20 @@
 package handler
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"cloud.google.com/go/firestore"
 	"firebase.google.com/go/v4/auth"
 	"github.com/go-chi/chi/v5"
+	"github.com/thomas/skillhive-api/internal/enrich"
 	"github.com/thomas/skillhive-api/internal/middleware"
 	"github.com/thomas/skillhive-api/internal/model"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var validRoles = map[string]bool{
@@ -21,10 +26,12 @@ var validRoles = map[string]bool{
 type AdminHandler struct {
 	authClient *auth.Client
 	fs         *firestore.Client
+	pipeline   *enrich.Pipeline
+	enrichCtx  context.Context
 }
 
-func NewAdminHandler(authClient *auth.Client, fs *firestore.Client) *AdminHandler {
-	return &AdminHandler{authClient: authClient, fs: fs}
+func NewAdminHandler(authClient *auth.Client, fs *firestore.Client, pipeline *enrich.Pipeline, enrichCtx context.Context) *AdminHandler {
+	return &AdminHandler{authClient: authClient, fs: fs, pipeline: pipeline, enrichCtx: enrichCtx}
 }
 
 // ListUsers returns users with explicit roles for a given discipline.
@@ -251,6 +258,165 @@ func (h *AdminHandler) RevokeRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// ListAssets returns all assets for a discipline including inactive ones.
+// GET /api/v1/admin/assets?disciplineId=X&status=Y
+func (h *AdminHandler) ListAssets(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	disciplineID := r.URL.Query().Get("disciplineId")
+	if disciplineID == "" {
+		writeError(w, http.StatusBadRequest, "disciplineId query parameter is required")
+		return
+	}
+
+	if err := middleware.RequireAdmin(ctx, disciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "admin role required for this discipline")
+		return
+	}
+
+	query := h.fs.Collection("assets").
+		Where("disciplineId", "==", disciplineID).
+		OrderBy("createdAt", firestore.Desc)
+
+	iter := query.Documents(ctx)
+	defer iter.Stop()
+
+	statusFilter := r.URL.Query().Get("status")
+
+	assets := []model.Asset{}
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			slog.Error("failed to list admin assets", "error", err)
+			writeError(w, http.StatusInternalServerError, "failed to list assets")
+			return
+		}
+
+		var a model.Asset
+		if err := doc.DataTo(&a); err != nil {
+			slog.Error("failed to parse asset", "docID", doc.Ref.ID, "error", err)
+			continue
+		}
+		a.ID = doc.Ref.ID
+		normalizeAsset(&a)
+
+		// Apply status filter
+		if statusFilter != "" && a.ProcessingStatus != statusFilter {
+			continue
+		}
+
+		assets = append(assets, a)
+	}
+
+	writeJSON(w, http.StatusOK, assets)
+}
+
+// ToggleAssetActive sets the active field on an asset.
+// PATCH /api/v1/admin/assets/{id}/active
+func (h *AdminHandler) ToggleAssetActive(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := chi.URLParam(r, "id")
+
+	ref := h.fs.Collection("assets").Doc(id)
+	doc, err := ref.Get(ctx)
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			writeError(w, http.StatusNotFound, "asset not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to get asset")
+		return
+	}
+
+	var existing model.Asset
+	if err := doc.DataTo(&existing); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to parse asset")
+		return
+	}
+
+	if err := middleware.RequireAdmin(ctx, existing.DisciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "admin role required for this discipline")
+		return
+	}
+
+	var req struct {
+		Active bool `json:"active"`
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if _, err := ref.Update(ctx, []firestore.Update{
+		{Path: "active", Value: req.Active},
+		{Path: "updatedAt", Value: time.Now()},
+	}); err != nil {
+		slog.Error("failed to toggle asset active", "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to update asset")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"id":     id,
+		"active": req.Active,
+	})
+}
+
+// RetryEnrichment re-triggers enrichment for a failed asset.
+// POST /api/v1/admin/assets/{id}/enrich
+func (h *AdminHandler) RetryEnrichment(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := chi.URLParam(r, "id")
+
+	if h.pipeline == nil {
+		writeError(w, http.StatusServiceUnavailable, "enrichment pipeline not configured")
+		return
+	}
+
+	ref := h.fs.Collection("assets").Doc(id)
+	doc, err := ref.Get(ctx)
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			writeError(w, http.StatusNotFound, "asset not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to get asset")
+		return
+	}
+
+	var existing model.Asset
+	if err := doc.DataTo(&existing); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to parse asset")
+		return
+	}
+
+	if err := middleware.RequireAdmin(ctx, existing.DisciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "admin role required for this discipline")
+		return
+	}
+
+	// Reset status
+	if _, err := ref.Update(ctx, []firestore.Update{
+		{Path: "processingStatus", Value: "pending"},
+		{Path: "processingError", Value: nil},
+		{Path: "updatedAt", Value: time.Now()},
+	}); err != nil {
+		slog.Error("failed to reset asset for retry", "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to reset asset")
+		return
+	}
+
+	// Spawn enrichment
+	go h.pipeline.EnrichAsset(h.enrichCtx, id, existing.URL, existing.DisciplineID, existing.OwnerUID)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"id":               id,
+		"processingStatus": "pending",
+	})
 }
 
 // extractRoles parses the roles map from custom claims.

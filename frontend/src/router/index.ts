@@ -11,6 +11,18 @@ const router = createRouter({
       meta: { requiresAuth: false },
     },
     {
+      path: '/imprint',
+      name: 'imprint',
+      component: () => import('../views/ImprintView.vue'),
+      meta: { requiresAuth: false },
+    },
+    {
+      path: '/privacy',
+      name: 'privacy',
+      component: () => import('../views/PrivacyView.vue'),
+      meta: { requiresAuth: false },
+    },
+    {
       path: '/',
       component: () => import('../components/layout/AppLayout.vue'),
       meta: { requiresAuth: true },
@@ -21,9 +33,10 @@ const router = createRouter({
           component: () => import('../views/DashboardView.vue'),
         },
         {
-          path: 'tags',
-          name: 'tags',
+          path: 'admin/tags',
+          name: 'admin-tags',
           component: () => import('../views/TagsView.vue'),
+          meta: { requiresRole: 'admin' },
         },
         {
           path: 'categories',
@@ -89,6 +102,12 @@ const router = createRouter({
           path: 'admin',
           name: 'admin',
           component: () => import('../views/AdminView.vue'),
+          meta: { requiresRole: 'admin' },
+        },
+        {
+          path: 'admin/assets',
+          name: 'admin-assets',
+          component: () => import('../views/AdminAssetsView.vue'),
           meta: { requiresRole: 'admin' },
         },
       ],

@@ -68,6 +68,9 @@ export const useCurriculumStore = defineStore('curricula', () => {
     assetId?: string | null
     title?: string | null
     details?: string | null
+    imageUrl?: string | null
+    duration?: string | null
+    items?: string[]
   }) {
     const api = useApi()
     return api.post<CurriculumElement>(`/api/v1/curricula/${curriculumId}/elements`, data)
@@ -76,6 +79,9 @@ export const useCurriculumStore = defineStore('curricula', () => {
   async function updateElement(curriculumId: string, elementId: string, data: {
     title?: string | null
     details?: string | null
+    imageUrl?: string | null
+    duration?: string | null
+    items?: string[]
   }) {
     const api = useApi()
     return api.put<CurriculumElement>(`/api/v1/curricula/${curriculumId}/elements/${elementId}`, data)
