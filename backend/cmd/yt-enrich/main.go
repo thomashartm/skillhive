@@ -14,45 +14,19 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/thomas/skillhive-api/internal/config"
+	"github.com/thomas/skillhive-api/internal/llm"
 	"github.com/thomas/skillhive-api/internal/model"
 	"github.com/thomas/skillhive-api/internal/store"
-	"google.golang.org/api/option"
-	"google.golang.org/api/youtube/v3"
+	"github.com/thomas/skillhive-api/internal/youtube"
 )
-
-// VideoInput is the video metadata from YouTube API
-type VideoInput struct {
-	VideoID      string `json:"videoId"`
-	Title        string `json:"title"`
-	Description  string `json:"description"`
-	ChannelTitle string `json:"channelTitle"`
-	Duration     string `json:"duration"`
-	ThumbnailURL string `json:"thumbnailUrl"`
-	URL          string `json:"url"`
-}
-
-// EnrichedData is the LLM-generated enrichment
-type EnrichedData struct {
-	Title               string   `json:"title"`
-	Description         string   `json:"description"`
-	SuggestedDiscipline string   `json:"suggestedDiscipline"`
-	SuggestedTags       []string `json:"suggestedTags"`
-	Authors             []string `json:"authors"`
-	PurposeSummary      string   `json:"purposeSummary"`
-	VideoType           string   `json:"videoType"`
-	Positions           []string `json:"positions"`
-	TechniqueType       []string `json:"techniqueType"`
-	Classification      []string `json:"classification"`
-	TranscriptAvailable bool     `json:"transcriptAvailable"`
-}
 
 // OutputVideo combines original and enriched data for output
 type OutputVideo struct {
-	VideoID  string        `json:"videoId"`
-	URL      string        `json:"url"`
-	Original *VideoInput   `json:"original"`
-	Enriched *EnrichedData `json:"enriched"`
-	Error    *string       `json:"error,omitempty"`
+	VideoID  string                 `json:"videoId"`
+	URL      string                 `json:"url"`
+	Original *youtube.VideoMetadata `json:"original"`
+	Enriched *EnrichedData          `json:"enriched"`
+	Error    *string                `json:"error,omitempty"`
 }
 
 // OutputMetadata contains processing metadata
@@ -176,22 +150,22 @@ func main() {
 		slog.Warn("failed to fetch existing tags", "error", err)
 	}
 
-	// Fetch videos
-	var videos []*VideoInput
+	// Fetch videos using shared youtube package
+	var videos []*youtube.VideoMetadata
 	if *playlistID != "" {
-		videos, err = fetchPlaylistVideos(ctx, apiKey, *playlistID)
+		videos, err = youtube.FetchPlaylistVideos(ctx, apiKey, *playlistID)
 		if err != nil {
 			slog.Error("failed to fetch playlist videos", "error", err)
 			os.Exit(1)
 		}
 		slog.Info("fetched playlist videos", "count", len(videos))
 	} else {
-		video, err := fetchSingleVideo(ctx, apiKey, *videoURL)
+		video, err := youtube.FetchVideoMetadata(ctx, apiKey, *videoURL)
 		if err != nil {
 			slog.Error("failed to fetch video", "error", err)
 			os.Exit(1)
 		}
-		videos = []*VideoInput{video}
+		videos = []*youtube.VideoMetadata{video}
 		slog.Info("fetched single video", "title", video.Title)
 	}
 
@@ -200,8 +174,9 @@ func main() {
 		return
 	}
 
-	// Create LLM client
-	llmClient, err := NewLLMClient(LLMProvider(*llmProvider), *llmModel)
+	// Create LLM client using shared package
+	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
+	llmClient, err := llm.NewClient(llm.Provider(*llmProvider), *llmModel, geminiAPIKey)
 	if err != nil {
 		slog.Error("failed to create LLM client", "error", err)
 		os.Exit(1)
@@ -246,7 +221,6 @@ func main() {
 		enc.SetIndent("", "  ")
 
 		if *outputFile != "" {
-			// Expand ~ to home directory
 			outPath := *outputFile
 			if strings.HasPrefix(outPath, "~/") {
 				home, err := os.UserHomeDir()
@@ -271,7 +245,6 @@ func main() {
 		}
 
 		if *outputFile != "" {
-			// Show expanded path in log
 			outPath := *outputFile
 			if strings.HasPrefix(outPath, "~/") {
 				if home, err := os.UserHomeDir(); err == nil {
@@ -309,7 +282,6 @@ func main() {
 		// Determine discipline
 		finalDisciplineID := *disciplineID
 		if finalDisciplineID == "" && v.Enriched != nil && v.Enriched.SuggestedDiscipline != "" {
-			// Try to find existing discipline matching suggestion
 			suggested := v.Enriched.SuggestedDiscipline
 			for _, d := range existingDisciplines {
 				if strings.EqualFold(d, suggested) || strings.EqualFold(slugify(d), slugify(suggested)) {
@@ -355,7 +327,6 @@ func main() {
 				description = v.Enriched.Description
 			}
 			if len(v.Enriched.Authors) > 0 {
-				// Use first author as originator, or join all for display
 				originator = strings.Join(v.Enriched.Authors, ", ")
 			}
 			if finalVideoType == "" && v.Enriched.VideoType != "" {
@@ -375,8 +346,10 @@ func main() {
 			"disciplineId": finalDisciplineID,
 			"ownerUid":     *ownerUID,
 			"techniqueIds": []string{},
+			"categoryIds":  []string{},
 			"tagIds":       tagIDs,
 			"duration":     v.Original.Duration,
+			"active":       true,
 			"createdAt":    now,
 			"updatedAt":    now,
 		}
@@ -397,163 +370,10 @@ func main() {
 	slog.Info("import complete", "created", created, "skipped", skipped, "errors", errorCount)
 }
 
-// fetchPlaylistVideos fetches all videos from a YouTube playlist
-func fetchPlaylistVideos(ctx context.Context, apiKey, playlistID string) ([]*VideoInput, error) {
-	svc, err := youtube.NewService(ctx, option.WithAPIKey(apiKey))
-	if err != nil {
-		return nil, fmt.Errorf("creating youtube service: %w", err)
-	}
-
-	var videos []*VideoInput
-	pageToken := ""
-
-	for {
-		call := svc.PlaylistItems.List([]string{"snippet", "contentDetails"}).
-			PlaylistId(playlistID).
-			MaxResults(50).
-			PageToken(pageToken)
-
-		resp, err := call.Do()
-		if err != nil {
-			// Check for common errors
-			errStr := err.Error()
-			if strings.Contains(errStr, "playlistNotFound") {
-				return nil, fmt.Errorf("playlist not found - make sure the playlist exists and is public (not private). Playlist ID: %s", playlistID)
-			}
-			if strings.Contains(errStr, "403") {
-				return nil, fmt.Errorf("access denied - check your YOUTUBE_API_KEY is valid and has YouTube Data API v3 enabled")
-			}
-			return nil, fmt.Errorf("fetching playlist page: %w", err)
-		}
-
-		for _, item := range resp.Items {
-			videoID := item.ContentDetails.VideoId
-			if videoID == "" {
-				continue
-			}
-
-			thumbnail := ""
-			if item.Snippet.Thumbnails != nil {
-				if item.Snippet.Thumbnails.High != nil {
-					thumbnail = item.Snippet.Thumbnails.High.Url
-				} else if item.Snippet.Thumbnails.Default != nil {
-					thumbnail = item.Snippet.Thumbnails.Default.Url
-				}
-			}
-
-			videos = append(videos, &VideoInput{
-				VideoID:      videoID,
-				Title:        item.Snippet.Title,
-				Description:  item.Snippet.Description,
-				ChannelTitle: item.Snippet.ChannelTitle,
-				ThumbnailURL: thumbnail,
-				URL:          fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoID),
-			})
-		}
-
-		slog.Info("fetched playlist page", "items", len(resp.Items), "totalSoFar", len(videos))
-
-		if resp.NextPageToken == "" {
-			break
-		}
-		pageToken = resp.NextPageToken
-	}
-
-	// Enrich with duration
-	if err := enrichWithDuration(ctx, apiKey, videos); err != nil {
-		return nil, err
-	}
-
-	return videos, nil
-}
-
-// fetchSingleVideo fetches metadata for a single video URL
-func fetchSingleVideo(ctx context.Context, apiKey, videoURL string) (*VideoInput, error) {
-	videoID := extractVideoID(videoURL)
-	if videoID == "" {
-		return nil, fmt.Errorf("could not extract video ID from URL: %s", videoURL)
-	}
-
-	svc, err := youtube.NewService(ctx, option.WithAPIKey(apiKey))
-	if err != nil {
-		return nil, fmt.Errorf("creating youtube service: %w", err)
-	}
-
-	call := svc.Videos.List([]string{"snippet", "contentDetails"}).Id(videoID)
-	resp, err := call.Do()
-	if err != nil {
-		return nil, fmt.Errorf("fetching video: %w", err)
-	}
-
-	if len(resp.Items) == 0 {
-		return nil, fmt.Errorf("video not found: %s", videoID)
-	}
-
-	item := resp.Items[0]
-	thumbnail := ""
-	if item.Snippet.Thumbnails != nil {
-		if item.Snippet.Thumbnails.High != nil {
-			thumbnail = item.Snippet.Thumbnails.High.Url
-		} else if item.Snippet.Thumbnails.Default != nil {
-			thumbnail = item.Snippet.Thumbnails.Default.Url
-		}
-	}
-
-	return &VideoInput{
-		VideoID:      videoID,
-		Title:        item.Snippet.Title,
-		Description:  item.Snippet.Description,
-		ChannelTitle: item.Snippet.ChannelTitle,
-		ThumbnailURL: thumbnail,
-		Duration:     item.ContentDetails.Duration,
-		URL:          fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoID),
-	}, nil
-}
-
-// enrichWithDuration adds duration info to videos
-func enrichWithDuration(ctx context.Context, apiKey string, videos []*VideoInput) error {
-	svc, err := youtube.NewService(ctx, option.WithAPIKey(apiKey))
-	if err != nil {
-		return fmt.Errorf("creating youtube service: %w", err)
-	}
-
-	for i := 0; i < len(videos); i += 50 {
-		end := i + 50
-		if end > len(videos) {
-			end = len(videos)
-		}
-
-		batch := videos[i:end]
-		ids := make([]string, len(batch))
-		for j, v := range batch {
-			ids[j] = v.VideoID
-		}
-
-		call := svc.Videos.List([]string{"contentDetails"}).Id(strings.Join(ids, ","))
-		resp, err := call.Do()
-		if err != nil {
-			return fmt.Errorf("fetching video details: %w", err)
-		}
-
-		durationMap := make(map[string]string)
-		for _, item := range resp.Items {
-			durationMap[item.Id] = item.ContentDetails.Duration
-		}
-
-		for _, v := range batch {
-			if d, ok := durationMap[v.VideoID]; ok {
-				v.Duration = d
-			}
-		}
-	}
-
-	return nil
-}
-
 // processVideos processes videos with LLM enrichment
 func processVideos(
-	videos []*VideoInput,
-	llmClient LLMClient,
+	videos []*youtube.VideoMetadata,
+	llmClient llm.Client,
 	disciplines []string,
 	tags []string,
 	concurrency int,
@@ -564,7 +384,7 @@ func processVideos(
 
 	for i, video := range videos {
 		wg.Add(1)
-		go func(idx int, v *VideoInput) {
+		go func(idx int, v *youtube.VideoMetadata) {
 			defer wg.Done()
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
@@ -644,7 +464,6 @@ func fetchExistingTags(ctx context.Context, fs *firestore.Client, disciplineID s
 func findOrCreateTag(ctx context.Context, fs *firestore.Client, disciplineID, ownerUID, tagName string) (string, error) {
 	slug := slugify(tagName)
 
-	// Try to find existing tag
 	iter := fs.Collection("tags").
 		Where("disciplineId", "==", disciplineID).
 		Where("slug", "==", slug).
@@ -657,7 +476,6 @@ func findOrCreateTag(ctx context.Context, fs *firestore.Client, disciplineID, ow
 		return doc.Ref.ID, nil
 	}
 
-	// Create new tag
 	now := time.Now()
 	ref, _, err := fs.Collection("tags").Add(ctx, map[string]interface{}{
 		"name":         tagName,
@@ -688,31 +506,13 @@ func assetURLExists(ctx context.Context, fs *firestore.Client, url string) (bool
 	return true, nil
 }
 
-// extractVideoID extracts the video ID from various YouTube URL formats
-func extractVideoID(url string) string {
-	patterns := []string{
-		`(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/|youtube\.com/v/)([a-zA-Z0-9_-]{11})`,
-	}
-
-	for _, pattern := range patterns {
-		re := regexp.MustCompile(pattern)
-		if matches := re.FindStringSubmatch(url); len(matches) > 1 {
-			return matches[1]
-		}
-	}
-
-	return ""
-}
-
 // slugify converts a string to a URL-friendly slug
 func slugify(s string) string {
 	s = strings.ToLower(s)
 	s = strings.ReplaceAll(s, " ", "-")
 	s = strings.ReplaceAll(s, "_", "-")
-	// Remove multiple consecutive hyphens
 	re := regexp.MustCompile(`-+`)
 	s = re.ReplaceAllString(s, "-")
-	// Remove leading/trailing hyphens
 	s = strings.Trim(s, "-")
 	return s
 }

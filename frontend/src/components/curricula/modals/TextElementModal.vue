@@ -32,7 +32,18 @@
           rows="6"
           placeholder="Enter note details"
         />
+        <small class="text-slate-400">Supports Markdown (bold, italic, links, lists)</small>
         <small v-if="errors.details" class="text-red-500">{{ errors.details }}</small>
+      </div>
+
+      <div>
+        <label for="duration" class="block text-sm font-medium mb-2">Duration</label>
+        <InputText
+          id="duration"
+          v-model="formData.duration"
+          class="w-full"
+          placeholder="e.g., 5:00, 1h 30m"
+        />
       </div>
 
       <div class="flex justify-end gap-2 mt-6">
@@ -57,13 +68,14 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  save: [data: { title: string; details: string }]
+  save: [data: { title: string; details: string; duration: string }]
   close: []
 }>()
 
-const formData = ref<{ title: string; details: string }>({
+const formData = ref<{ title: string; details: string; duration: string }>({
   title: '',
-  details: ''
+  details: '',
+  duration: ''
 })
 
 const errors = ref<Record<string, string>>({})
@@ -76,12 +88,14 @@ watch(
       if (props.element) {
         formData.value = {
           title: props.element.title || '',
-          details: props.element.details || ''
+          details: props.element.details || '',
+          duration: props.element.duration || ''
         }
       } else {
         formData.value = {
           title: '',
-          details: ''
+          details: '',
+          duration: ''
         }
       }
       errors.value = {}
@@ -102,8 +116,8 @@ const handleSubmit = async () => {
     return
   }
 
-  if (formData.value.details.length > 2000) {
-    errors.value.details = 'Details must be 2000 characters or less'
+  if (formData.value.details.length > 5000) {
+    errors.value.details = 'Details must be 5000 characters or less'
     return
   }
 

@@ -12,6 +12,9 @@ type Config struct {
 	FirebaseKeyPath    string
 	CORSAllowedOrigins string
 	Env                string
+	YouTubeAPIKey      string
+	GeminiAPIKey       string
+	GeminiModel        string
 }
 
 func Load() *Config {
@@ -23,6 +26,9 @@ func Load() *Config {
 		FirebaseKeyPath:    getEnv("FIREBASE_KEY_PATH", ""),
 		CORSAllowedOrigins: getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5000"),
 		Env:                getEnv("ENV", "development"),
+		YouTubeAPIKey:      getEnv("YOUTUBE_API_KEY", ""),
+		GeminiAPIKey:       getEnv("GEMINI_API_KEY", ""),
+		GeminiModel:        getEnv("GEMINI_MODEL", "gemini-2.0-flash"),
 	}
 }
 

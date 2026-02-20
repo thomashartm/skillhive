@@ -20,6 +20,8 @@ const emit = defineEmits<{
   'add-technique': []
   'add-asset': []
   'add-text': []
+  'add-image': []
+  'add-list': []
 }>()
 
 const menu = ref()
@@ -39,6 +41,16 @@ const items = ref([
     label: 'Add Text Note',
     icon: 'pi pi-align-left',
     command: () => emit('add-text')
+  },
+  {
+    label: 'Add Image',
+    icon: 'pi pi-image',
+    command: () => emit('add-image')
+  },
+  {
+    label: 'Add List',
+    icon: 'pi pi-list',
+    command: () => emit('add-list')
   }
 ])
 
