@@ -20,21 +20,25 @@ const (
 )
 
 type Asset struct {
-	ID           string    `json:"id" firestore:"-"`
-	DisciplineID string    `json:"disciplineId" firestore:"disciplineId"`
-	URL          string    `json:"url" firestore:"url"`
-	Title        string    `json:"title" firestore:"title"`
-	Description  string    `json:"description" firestore:"description"`
-	Type         AssetType `json:"type" firestore:"type"`
-	VideoType    *string   `json:"videoType" firestore:"videoType,omitempty"`
-	Originator   *string   `json:"originator" firestore:"originator,omitempty"`
-	ThumbnailURL *string   `json:"thumbnailUrl" firestore:"thumbnailUrl,omitempty"`
-	TechniqueIDs []string  `json:"techniqueIds" firestore:"techniqueIds"`
-	CategoryIDs  []string  `json:"categoryIds" firestore:"categoryIds"`
-	TagIDs       []string  `json:"tagIds" firestore:"tagIds"`
-	OwnerUID     string    `json:"ownerUid" firestore:"ownerUid"`
-	CreatedAt    time.Time `json:"createdAt" firestore:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt" firestore:"updatedAt"`
+	ID               string    `json:"id" firestore:"-"`
+	DisciplineID     string    `json:"disciplineId" firestore:"disciplineId"`
+	URL              string    `json:"url" firestore:"url"`
+	Title            string    `json:"title" firestore:"title"`
+	Description      string    `json:"description" firestore:"description"`
+	Type             AssetType `json:"type" firestore:"type"`
+	VideoType        *string   `json:"videoType" firestore:"videoType,omitempty"`
+	Originator       *string   `json:"originator" firestore:"originator,omitempty"`
+	ThumbnailURL     *string   `json:"thumbnailUrl" firestore:"thumbnailUrl,omitempty"`
+	Duration         *string   `json:"duration" firestore:"duration,omitempty"`
+	TechniqueIDs     []string  `json:"techniqueIds" firestore:"techniqueIds"`
+	CategoryIDs      []string  `json:"categoryIds" firestore:"categoryIds"`
+	TagIDs           []string  `json:"tagIds" firestore:"tagIds"`
+	OwnerUID         string    `json:"ownerUid" firestore:"ownerUid"`
+	Active           bool      `json:"active" firestore:"active"`
+	ProcessingStatus string    `json:"processingStatus" firestore:"processingStatus"`
+	ProcessingError  *string   `json:"processingError" firestore:"processingError,omitempty"`
+	CreatedAt        time.Time `json:"createdAt" firestore:"createdAt"`
+	UpdatedAt        time.Time `json:"updatedAt" firestore:"updatedAt"`
 }
 
 type CreateAssetRequest struct {

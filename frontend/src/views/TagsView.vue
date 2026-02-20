@@ -138,7 +138,7 @@ const handleCloseDialog = () => {
   <div class="tags-view">
     <!-- Header -->
     <div class="view-header">
-      <h1 class="view-title">Tags</h1>
+      <h1 class="view-title">Admin</h1>
       <Button
         v-if="authStore.canEdit"
         label="New Tag"
@@ -146,6 +146,27 @@ const handleCloseDialog = () => {
         size="small"
         @click="handleNew"
         :disabled="!activeDisciplineId"
+      />
+    </div>
+
+    <!-- Admin navigation -->
+    <div class="admin-nav flex gap-2 mb-4">
+      <Button
+        label="User Management"
+        icon="pi pi-users"
+        class="admin-nav-btn"
+        @click="$router.push({ name: 'admin' })"
+      />
+      <Button
+        label="Asset Processing"
+        icon="pi pi-video"
+        class="admin-nav-btn"
+        @click="$router.push({ name: 'admin-assets' })"
+      />
+      <Button
+        label="Tags"
+        icon="pi pi-tags"
+        class="admin-nav-btn admin-nav-btn--active"
       />
     </div>
 
@@ -186,5 +207,24 @@ const handleCloseDialog = () => {
 
 <style scoped>
 .tags-view {
+}
+
+.admin-nav-btn {
+  background: rgba(45, 212, 191, 0.1) !important;
+  border: 1px solid rgba(45, 212, 191, 0.3) !important;
+  color: #5eead4 !important;
+  transition: all 0.2s ease;
+}
+
+.admin-nav-btn:hover {
+  background: rgba(45, 212, 191, 0.2) !important;
+  border-color: rgba(45, 212, 191, 0.5) !important;
+}
+
+.admin-nav-btn--active {
+  background: rgba(45, 212, 191, 0.25) !important;
+  border-color: #2dd4bf !important;
+  color: #99f6e4 !important;
+  font-weight: 600;
 }
 </style>

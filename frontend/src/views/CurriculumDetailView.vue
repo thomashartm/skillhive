@@ -49,6 +49,8 @@
           @add-technique="showTechniqueModal = true"
           @add-asset="showAssetModal = true"
           @add-text="showTextModal = true"
+          @add-image="showImageModal = true"
+          @add-list="showListModal = true"
         />
       </div>
 
@@ -98,6 +100,20 @@
       @close="handleCloseTextModal"
     />
 
+    <ImageElementModal
+      :visible="showImageModal"
+      :element="editingElement"
+      @save="handleSaveImageElement"
+      @close="handleCloseImageModal"
+    />
+
+    <ListElementModal
+      :visible="showListModal"
+      :element="editingElement"
+      @save="handleSaveListElement"
+      @close="handleCloseListModal"
+    />
+
   </div>
 </template>
 
@@ -115,6 +131,8 @@ import CurriculumForm from '../components/curricula/CurriculumForm.vue'
 import TechniqueSearchModal from '../components/curricula/modals/TechniqueSearchModal.vue'
 import AssetSearchModal from '../components/curricula/modals/AssetSearchModal.vue'
 import TextElementModal from '../components/curricula/modals/TextElementModal.vue'
+import ImageElementModal from '../components/curricula/modals/ImageElementModal.vue'
+import ListElementModal from '../components/curricula/modals/ListElementModal.vue'
 import { useCurriculumStore } from '../stores/curricula'
 import { useAuthStore } from '../stores/auth'
 import type { Curriculum, CurriculumElement, Technique, Asset } from '../types'
@@ -148,6 +166,8 @@ const showCurriculumForm = ref(false)
 const showTechniqueModal = ref(false)
 const showAssetModal = ref(false)
 const showTextModal = ref(false)
+const showImageModal = ref(false)
+const showListModal = ref(false)
 const editingElement = ref<CurriculumElement | null>(null)
 
 onMounted(async () => {
@@ -257,7 +277,7 @@ const handleAddAsset = async (asset: Asset) => {
   }
 }
 
-const handleSaveTextElement = async (data: { title: string; details: string }) => {
+const handleSaveTextElement = async (data: { title: string; details: string; duration: string }) => {
   try {
     if (editingElement.value) {
       await updateElement(id, editingElement.value.id, data)
@@ -271,7 +291,8 @@ const handleSaveTextElement = async (data: { title: string; details: string }) =
       await createElement(id, {
         type: 'text',
         title: data.title,
-        details: data.details
+        details: data.details,
+        duration: data.duration
       })
       toast.add({
         severity: 'success',
@@ -292,6 +313,48 @@ const handleSaveTextElement = async (data: { title: string; details: string }) =
   }
 }
 
+const handleSaveImageElement = async (data: { imageUrl: string; title: string; details: string; duration: string }) => {
+  try {
+    if (editingElement.value) {
+      await updateElement(id, editingElement.value.id, data)
+      toast.add({ severity: 'success', summary: 'Success', detail: 'Image element updated', life: 3000 })
+    } else {
+      await createElement(id, { type: 'image', imageUrl: data.imageUrl, title: data.title, details: data.details, duration: data.duration })
+      toast.add({ severity: 'success', summary: 'Success', detail: 'Image added to curriculum', life: 3000 })
+    }
+    handleCloseImageModal()
+    await loadElements()
+  } catch (error: any) {
+    toast.add({ severity: 'error', summary: 'Error', detail: error.message || 'Failed to save image element', life: 3000 })
+  }
+}
+
+const handleCloseImageModal = () => {
+  showImageModal.value = false
+  editingElement.value = null
+}
+
+const handleSaveListElement = async (data: { title: string; details: string; items: string[]; duration: string }) => {
+  try {
+    if (editingElement.value) {
+      await updateElement(id, editingElement.value.id, data)
+      toast.add({ severity: 'success', summary: 'Success', detail: 'List element updated', life: 3000 })
+    } else {
+      await createElement(id, { type: 'list', title: data.title, details: data.details, items: data.items, duration: data.duration })
+      toast.add({ severity: 'success', summary: 'Success', detail: 'List added to curriculum', life: 3000 })
+    }
+    handleCloseListModal()
+    await loadElements()
+  } catch (error: any) {
+    toast.add({ severity: 'error', summary: 'Error', detail: error.message || 'Failed to save list element', life: 3000 })
+  }
+}
+
+const handleCloseListModal = () => {
+  showListModal.value = false
+  editingElement.value = null
+}
+
 const handleCloseTextModal = () => {
   showTextModal.value = false
   editingElement.value = null
@@ -301,6 +364,12 @@ const handleEditElement = (element: CurriculumElement) => {
   if (element.type === 'text') {
     editingElement.value = element
     showTextModal.value = true
+  } else if (element.type === 'image') {
+    editingElement.value = element
+    showImageModal.value = true
+  } else if (element.type === 'list') {
+    editingElement.value = element
+    showListModal.value = true
   } else {
     toast.add({
       severity: 'info',

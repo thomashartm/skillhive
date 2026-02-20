@@ -3,6 +3,7 @@ package handler
 import (
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -100,6 +101,9 @@ func (h *ElementHandler) ListElements(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		e.ID = doc.Ref.ID
+		if e.Items == nil {
+			e.Items = []string{}
+		}
 		elements = append(elements, e)
 	}
 
@@ -119,9 +123,54 @@ func (h *ElementHandler) CreateElement(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validate.EnumWhitelist("type", req.Type, []string{"technique", "asset", "text"}); err != nil {
+	if err := validate.EnumWhitelist("type", req.Type, []string{"technique", "asset", "text", "image", "list"}); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
+	}
+
+	// Type-specific validation
+	switch req.Type {
+	case "image":
+		if req.ImageURL == nil || *req.ImageURL == "" {
+			writeError(w, http.StatusBadRequest, "imageUrl is required for image elements")
+			return
+		}
+		if _, err := url.ParseRequestURI(*req.ImageURL); err != nil {
+			writeError(w, http.StatusBadRequest, "imageUrl must be a valid URL")
+			return
+		}
+	case "list":
+		if req.Title == nil || *req.Title == "" {
+			writeError(w, http.StatusBadRequest, "title is required for list elements")
+			return
+		}
+	case "text":
+		if req.Title == nil || *req.Title == "" {
+			writeError(w, http.StatusBadRequest, "title is required for text elements")
+			return
+		}
+	}
+
+	// Sanitize inputs
+	if req.Title != nil {
+		s := validate.StripAllHTML(*req.Title)
+		req.Title = &s
+	}
+	if req.Details != nil {
+		if req.Type == "text" || req.Type == "list" {
+			s := validate.SanitizeMarkdown(*req.Details)
+			req.Details = &s
+		} else {
+			s := validate.StripAllHTML(*req.Details)
+			req.Details = &s
+		}
+	}
+	if req.Duration != nil {
+		s := validate.StripAllHTML(*req.Duration)
+		req.Duration = &s
+	}
+	for i, item := range req.Items {
+		req.Items[i] = validate.StripAllHTML(item)
 	}
 
 	// Find max ord
@@ -177,6 +226,9 @@ func (h *ElementHandler) CreateElement(w http.ResponseWriter, r *http.Request) {
 		"assetId":     req.AssetID,
 		"title":       req.Title,
 		"details":     req.Details,
+		"imageUrl":    req.ImageURL,
+		"duration":    req.Duration,
+		"items":       req.Items,
 		"ord":         maxOrd + 1,
 		"snapshot":    snapshot,
 		"createdAt":   now,
@@ -202,6 +254,9 @@ func (h *ElementHandler) CreateElement(w http.ResponseWriter, r *http.Request) {
 		AssetID:     req.AssetID,
 		Title:       req.Title,
 		Details:     req.Details,
+		ImageURL:    req.ImageURL,
+		Duration:    req.Duration,
+		Items:       req.Items,
 		Ord:         maxOrd + 1,
 		Snapshot:    snapshot,
 		CreatedAt:   now,
@@ -220,7 +275,7 @@ func (h *ElementHandler) UpdateElement(w http.ResponseWriter, r *http.Request) {
 	elemID := chi.URLParam(r, "elemId")
 
 	ref := h.fs.Collection("curricula").Doc(curriculumID).Collection("elements").Doc(elemID)
-	_, err := ref.Get(ctx)
+	existingDoc, err := ref.Get(ctx)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
 			writeError(w, http.StatusNotFound, "element not found")
@@ -229,6 +284,10 @@ func (h *ElementHandler) UpdateElement(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
+	// Read element type for sanitization routing
+	elemType, _ := existingDoc.DataAt("type")
+	elemTypeStr, _ := elemType.(string)
 
 	var req model.CreateElementRequest
 	if err := decodeJSON(r, &req); err != nil {
@@ -241,10 +300,34 @@ func (h *ElementHandler) UpdateElement(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Title != nil {
-		updates = append(updates, firestore.Update{Path: "title", Value: req.Title})
+		s := validate.StripAllHTML(*req.Title)
+		updates = append(updates, firestore.Update{Path: "title", Value: &s})
 	}
 	if req.Details != nil {
-		updates = append(updates, firestore.Update{Path: "details", Value: req.Details})
+		if elemTypeStr == "text" || elemTypeStr == "list" {
+			s := validate.SanitizeMarkdown(*req.Details)
+			updates = append(updates, firestore.Update{Path: "details", Value: &s})
+		} else {
+			s := validate.StripAllHTML(*req.Details)
+			updates = append(updates, firestore.Update{Path: "details", Value: &s})
+		}
+	}
+	if req.Duration != nil {
+		s := validate.StripAllHTML(*req.Duration)
+		updates = append(updates, firestore.Update{Path: "duration", Value: &s})
+	}
+	if req.ImageURL != nil {
+		if _, err := url.ParseRequestURI(*req.ImageURL); err != nil {
+			writeError(w, http.StatusBadRequest, "imageUrl must be a valid URL")
+			return
+		}
+		updates = append(updates, firestore.Update{Path: "imageUrl", Value: req.ImageURL})
+	}
+	if req.Items != nil {
+		for i, item := range req.Items {
+			req.Items[i] = validate.StripAllHTML(item)
+		}
+		updates = append(updates, firestore.Update{Path: "items", Value: req.Items})
 	}
 
 	if _, err := ref.Update(ctx, updates); err != nil {

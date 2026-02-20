@@ -1,4 +1,4 @@
-package main
+package llm
 
 import (
 	"bytes"
@@ -10,32 +10,32 @@ import (
 	"time"
 )
 
-// LLMProvider represents supported LLM providers
-type LLMProvider string
+// Provider represents supported LLM providers.
+type Provider string
 
 const (
-	LLMProviderOllama LLMProvider = "ollama"
-	LLMProviderGemini LLMProvider = "gemini"
+	ProviderOllama Provider = "ollama"
+	ProviderGemini Provider = "gemini"
 )
 
-// LLMClient interface for LLM providers
-type LLMClient interface {
+// Client is the interface for LLM providers.
+type Client interface {
 	Generate(prompt string) (string, error)
 }
 
-// NewLLMClient creates an LLM client for the specified provider
-func NewLLMClient(provider LLMProvider, model string) (LLMClient, error) {
+// NewClient creates an LLM client for the specified provider.
+// For Gemini, apiKey is required. For Ollama, apiKey is ignored.
+func NewClient(provider Provider, model, apiKey string) (Client, error) {
 	switch provider {
-	case LLMProviderOllama:
+	case ProviderOllama:
 		host := os.Getenv("OLLAMA_HOST")
 		if host == "" {
 			host = "http://localhost:11434"
 		}
 		return &OllamaClient{Host: host, Model: model}, nil
-	case LLMProviderGemini:
-		apiKey := os.Getenv("GEMINI_API_KEY")
+	case ProviderGemini:
 		if apiKey == "" {
-			return nil, fmt.Errorf("GEMINI_API_KEY environment variable is required")
+			return nil, fmt.Errorf("Gemini API key is required")
 		}
 		return &GeminiClient{APIKey: apiKey, Model: model}, nil
 	default:
@@ -43,7 +43,7 @@ func NewLLMClient(provider LLMProvider, model string) (LLMClient, error) {
 	}
 }
 
-// OllamaClient implements LLMClient for Ollama
+// OllamaClient implements Client for Ollama
 type OllamaClient struct {
 	Host  string
 	Model string
@@ -70,7 +70,7 @@ type OllamaResponse struct {
 	Error    string `json:"error,omitempty"`
 }
 
-// Generate implements LLMClient for Ollama
+// Generate implements Client for Ollama
 func (c *OllamaClient) Generate(prompt string) (string, error) {
 	reqBody := OllamaRequest{
 		Model:  c.Model,
@@ -115,7 +115,7 @@ func (c *OllamaClient) Generate(prompt string) (string, error) {
 	return result.Response, nil
 }
 
-// GeminiClient implements LLMClient for Google Gemini
+// GeminiClient implements Client for Google Gemini
 type GeminiClient struct {
 	APIKey string
 	Model  string
@@ -161,7 +161,7 @@ type GeminiError struct {
 	Message string `json:"message"`
 }
 
-// Generate implements LLMClient for Gemini
+// Generate implements Client for Gemini
 func (c *GeminiClient) Generate(prompt string) (string, error) {
 	reqBody := GeminiRequest{
 		Contents: []GeminiContent{

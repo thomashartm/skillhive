@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -8,20 +9,43 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-chi/chi/v5"
+	"github.com/thomas/skillhive-api/internal/enrich"
 	"github.com/thomas/skillhive-api/internal/middleware"
 	"github.com/thomas/skillhive-api/internal/model"
 	"github.com/thomas/skillhive-api/internal/validate"
+	"github.com/thomas/skillhive-api/internal/youtube"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type AssetHandler struct {
-	fs *firestore.Client
+	fs        *firestore.Client
+	pipeline  *enrich.Pipeline
+	enrichCtx context.Context
 }
 
-func NewAssetHandler(fs *firestore.Client) *AssetHandler {
-	return &AssetHandler{fs: fs}
+func NewAssetHandler(fs *firestore.Client, pipeline *enrich.Pipeline, enrichCtx context.Context) *AssetHandler {
+	return &AssetHandler{fs: fs, pipeline: pipeline, enrichCtx: enrichCtx}
+}
+
+// normalizeAsset normalizes an asset read from Firestore for backward compatibility.
+// Existing assets have no "active" field; Firestore returns false for missing booleans.
+// If processingStatus is empty (legacy asset) and active is false, normalize to true.
+func normalizeAsset(a *model.Asset) {
+	if a.TechniqueIDs == nil {
+		a.TechniqueIDs = []string{}
+	}
+	if a.CategoryIDs == nil {
+		a.CategoryIDs = []string{}
+	}
+	if a.TagIDs == nil {
+		a.TagIDs = []string{}
+	}
+	// Backward compat: legacy assets (no processingStatus) should be treated as active
+	if a.ProcessingStatus == "" && !a.Active {
+		a.Active = true
+	}
 }
 
 func (h *AssetHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -65,6 +89,10 @@ func (h *AssetHandler) List(w http.ResponseWriter, r *http.Request) {
 	iter := query.Documents(ctx)
 	defer iter.Stop()
 
+	// Check if admin wants to include inactive assets
+	includeInactive := r.URL.Query().Get("includeInactive") == "true"
+	isAdmin := middleware.GetUserRole(ctx, disciplineID) == "admin"
+
 	assets := []model.Asset{}
 	searchQuery := r.URL.Query().Get("q")
 
@@ -85,16 +113,11 @@ func (h *AssetHandler) List(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		a.ID = doc.Ref.ID
+		normalizeAsset(&a)
 
-		// Normalize nil slices
-		if a.TechniqueIDs == nil {
-			a.TechniqueIDs = []string{}
-		}
-		if a.CategoryIDs == nil {
-			a.CategoryIDs = []string{}
-		}
-		if a.TagIDs == nil {
-			a.TagIDs = []string{}
+		// Filter out inactive assets for non-admin users
+		if !a.Active && !(isAdmin && includeInactive) {
+			continue
 		}
 
 		// Client-side title search
@@ -132,16 +155,15 @@ func (h *AssetHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.ID = doc.Ref.ID
+	normalizeAsset(&a)
 
-	// Normalize nil slices
-	if a.TechniqueIDs == nil {
-		a.TechniqueIDs = []string{}
-	}
-	if a.CategoryIDs == nil {
-		a.CategoryIDs = []string{}
-	}
-	if a.TagIDs == nil {
-		a.TagIDs = []string{}
+	// Non-admin users cannot see inactive assets
+	if !a.Active {
+		isAdmin := middleware.GetUserRole(ctx, a.DisciplineID) == "admin"
+		if !isAdmin {
+			writeError(w, http.StatusNotFound, "asset not found")
+			return
+		}
 	}
 
 	writeJSON(w, http.StatusOK, a)
@@ -172,14 +194,25 @@ func (h *AssetHandler) Create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := validate.Required("title", req.Title); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
+
+	// Determine if this is a YouTube URL for enrichment
+	isYouTube := youtube.IsYouTubeURL(req.URL)
+	enrichmentEnabled := isYouTube && h.pipeline != nil
+
+	// Title validation: optional for YouTube enrichment, required otherwise
+	if !enrichmentEnabled {
+		if err := validate.Required("title", req.Title); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 	}
-	if err := validate.StringLength("title", req.Title, 1, 300); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
+	if req.Title != "" {
+		if err := validate.StringLength("title", req.Title, 1, 300); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 	}
+
 	if req.Type == "" {
 		req.Type = "video"
 	}
@@ -199,21 +232,36 @@ func (h *AssetHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
+	title := validate.StripAllHTML(req.Title)
+	if enrichmentEnabled && title == "" {
+		title = "Processing..."
+	}
+
+	// Determine active status and processing status
+	active := true
+	processingStatus := ""
+	if enrichmentEnabled {
+		active = false
+		processingStatus = "pending"
+	}
+
 	data := map[string]interface{}{
-		"disciplineId": disciplineID,
-		"url":          req.URL,
-		"title":        validate.StripAllHTML(req.Title),
-		"description":  validate.StripAllHTML(req.Description),
-		"type":         req.Type,
-		"videoType":    req.VideoType,
-		"originator":   req.Originator,
-		"thumbnailUrl": req.ThumbnailURL,
-		"techniqueIds": req.TechniqueIDs,
-		"categoryIds":  req.CategoryIDs,
-		"tagIds":       req.TagIDs,
-		"ownerUid":     uid,
-		"createdAt":    now,
-		"updatedAt":    now,
+		"disciplineId":     disciplineID,
+		"url":              req.URL,
+		"title":            title,
+		"description":      validate.StripAllHTML(req.Description),
+		"type":             req.Type,
+		"videoType":        req.VideoType,
+		"originator":       req.Originator,
+		"thumbnailUrl":     req.ThumbnailURL,
+		"techniqueIds":     req.TechniqueIDs,
+		"categoryIds":      req.CategoryIDs,
+		"tagIds":           req.TagIDs,
+		"ownerUid":         uid,
+		"active":           active,
+		"processingStatus": processingStatus,
+		"createdAt":        now,
+		"updatedAt":        now,
 	}
 
 	ref, _, err := h.fs.Collection("assets").Add(ctx, data)
@@ -223,22 +271,29 @@ func (h *AssetHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Trigger async enrichment for YouTube URLs
+	if enrichmentEnabled {
+		go h.pipeline.EnrichAsset(h.enrichCtx, ref.ID, req.URL, disciplineID, uid)
+	}
+
 	a := model.Asset{
-		ID:           ref.ID,
-		DisciplineID: disciplineID,
-		URL:          req.URL,
-		Title:        data["title"].(string),
-		Description:  data["description"].(string),
-		Type:         model.AssetType(req.Type),
-		VideoType:    req.VideoType,
-		Originator:   req.Originator,
-		ThumbnailURL: req.ThumbnailURL,
-		TechniqueIDs: req.TechniqueIDs,
-		CategoryIDs:  req.CategoryIDs,
-		TagIDs:       req.TagIDs,
-		OwnerUID:     uid,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:               ref.ID,
+		DisciplineID:     disciplineID,
+		URL:              req.URL,
+		Title:            title,
+		Description:      data["description"].(string),
+		Type:             model.AssetType(req.Type),
+		VideoType:        req.VideoType,
+		Originator:       req.Originator,
+		ThumbnailURL:     req.ThumbnailURL,
+		TechniqueIDs:     req.TechniqueIDs,
+		CategoryIDs:      req.CategoryIDs,
+		TagIDs:           req.TagIDs,
+		OwnerUID:         uid,
+		Active:           active,
+		ProcessingStatus: processingStatus,
+		CreatedAt:        now,
+		UpdatedAt:        now,
 	}
 
 	writeJSON(w, http.StatusCreated, a)
@@ -338,15 +393,7 @@ func (h *AssetHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	updated.ID = id
-	if updated.TechniqueIDs == nil {
-		updated.TechniqueIDs = []string{}
-	}
-	if updated.CategoryIDs == nil {
-		updated.CategoryIDs = []string{}
-	}
-	if updated.TagIDs == nil {
-		updated.TagIDs = []string{}
-	}
+	normalizeAsset(&updated)
 
 	writeJSON(w, http.StatusOK, updated)
 }

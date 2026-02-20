@@ -6,6 +6,7 @@ import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { useAuthStore } from '../stores/auth'
+import LegalFooter from '../components/layout/LegalFooter.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -79,8 +80,9 @@ async function handleGoogleLogin() {
 </script>
 
 <template>
-  <div class="login-container">
-    <div class="login-card">
+  <div class="login-page">
+    <div class="login-container">
+      <div class="login-card">
       <h1 class="login-title">SkillHive</h1>
       <p class="login-subtitle">{{ isRegister ? 'Create your account' : 'Manage your training curriculum' }}</p>
 
@@ -153,17 +155,25 @@ async function handleGoogleLogin() {
         :loading="loading"
         @click="handleGoogleLogin"
       />
+      </div>
     </div>
+    <LegalFooter />
   </div>
 </template>
 
 <style scoped>
+.login-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #0a0a0a;
+}
+
 .login-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  background: #0a0a0a;
+  flex: 1;
 }
 
 .login-card {

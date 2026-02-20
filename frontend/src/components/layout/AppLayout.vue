@@ -5,6 +5,7 @@ import Button from 'primevue/button'
 import Toast from 'primevue/toast'
 import ConfirmDialog from 'primevue/confirmdialog'
 import DisciplinePicker from './DisciplinePicker.vue'
+import LegalFooter from './LegalFooter.vue'
 import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
@@ -17,7 +18,6 @@ const baseNavItems = [
   { label: 'Techniques', icon: 'pi pi-bolt', to: '/techniques' },
   { label: 'Assets', icon: 'pi pi-video', to: '/assets' },
   { label: 'Categories', icon: 'pi pi-folder', to: '/categories' },
-  { label: 'Tags', icon: 'pi pi-tags', to: '/tags' },
   { label: 'Public', icon: 'pi pi-globe', to: '/curricula/public' },
 ]
 
@@ -79,6 +79,7 @@ async function handleLogout() {
     <main class="app-content">
       <RouterView />
     </main>
+    <LegalFooter />
   </div>
 </template>
 

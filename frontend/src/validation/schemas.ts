@@ -41,11 +41,14 @@ export const curriculumSchema = z.object({
 })
 
 export const curriculumElementSchema = z.object({
-  type: z.enum(['technique', 'asset', 'text']),
+  type: z.enum(['technique', 'asset', 'text', 'image', 'list']),
   techniqueId: z.string().nullable().optional(),
   assetId: z.string().nullable().optional(),
   title: z.string().max(300).nullable().optional(),
   details: z.string().max(5000).nullable().optional(),
+  imageUrl: z.string().url().nullable().optional(),
+  duration: z.string().max(50).nullable().optional(),
+  items: z.array(z.string().max(500)).max(100).optional(),
 })
 
 export type TagFormData = z.infer<typeof tagSchema>

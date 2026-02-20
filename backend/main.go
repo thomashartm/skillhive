@@ -13,7 +13,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/thomas/skillhive-api/internal/config"
+	"github.com/thomas/skillhive-api/internal/enrich"
 	"github.com/thomas/skillhive-api/internal/handler"
+	"github.com/thomas/skillhive-api/internal/llm"
 	"github.com/thomas/skillhive-api/internal/middleware"
 	"github.com/thomas/skillhive-api/internal/store"
 )
@@ -28,6 +30,23 @@ func main() {
 		os.Exit(1)
 	}
 	defer clients.Close()
+
+	// Initialize enrichment pipeline (optional — degrades gracefully if keys missing)
+	var pipeline *enrich.Pipeline
+	enrichCtx, enrichCancel := context.WithCancel(context.Background())
+	defer enrichCancel()
+
+	if cfg.GeminiAPIKey != "" && cfg.YouTubeAPIKey != "" {
+		llmClient, err := llm.NewClient(llm.ProviderGemini, cfg.GeminiModel, cfg.GeminiAPIKey)
+		if err != nil {
+			slog.Error("failed to create LLM client", "error", err)
+			os.Exit(1)
+		}
+		pipeline = enrich.NewPipeline(clients.Firestore, llmClient, cfg.YouTubeAPIKey)
+		slog.Info("enrichment pipeline initialized", "model", cfg.GeminiModel)
+	} else {
+		slog.Info("enrichment pipeline disabled (GEMINI_API_KEY or YOUTUBE_API_KEY not set)")
+	}
 
 	r := chi.NewRouter()
 
@@ -46,11 +65,11 @@ func main() {
 	tagHandler := handler.NewTagHandler(clients.Firestore)
 	categoryHandler := handler.NewCategoryHandler(clients.Firestore)
 	techniqueHandler := handler.NewTechniqueHandler(clients.Firestore)
-	assetHandler := handler.NewAssetHandler(clients.Firestore)
+	assetHandler := handler.NewAssetHandler(clients.Firestore, pipeline, enrichCtx)
 	oembedHandler := handler.NewOEmbedHandler()
 	curriculumHandler := handler.NewCurriculumHandler(clients.Firestore)
 	elementHandler := handler.NewElementHandler(clients.Firestore)
-	adminHandler := handler.NewAdminHandler(clients.Auth, clients.Firestore)
+	adminHandler := handler.NewAdminHandler(clients.Auth, clients.Firestore, pipeline, enrichCtx)
 
 	// Protected API routes
 	r.Route("/api/v1", func(r chi.Router) {
@@ -108,11 +127,18 @@ func main() {
 		// Admin routes (additional RequireAnyAdmin gate)
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(middleware.RequireAnyAdmin)
+
+			// User management
 			r.Get("/users", adminHandler.ListUsers)
 			r.Get("/users/search", adminHandler.SearchUsers)
 			r.Get("/users/{uid}", adminHandler.GetUser)
 			r.Put("/users/{uid}/role", adminHandler.SetRole)
 			r.Delete("/users/{uid}/role", adminHandler.RevokeRole)
+
+			// Asset processing management
+			r.Get("/assets", adminHandler.ListAssets)
+			r.Patch("/assets/{id}/active", adminHandler.ToggleAssetActive)
+			r.Post("/assets/{id}/enrich", adminHandler.RetryEnrichment)
 		})
 	})
 
@@ -139,6 +165,15 @@ func main() {
 
 	<-done
 	slog.Info("shutting down server...")
+
+	// Cancel enrichment context to signal goroutines
+	enrichCancel()
+
+	// Wait for in-flight enrichments to drain
+	if pipeline != nil {
+		slog.Info("waiting for in-flight enrichments to complete...")
+		pipeline.Wait()
+	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
