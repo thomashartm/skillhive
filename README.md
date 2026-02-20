@@ -10,6 +10,16 @@ Training content management platform for organizing video instructionals into st
 - Share public curricula with others
 - YouTube metadata auto-extraction via oEmbed
 
+### Dashboard View
+<img width="800" height="469" alt="dashboard" src="https://github.com/user-attachments/assets/cf89fcec-d3c2-4da8-80fa-dceb2a04b8c1" />
+
+### Training Organization / Curricula 
+<img width="800" height="515" alt="curricula" src="https://github.com/user-attachments/assets/628bc616-09ae-4e06-b388-c50e8df24ae0" />
+
+### Video Asset Management
+<img width="800" height="461" alt="assets" src="https://github.com/user-attachments/assets/6057e1d1-2684-404f-b34a-9a2fe5255141" />
+
+
 ## Architecture
 
 ```
