@@ -20,6 +20,8 @@ const (
 	ElementTypeTechnique ElementType = "technique"
 	ElementTypeAsset     ElementType = "asset"
 	ElementTypeText      ElementType = "text"
+	ElementTypeImage     ElementType = "image"
+	ElementTypeList      ElementType = "list"
 )
 
 type CurriculumElement struct {
@@ -29,6 +31,9 @@ type CurriculumElement struct {
 	AssetID     *string     `json:"assetId" firestore:"assetId,omitempty"`
 	Title       *string     `json:"title" firestore:"title,omitempty"`
 	Details     *string     `json:"details" firestore:"details,omitempty"`
+	ImageURL    *string     `json:"imageUrl,omitempty" firestore:"imageUrl,omitempty"`
+	Duration    *string     `json:"duration,omitempty" firestore:"duration,omitempty"`
+	Items       []string    `json:"items,omitempty" firestore:"items,omitempty"`
 	Ord         int         `json:"ord" firestore:"ord"`
 	Snapshot    *Snapshot   `json:"snapshot,omitempty" firestore:"snapshot,omitempty"`
 	CreatedAt   time.Time   `json:"createdAt" firestore:"createdAt"`
@@ -54,11 +59,14 @@ type UpdateCurriculumRequest struct {
 }
 
 type CreateElementRequest struct {
-	Type        string  `json:"type"`
-	TechniqueID *string `json:"techniqueId"`
-	AssetID     *string `json:"assetId"`
-	Title       *string `json:"title"`
-	Details     *string `json:"details"`
+	Type        string   `json:"type"`
+	TechniqueID *string  `json:"techniqueId"`
+	AssetID     *string  `json:"assetId"`
+	Title       *string  `json:"title"`
+	Details     *string  `json:"details"`
+	ImageURL    *string  `json:"imageUrl"`
+	Duration    *string  `json:"duration"`
+	Items       []string `json:"items"`
 }
 
 type ReorderElementsRequest struct {

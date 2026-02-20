@@ -25,6 +25,7 @@ npm-debug.log*
 # Go backend
 backend/bin/
 backend/tmp/
+backend/seed/production-data.json
 
 # Vue frontend
 frontend/dist/
@@ -50,3 +51,10 @@ deploy/secrets/secrets.yaml
 /backend/internal/validate/CLAUDE.md
 /backend/data/playlist-raw.json
 /backend/data/playlist-enriched.json
+/backend/cmd/technique-enrich/CLAUDE.md
+/backend/cmd/yt-enrich/testdata/CLAUDE.md
+/backend/cmd/yt-enrich/CLAUDE.md
+/backend/internal/llm/CLAUDE.md
+/backend/internal/store/CLAUDE.md
+/backend/internal/youtube/CLAUDE.md
+/frontend/src/types/CLAUDE.md

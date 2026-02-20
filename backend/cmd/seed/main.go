@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"firebase.google.com/go/v4/auth"
 	"github.com/thomas/skillhive-api/internal/config"
 	"github.com/thomas/skillhive-api/internal/store"
 	"github.com/thomas/skillhive-api/internal/validate"
@@ -53,6 +54,11 @@ func main() {
 	// Bootstrap admin if ADMIN_EMAIL is set
 	if adminEmail := os.Getenv("ADMIN_EMAIL"); adminEmail != "" {
 		bootstrapAdmin(ctx, clients, adminEmail)
+	}
+
+	// Bootstrap viewer if VIEWER_EMAIL is set
+	if viewerEmail := os.Getenv("VIEWER_EMAIL"); viewerEmail != "" {
+		bootstrapViewer(ctx, clients, viewerEmail)
 	}
 
 	// Seed disciplines
@@ -460,10 +466,22 @@ func seedTagDoc(ctx context.Context, fs *firestore.Client, disciplineID string, 
 }
 
 func bootstrapAdmin(ctx context.Context, clients *store.FirebaseClients, email string) {
+	password := os.Getenv("ADMIN_PASSWORD")
+	if password == "" {
+		password = "admin123"
+	}
+
 	u, err := clients.Auth.GetUserByEmail(ctx, email)
 	if err != nil {
-		slog.Error("failed to find admin user by email", "email", email, "error", err)
-		return
+		// User doesn't exist — create it (useful for emulator bootstrap)
+		slog.Info("admin user not found, creating", "email", email)
+		params := (&auth.UserToCreate{}).Email(email).Password(password).DisplayName("Admin")
+		u, err = clients.Auth.CreateUser(ctx, params)
+		if err != nil {
+			slog.Error("failed to create admin user", "email", email, "error", err)
+			return
+		}
+		slog.Info("created admin user", "email", email, "uid", u.UID)
 	}
 
 	claims := u.CustomClaims
@@ -485,4 +503,26 @@ func bootstrapAdmin(ctx context.Context, clients *store.FirebaseClients, email s
 		return
 	}
 	slog.Info("bootstrapped admin user", "email", email, "uid", u.UID)
+}
+
+func bootstrapViewer(ctx context.Context, clients *store.FirebaseClients, email string) {
+	password := os.Getenv("VIEWER_PASSWORD")
+	if password == "" {
+		password = "viewer123"
+	}
+
+	u, err := clients.Auth.GetUserByEmail(ctx, email)
+	if err != nil {
+		slog.Info("viewer user not found, creating", "email", email)
+		params := (&auth.UserToCreate{}).Email(email).Password(password).DisplayName("Viewer")
+		u, err = clients.Auth.CreateUser(ctx, params)
+		if err != nil {
+			slog.Error("failed to create viewer user", "email", email, "error", err)
+			return
+		}
+		slog.Info("created viewer user", "email", email, "uid", u.UID)
+	}
+
+	// Viewer has no custom claims — default role is viewer
+	slog.Info("bootstrapped viewer user", "email", email, "uid", u.UID)
 }

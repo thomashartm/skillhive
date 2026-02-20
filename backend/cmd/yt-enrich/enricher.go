@@ -1,15 +1,34 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
-	"regexp"
 	"strings"
+
+	"github.com/thomas/skillhive-api/internal/enrich"
+	"github.com/thomas/skillhive-api/internal/llm"
+	"github.com/thomas/skillhive-api/internal/youtube"
 )
 
-// EnrichmentPrompt builds the prompt for LLM enrichment
-func BuildEnrichmentPrompt(
+// EnrichedData is the LLM-generated enrichment result for CLI output.
+type EnrichedData struct {
+	Title               string   `json:"title"`
+	Description         string   `json:"description"`
+	SuggestedDiscipline string   `json:"suggestedDiscipline"`
+	SuggestedTags       []string `json:"suggestedTags"`
+	Authors             []string `json:"authors"`
+	PurposeSummary      string   `json:"purposeSummary"`
+	VideoType           string   `json:"videoType"`
+	Positions           []string `json:"positions"`
+	TechniqueType       []string `json:"techniqueType"`
+	Classification      []string `json:"classification"`
+	TranscriptAvailable bool     `json:"transcriptAvailable"`
+}
+
+// BuildCLIEnrichmentPrompt builds the prompt for CLI batch enrichment.
+// This is a simpler version of the server prompt that does not include
+// technique/category matching context.
+func BuildCLIEnrichmentPrompt(
 	title string,
 	description string,
 	channelTitle string,
@@ -40,7 +59,6 @@ Prefer using one of these existing disciplines if applicable. You may suggest a 
 	// Build tags section
 	tagsSection := `**Existing Tags:** None defined yet. Suggest relevant tags (lowercase, hyphenated, e.g., "guard-passing", "beginner", "competition").`
 	if len(existingTags) > 0 {
-		// Limit to avoid prompt bloat
 		limitedTags := existingTags
 		if len(existingTags) > 30 {
 			limitedTags = existingTags[:30]
@@ -50,7 +68,6 @@ Prefer using one of these existing disciplines if applicable. You may suggest a 
 Prefer using existing tags when applicable. You may suggest new tags if needed.`, tagsList)
 	}
 
-	// Handle empty description
 	desc := description
 	if desc == "" {
 		desc = "(No description provided)"
@@ -86,9 +103,9 @@ Analyze the video content (especially the transcript if available) and generate 
 5. **authors**: Array of instructor names. Check the transcript for introductions like "Hi, I'm [Name]" or "My name is [Name]". Also check the title and description. There may be multiple instructors. NEVER use the channel/playlist owner name. Return empty array [] if no instructors can be identified.
 6. **purposeSummary**: A brief explanation of the training value and what skills this develops
 7. **videoType**: One of: "short" (under 3 min, single concept), "full" (3-20 min, complete lesson), "instructional" (detailed breakdown), "seminar" (long-form, multiple topics)
-8. **positions**: Array of BJJ/grappling positions involved. Examples: "mount", "guard", "side-control", "back", "knee-on-belly", "turtle", "half-guard", "butterfly-guard", "closed-guard", "open-guard", "standing", "north-south", "scarf-hold", "z-guard", "de-la-riva", "spider-guard", "lasso-guard", "x-guard"
-9. **techniqueType**: Array of technique types shown. Can include multiple: "attack" (submission), "escape" (getting out of bad position), "sweep" (reversing from bottom to top), "reversal" (countering opponent's move), "pass" (passing opponent's guard), "takedown" (taking opponent to ground), "defense" (preventing attack), "transition" (moving between positions), "drill" (training exercise), "concept" (theory/principles), "setup" (creating opportunities)
-10. **classification**: Array that can include: "offense" (attacking/advancing position) and/or "defense" (escaping/preventing). Many techniques involve both.
+8. **positions**: Array of BJJ/grappling positions involved (lowercase, hyphenated)
+9. **techniqueType**: Array of technique types shown. Can include multiple: "attack", "escape", "sweep", "reversal", "pass", "takedown", "defense", "transition", "drill", "concept", "setup"
+10. **classification**: Array that can include: "offense" and/or "defense"
 
 ## Output Format
 
@@ -115,144 +132,16 @@ Respond with ONLY a valid JSON object (no markdown, no explanation):
 	)
 }
 
-// LLMEnrichmentResult is the parsed result from LLM
-type LLMEnrichmentResult struct {
-	Title               string   `json:"title"`
-	Description         string   `json:"description"`
-	SuggestedDiscipline string   `json:"suggestedDiscipline"`
-	SuggestedTags       []string `json:"suggestedTags"`
-	Authors             []string `json:"authors"`
-	PurposeSummary      string   `json:"purposeSummary"`
-	VideoType           string   `json:"videoType"`
-	Positions           []string `json:"positions"`
-	TechniqueType       []string `json:"techniqueType"`
-	Classification      []string `json:"classification"`
-}
-
-// ParseLLMResponse parses the LLM response to extract JSON
-func ParseLLMResponse(response string) (*LLMEnrichmentResult, error) {
-	response = strings.TrimSpace(response)
-
-	// Try direct JSON parse
-	var result LLMEnrichmentResult
-	if err := json.Unmarshal([]byte(response), &result); err == nil {
-		return normalizeResult(&result), nil
-	}
-
-	// Try to extract JSON from markdown code block
-	codeBlockRegex := regexp.MustCompile("```(?:json)?\\s*([\\s\\S]*?)```")
-	if matches := codeBlockRegex.FindStringSubmatch(response); len(matches) > 1 {
-		if err := json.Unmarshal([]byte(strings.TrimSpace(matches[1])), &result); err == nil {
-			return normalizeResult(&result), nil
-		}
-	}
-
-	// Try to find JSON object in the response
-	jsonRegex := regexp.MustCompile(`\{[\s\S]*\}`)
-	if match := jsonRegex.FindString(response); match != "" {
-		if err := json.Unmarshal([]byte(match), &result); err == nil {
-			return normalizeResult(&result), nil
-		}
-	}
-
-	return nil, fmt.Errorf("could not parse JSON from LLM response: %s", truncateForError(response))
-}
-
-// normalizeResult normalizes the enrichment result
-func normalizeResult(result *LLMEnrichmentResult) *LLMEnrichmentResult {
-	// Normalize discipline (lowercase, hyphenated)
-	result.SuggestedDiscipline = slugify(result.SuggestedDiscipline)
-
-	// Normalize tags
-	normalizedTags := make([]string, 0, len(result.SuggestedTags))
-	for _, tag := range result.SuggestedTags {
-		normalized := slugify(tag)
-		if normalized != "" {
-			normalizedTags = append(normalizedTags, normalized)
-		}
-	}
-	result.SuggestedTags = normalizedTags
-
-	// Normalize positions
-	normalizedPositions := make([]string, 0, len(result.Positions))
-	for _, pos := range result.Positions {
-		normalized := slugify(pos)
-		if normalized != "" {
-			normalizedPositions = append(normalizedPositions, normalized)
-		}
-	}
-	result.Positions = normalizedPositions
-
-	// Validate video type
-	validVideoTypes := map[string]bool{
-		"short":         true,
-		"full":          true,
-		"instructional": true,
-		"seminar":       true,
-	}
-	if !validVideoTypes[result.VideoType] {
-		result.VideoType = "full"
-	}
-
-	// Validate technique types
-	validTechniqueTypes := map[string]bool{
-		"attack":     true,
-		"escape":     true,
-		"sweep":      true,
-		"reversal":   true,
-		"pass":       true,
-		"takedown":   true,
-		"defense":    true,
-		"transition": true,
-		"drill":      true,
-		"concept":    true,
-		"setup":      true,
-	}
-	normalizedTechTypes := make([]string, 0, len(result.TechniqueType))
-	for _, tt := range result.TechniqueType {
-		normalized := slugify(tt)
-		if validTechniqueTypes[normalized] {
-			normalizedTechTypes = append(normalizedTechTypes, normalized)
-		}
-	}
-	result.TechniqueType = normalizedTechTypes
-
-	// Validate classifications
-	validClassifications := map[string]bool{
-		"offense": true,
-		"defense": true,
-	}
-	normalizedClassifications := make([]string, 0, len(result.Classification))
-	for _, c := range result.Classification {
-		normalized := strings.ToLower(strings.TrimSpace(c))
-		if validClassifications[normalized] {
-			normalizedClassifications = append(normalizedClassifications, normalized)
-		}
-	}
-	result.Classification = normalizedClassifications
-
-	return result
-}
-
-// truncateForError truncates a string for error messages
-func truncateForError(s string) string {
-	if len(s) > 200 {
-		return s[:200] + "..."
-	}
-	return s
-}
-
-// EnrichVideo enriches a single video with transcript and LLM analysis
+// EnrichVideo enriches a single video with transcript and LLM analysis.
 func EnrichVideo(
-	video *VideoInput,
-	llmClient LLMClient,
+	video *youtube.VideoMetadata,
+	llmClient llm.Client,
 	existingDisciplines []string,
 	existingTags []string,
 ) (*EnrichedData, error) {
-	// Get transcript
-	transcript, transcriptAvailable, err := GetTranscript(video.VideoID)
+	// Get transcript using shared package
+	transcript, transcriptAvailable, err := youtube.GetTranscript(video.VideoID)
 	if err != nil {
-		// Log but continue without transcript
 		transcript = ""
 		transcriptAvailable = false
 	}
@@ -261,8 +150,8 @@ func EnrichVideo(
 		slog.Info("transcript available", "videoId", video.VideoID, "length", len(transcript))
 	}
 
-	// Build prompt
-	prompt := BuildEnrichmentPrompt(
+	// Build prompt (CLI-specific version)
+	prompt := BuildCLIEnrichmentPrompt(
 		video.Title,
 		video.Description,
 		video.ChannelTitle,
@@ -271,19 +160,19 @@ func EnrichVideo(
 		existingTags,
 	)
 
-	// Call LLM
+	// Call LLM using shared client
 	response, err := llmClient.Generate(prompt)
 	if err != nil {
 		return nil, fmt.Errorf("LLM generation failed: %w", err)
 	}
 
-	// Parse response
-	parsed, err := ParseLLMResponse(response)
+	// Parse response using shared parser
+	parsed, err := enrich.ParseLLMResponse(response)
 	if err != nil {
 		return nil, err
 	}
 
-	// Build enriched data
+	// Build CLI-specific enriched data
 	enriched := &EnrichedData{
 		Title:               parsed.Title,
 		Description:         parsed.Description,
@@ -298,11 +187,9 @@ func EnrichVideo(
 		TranscriptAvailable: transcriptAvailable,
 	}
 
-	// Fall back to original title if LLM returned empty
 	if enriched.Title == "" {
 		enriched.Title = video.Title
 	}
-	// Do NOT fall back to channel name for authors - leave empty if not identified
 
 	return enriched, nil
 }
