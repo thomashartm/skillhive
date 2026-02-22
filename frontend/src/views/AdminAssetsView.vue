@@ -50,7 +50,7 @@ const filteredAssets = computed(() => {
 
   // Status filter
   if (statusFilter.value === 'legacy') {
-    result = result.filter((a) => !a.processingStatus || a.processingStatus === '')
+    result = result.filter((a) => !a.processingStatus)
   } else if (statusFilter.value) {
     result = result.filter((a) => a.processingStatus === statusFilter.value)
   }
