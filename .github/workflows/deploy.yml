@@ -4,11 +4,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag for the deployment'
-        required: false
-        default: 'latest'
 
 env:
   PROJECT_ID: level-dragon-478821-t3
@@ -44,9 +39,8 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          VERSION="${{ github.event.inputs.version || 'latest' }}"
+          # Build with commit SHA tag
           BUILD_ID=$(gcloud builds submit backend \
-            --tag ${IMAGE_NAME}:${VERSION} \
             --tag ${IMAGE_NAME}:${{ github.sha }} \
             --async --format='value(id)' --quiet)
           echo "Waiting for build ${BUILD_ID}..."
@@ -63,18 +57,12 @@ jobs:
             sleep 10
           done
 
-      - name: Fetch CORS origins from Secret Manager
-        id: secrets
-        run: |
-          CORS_ORIGINS=$(gcloud secrets versions access latest --secret=skillhive-cors-origins)
-          echo "cors_origins=${CORS_ORIGINS}" >> $GITHUB_OUTPUT
-
       - name: Deploy to Cloud Run
         id: deploy
         run: |
-          VERSION="${{ github.event.inputs.version || 'latest' }}"
+          # Deploy using the commit SHA tag (immutable, reliable)
           gcloud run deploy ${SERVICE_NAME} \
-            --image ${IMAGE_NAME}:${VERSION} \
+            --image ${IMAGE_NAME}:${{ github.sha }} \
             --region ${REGION} \
             --platform managed \
             --allow-unauthenticated \
