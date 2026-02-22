@@ -47,9 +47,15 @@ ROLES=(
     
     # Cloud Build (submit builds)
     "roles/cloudbuild.builds.builder"
-    
+
     # Storage (for Cloud Build artifacts)
     "roles/storage.admin"
+
+    # Service Usage (Firebase CLI needs to check API enablement)
+    "roles/serviceusage.serviceUsageConsumer"
+
+    # Logging (Cloud Build log streaming)
+    "roles/logging.viewer"
 )
 
 for role in "${ROLES[@]}"; do

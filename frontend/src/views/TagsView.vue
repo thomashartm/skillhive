@@ -7,6 +7,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import Message from 'primevue/message'
 import TagList from '../components/tags/TagList.vue'
 import TagForm from '../components/tags/TagForm.vue'
+import { useRouter } from 'vue-router'
 import { useTagStore } from '../stores/tags'
 import { useDisciplineStore } from '../stores/discipline'
 import { useAuthStore } from '../stores/auth'
@@ -24,6 +25,7 @@ import type { TagFormData } from '../validation/schemas'
  * - Auto-refresh when discipline changes
  */
 
+const router = useRouter()
 const authStore = useAuthStore()
 const tagStore = useTagStore()
 const disciplineStore = useDisciplineStore()
@@ -155,13 +157,13 @@ const handleCloseDialog = () => {
         label="User Management"
         icon="pi pi-users"
         class="admin-nav-btn"
-        @click="$router.push({ name: 'admin' })"
+        @click="router.push({ name: 'admin' })"
       />
       <Button
         label="Asset Processing"
         icon="pi pi-video"
         class="admin-nav-btn"
-        @click="$router.push({ name: 'admin-assets' })"
+        @click="router.push({ name: 'admin-assets' })"
       />
       <Button
         label="Tags"

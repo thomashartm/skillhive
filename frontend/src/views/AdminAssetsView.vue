@@ -269,7 +269,7 @@ watch(activeDisciplineId, (newId) => {
         label="User Management"
         icon="pi pi-users"
         class="admin-nav-btn"
-        @click="$router.push({ name: 'admin' })"
+        @click="router.push({ name: 'admin' })"
       />
       <Button
         label="Asset Processing"
@@ -280,7 +280,7 @@ watch(activeDisciplineId, (newId) => {
         label="Tags"
         icon="pi pi-tags"
         class="admin-nav-btn"
-        @click="$router.push({ name: 'admin-tags' })"
+        @click="router.push({ name: 'admin-tags' })"
       />
     </div>
 
