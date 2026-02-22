@@ -54,8 +54,8 @@ ROLES=(
     # Service Usage (Firebase CLI needs to check API enablement)
     "roles/serviceusage.serviceUsageConsumer"
 
-    # Logging (Cloud Build log streaming)
-    "roles/logging.viewer"
+    # Project viewer (Cloud Build log streaming, general read access)
+    "roles/viewer"
 )
 
 for role in "${ROLES[@]}"; do

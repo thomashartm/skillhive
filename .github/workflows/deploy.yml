@@ -45,10 +45,23 @@ jobs:
       - name: Build and push Docker image
         run: |
           VERSION="${{ github.event.inputs.version || 'latest' }}"
-          gcloud builds submit backend \
+          BUILD_ID=$(gcloud builds submit backend \
             --tag ${IMAGE_NAME}:${VERSION} \
             --tag ${IMAGE_NAME}:${{ github.sha }} \
-            --quiet
+            --async --format='value(id)' --quiet)
+          echo "Waiting for build ${BUILD_ID}..."
+          while true; do
+            STATUS=$(gcloud builds describe "${BUILD_ID}" --format='value(status)' --quiet 2>/dev/null || echo "UNKNOWN")
+            echo "  Build status: ${STATUS}"
+            if [ "${STATUS}" = "SUCCESS" ]; then
+              echo "Build completed successfully"
+              break
+            elif [ "${STATUS}" = "FAILURE" ] || [ "${STATUS}" = "INTERNAL_ERROR" ] || [ "${STATUS}" = "TIMEOUT" ] || [ "${STATUS}" = "CANCELLED" ]; then
+              echo "Build failed with status: ${STATUS}"
+              exit 1
+            fi
+            sleep 10
+          done
 
       - name: Fetch CORS origins from Secret Manager
         id: secrets
