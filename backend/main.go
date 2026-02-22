@@ -139,6 +139,7 @@ func main() {
 			r.Get("/assets", adminHandler.ListAssets)
 			r.Patch("/assets/{id}/active", adminHandler.ToggleAssetActive)
 			r.Post("/assets/{id}/enrich", adminHandler.RetryEnrichment)
+			r.Patch("/assets/{id}/status", adminHandler.UpdateAssetStatus)
 		})
 	})
 

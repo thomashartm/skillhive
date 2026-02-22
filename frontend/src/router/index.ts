@@ -110,6 +110,12 @@ const router = createRouter({
           component: () => import('../views/AdminAssetsView.vue'),
           meta: { requiresRole: 'admin' },
         },
+        {
+          path: 'admin/assets/:id',
+          name: 'admin-asset-manage',
+          component: () => import('../views/AdminAssetManageView.vue'),
+          meta: { requiresRole: 'admin' },
+        },
       ],
     },
   ],
