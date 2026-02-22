@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -16,24 +17,31 @@ const UserRolesKey contextKey = "userRoles"
 func FirebaseAuth(authClient *auth.Client) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			slog.Info("FirebaseAuth middleware called", "path", r.URL.Path, "method", r.Method)
+
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
+				slog.Info("FirebaseAuth: missing authorization header")
 				http.Error(w, `{"error":"missing authorization header"}`, http.StatusUnauthorized)
 				return
 			}
 
 			parts := strings.SplitN(authHeader, " ", 2)
 			if len(parts) != 2 || !strings.EqualFold(parts[0], "bearer") {
+				slog.Info("FirebaseAuth: invalid authorization format")
 				http.Error(w, `{"error":"invalid authorization format"}`, http.StatusUnauthorized)
 				return
 			}
 
+			slog.Info("FirebaseAuth: verifying token", "tokenLen", len(parts[1]))
 			token, err := authClient.VerifyIDToken(r.Context(), parts[1])
 			if err != nil {
+				slog.Error("FirebaseAuth: token verification failed", "error", err)
 				http.Error(w, `{"error":"invalid or expired token"}`, http.StatusUnauthorized)
 				return
 			}
 
+			slog.Info("FirebaseAuth: token verified", "uid", token.UID)
 			ctx := context.WithValue(r.Context(), UserUIDKey, token.UID)
 
 			// Parse roles from custom claims
@@ -47,6 +55,7 @@ func FirebaseAuth(authClient *auth.Client) func(http.Handler) http.Handler {
 			}
 			ctx = context.WithValue(ctx, UserRolesKey, roles)
 
+			slog.Info("FirebaseAuth: passing to next handler", "roles", roles)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
