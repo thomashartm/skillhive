@@ -13,6 +13,7 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useAuthStore } from '../stores/auth'
 import { useDisciplineStore } from '../stores/discipline'
+import { useRouter } from 'vue-router'
 import { useApi } from '../composables/useApi'
 import type { UserInfo, UserRole } from '../types'
 
@@ -32,6 +33,7 @@ const disciplineStore = useDisciplineStore()
 const { activeDisciplineId, activeDiscipline } = storeToRefs(disciplineStore)
 const { isAdmin } = storeToRefs(authStore)
 
+const router = useRouter()
 const api = useApi()
 const toast = useToast()
 const confirm = useConfirm()
@@ -259,13 +261,13 @@ watch(activeDisciplineId, (newId) => {
         label="Asset Processing"
         icon="pi pi-video"
         class="admin-nav-btn"
-        @click="$router.push({ name: 'admin-assets' })"
+        @click="router.push({ name: 'admin-assets' })"
       />
       <Button
         label="Tags"
         icon="pi pi-tags"
         class="admin-nav-btn"
-        @click="$router.push({ name: 'admin-tags' })"
+        @click="router.push({ name: 'admin-tags' })"
       />
     </div>
 
