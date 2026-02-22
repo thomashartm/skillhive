@@ -249,7 +249,7 @@ watch(activeDisciplineId, (newId) => {
     </div>
 
     <!-- Admin navigation -->
-    <div class="admin-nav flex gap-2 mb-4">
+    <div class="admin-nav">
       <Button
         label="User Management"
         icon="pi pi-users"
@@ -293,7 +293,7 @@ watch(activeDisciplineId, (newId) => {
     <template v-else>
       <!-- Search bar -->
       <div class="mb-6">
-        <form @submit.prevent="handleSearch" class="flex gap-3">
+        <form @submit.prevent="handleSearch" class="admin-search-form">
           <IconField class="flex-1">
             <InputIcon class="pi pi-search" />
             <InputText
@@ -399,6 +399,20 @@ watch(activeDisciplineId, (newId) => {
   margin: 0;
 }
 
+/* Admin nav */
+.admin-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Admin search form */
+.admin-search-form {
+  display: flex;
+  gap: 0.75rem;
+}
+
 /* Admin nav buttons */
 .admin-nav-btn {
   background: rgba(45, 212, 191, 0.1) !important;
@@ -446,5 +460,15 @@ watch(activeDisciplineId, (newId) => {
 
 :deep(.admin-table .p-datatable-tbody > tr.p-row-odd:hover) {
   background: var(--surface-hover);
+}
+
+@media (max-width: 768px) {
+  .admin-nav {
+    flex-direction: column;
+  }
+
+  .admin-search-form {
+    flex-direction: column;
+  }
 }
 </style>

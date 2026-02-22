@@ -150,7 +150,7 @@ const handleCloseDialog = () => {
     </div>
 
     <!-- Admin navigation -->
-    <div class="admin-nav flex gap-2 mb-4">
+    <div class="admin-nav">
       <Button
         label="User Management"
         icon="pi pi-users"
@@ -209,6 +209,13 @@ const handleCloseDialog = () => {
 .tags-view {
 }
 
+.admin-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
 .admin-nav-btn {
   background: rgba(45, 212, 191, 0.1) !important;
   border: 1px solid rgba(45, 212, 191, 0.3) !important;
@@ -226,5 +233,11 @@ const handleCloseDialog = () => {
   border-color: #2dd4bf !important;
   color: #99f6e4 !important;
   font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .admin-nav {
+    flex-direction: column;
+  }
 }
 </style>
