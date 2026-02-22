@@ -36,6 +36,13 @@ func main() {
 	enrichCtx, enrichCancel := context.WithCancel(context.Background())
 	defer enrichCancel()
 
+	// Debug: Log API key presence
+	slog.Info("checking API keys",
+		"geminiKeySet", cfg.GeminiAPIKey != "",
+		"geminiKeyLen", len(cfg.GeminiAPIKey),
+		"youtubeKeySet", cfg.YouTubeAPIKey != "",
+		"youtubeKeyLen", len(cfg.YouTubeAPIKey))
+
 	if cfg.GeminiAPIKey != "" && cfg.YouTubeAPIKey != "" {
 		llmClient, err := llm.NewClient(llm.ProviderGemini, cfg.GeminiModel, cfg.GeminiAPIKey)
 		if err != nil {
@@ -74,6 +81,24 @@ func main() {
 	// Protected API routes
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(middleware.FirebaseAuth(clients.Auth))
+
+		// Admin routes FIRST (to prevent /assets/{id} from matching /admin/assets/...)
+		r.Route("/admin", func(r chi.Router) {
+			r.Use(middleware.RequireAnyAdmin)
+
+			// User management
+			r.Get("/users", adminHandler.ListUsers)
+			r.Get("/users/search", adminHandler.SearchUsers)
+			r.Get("/users/{uid}", adminHandler.GetUser)
+			r.Put("/users/{uid}/role", adminHandler.SetRole)
+			r.Delete("/users/{uid}/role", adminHandler.RevokeRole)
+
+			// Asset processing management
+			r.Get("/assets", adminHandler.ListAssets)
+			r.Patch("/assets/{id}/active", adminHandler.ToggleAssetActive)
+			r.Post("/assets/{id}/enrich", adminHandler.RetryEnrichment)
+			r.Patch("/assets/{id}/status", adminHandler.UpdateAssetStatus)
+		})
 
 		// Disciplines (read-only)
 		r.Get("/disciplines", disciplineHandler.List)
@@ -123,24 +148,6 @@ func main() {
 		r.Put("/curricula/{id}/elements/{elemId}", elementHandler.UpdateElement)
 		r.Delete("/curricula/{id}/elements/{elemId}", elementHandler.DeleteElement)
 		r.Put("/curricula/{id}/elements/reorder", elementHandler.ReorderElements)
-
-		// Admin routes (additional RequireAnyAdmin gate)
-		r.Route("/admin", func(r chi.Router) {
-			r.Use(middleware.RequireAnyAdmin)
-
-			// User management
-			r.Get("/users", adminHandler.ListUsers)
-			r.Get("/users/search", adminHandler.SearchUsers)
-			r.Get("/users/{uid}", adminHandler.GetUser)
-			r.Put("/users/{uid}/role", adminHandler.SetRole)
-			r.Delete("/users/{uid}/role", adminHandler.RevokeRole)
-
-			// Asset processing management
-			r.Get("/assets", adminHandler.ListAssets)
-			r.Patch("/assets/{id}/active", adminHandler.ToggleAssetActive)
-			r.Post("/assets/{id}/enrich", adminHandler.RetryEnrichment)
-			r.Patch("/assets/{id}/status", adminHandler.UpdateAssetStatus)
-		})
 	})
 
 	addr := fmt.Sprintf(":%s", cfg.Port)

@@ -372,7 +372,10 @@ func (h *AdminHandler) RetryEnrichment(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := chi.URLParam(r, "id")
 
+	slog.Info("RetryEnrichment handler called", "id", id, "path", r.URL.Path, "pipelineSet", h.pipeline != nil)
+
 	if h.pipeline == nil {
+		slog.Warn("RetryEnrichment: pipeline not configured")
 		writeError(w, http.StatusServiceUnavailable, "enrichment pipeline not configured")
 		return
 	}
