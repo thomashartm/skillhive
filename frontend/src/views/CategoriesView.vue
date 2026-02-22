@@ -259,4 +259,14 @@ const handleCloseDialog = () => {
 .filter-search {
   width: 16rem;
 }
+
+@media (max-width: 768px) {
+  .filter-bar {
+    flex-direction: column;
+  }
+
+  .filter-search {
+    width: 100%;
+  }
+}
 </style>

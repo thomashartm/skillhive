@@ -439,4 +439,14 @@ function getRoleBadgeClass(role: UserRole): string {
 :deep(.p-password-input) {
   width: 100%;
 }
+
+@media (max-width: 768px) {
+  .field-with-button {
+    flex-direction: column;
+  }
+
+  .field-with-button .input-field {
+    width: 100%;
+  }
+}
 </style>

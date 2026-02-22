@@ -230,7 +230,7 @@ watch(statusFilter, () => {
     </div>
 
     <!-- Admin navigation -->
-    <div class="admin-nav flex gap-2 mb-4">
+    <div class="admin-nav">
       <Button
         label="User Management"
         icon="pi pi-users"
@@ -405,6 +405,14 @@ watch(statusFilter, () => {
   margin: 0;
 }
 
+/* Admin nav */
+.admin-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
 /* Admin nav buttons */
 .admin-nav-btn {
   background: rgba(45, 212, 191, 0.1) !important;
@@ -462,5 +470,11 @@ watch(statusFilter, () => {
 
 :deep(.admin-table .p-datatable-tbody > tr.p-row-odd:hover) {
   background: var(--surface-hover);
+}
+
+@media (max-width: 768px) {
+  .admin-nav {
+    flex-direction: column;
+  }
 }
 </style>

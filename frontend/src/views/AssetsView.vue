@@ -172,4 +172,10 @@ async function handleDelete(asset: Asset) {
 .filter-search {
   width: 16rem;
 }
+
+@media (max-width: 768px) {
+  .filter-search {
+    width: 100%;
+  }
+}
 </style>

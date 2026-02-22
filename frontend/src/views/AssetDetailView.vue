@@ -10,7 +10,7 @@
 
     <div v-else-if="asset">
       <!-- Header -->
-      <div class="flex items-center gap-3 mb-6">
+      <div class="detail-header">
         <Button
           icon="pi pi-arrow-left"
           severity="secondary"
@@ -18,22 +18,24 @@
           @click="router.push('/assets')"
         />
         <h1 class="view-title flex-1">{{ asset.title }}</h1>
-        <Button
-          v-if="authStore.canEdit"
-          icon="pi pi-pencil"
-          label="Edit"
-          severity="secondary"
-          size="small"
-          @click="router.push(`/assets/${asset.id}/edit`)"
-        />
-        <Button
-          v-if="authStore.canEdit"
-          icon="pi pi-trash"
-          label="Delete"
-          severity="danger"
-          size="small"
-          @click="handleDelete"
-        />
+        <div class="detail-header-actions">
+          <Button
+            v-if="authStore.canEdit"
+            icon="pi pi-pencil"
+            label="Edit"
+            severity="secondary"
+            size="small"
+            @click="router.push(`/assets/${asset.id}/edit`)"
+          />
+          <Button
+            v-if="authStore.canEdit"
+            icon="pi pi-trash"
+            label="Delete"
+            severity="danger"
+            size="small"
+            @click="handleDelete"
+          />
+        </div>
       </div>
 
       <!-- Main content -->
@@ -230,6 +232,19 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.detail-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
 .asset-thumbnail {
   border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
@@ -266,5 +281,16 @@ onMounted(async () => {
   font-weight: 500;
   color: rgba(255, 255, 255, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 768px) {
+  .detail-header {
+    flex-wrap: wrap;
+  }
+
+  .detail-header-actions {
+    width: 100%;
+    order: 3;
+  }
 }
 </style>

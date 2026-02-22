@@ -241,6 +241,7 @@ watch(activeDisciplineId, () => {
   display: flex;
   gap: 0.75rem;
   margin-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
 .filter-search {
@@ -249,5 +250,16 @@ watch(activeDisciplineId, () => {
 
 .filter-dropdown {
   width: 12rem;
+}
+
+@media (max-width: 768px) {
+  .filter-bar {
+    flex-direction: column;
+  }
+
+  .filter-search,
+  .filter-dropdown {
+    width: 100%;
+  }
 }
 </style>
