@@ -14,34 +14,32 @@
     </div>
 
     <div v-else-if="curriculum">
-      <div class="flex items-start justify-between mb-6">
-        <div class="flex-1">
-          <div class="flex items-center gap-3 mb-2">
-            <Button
-              icon="pi pi-arrow-left"
-              severity="secondary"
-              text
-              @click="router.push('/curricula')"
-              title="Back to Curricula"
-            />
-            <h1 class="view-title">{{ curriculum.title }}</h1>
-            <Button
-              v-if="authStore.canEdit"
-              icon="pi pi-pencil"
-              severity="secondary"
-              text
-              @click="handleEditCurriculum"
-              title="Edit Curriculum"
-            />
-          </div>
-          <p v-if="curriculum.description" class="text-slate-400 mb-2">
-            {{ curriculum.description }}
-          </p>
-          <Tag
-            :value="curriculum.isPublic ? 'Public' : 'Private'"
-            :severity="curriculum.isPublic ? 'success' : 'secondary'"
+      <div class="curriculum-header">
+        <div class="curriculum-header-top">
+          <Button
+            icon="pi pi-arrow-left"
+            severity="secondary"
+            text
+            @click="router.push('/curricula')"
+            title="Back to Curricula"
+          />
+          <h1 class="view-title flex-1">{{ curriculum.title }}</h1>
+          <Button
+            v-if="authStore.canEdit"
+            icon="pi pi-pencil"
+            severity="secondary"
+            text
+            @click="handleEditCurriculum"
+            title="Edit Curriculum"
           />
         </div>
+        <p v-if="curriculum.description" class="text-slate-400 mb-2">
+          {{ curriculum.description }}
+        </p>
+        <Tag
+          :value="curriculum.isPublic ? 'Public' : 'Private'"
+          :severity="curriculum.isPublic ? 'success' : 'secondary'"
+        />
       </div>
 
       <div v-if="authStore.canEdit" class="mb-6">
@@ -428,3 +426,22 @@ const handleReorder = async (orderedIds: string[]) => {
   }
 }
 </script>
+
+<style scoped>
+.curriculum-header {
+  margin-bottom: 1.5rem;
+}
+
+.curriculum-header-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .curriculum-header-top {
+    flex-wrap: wrap;
+  }
+}
+</style>

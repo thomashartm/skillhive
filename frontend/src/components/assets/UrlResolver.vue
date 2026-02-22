@@ -1,6 +1,6 @@
 <template>
   <div class="url-resolver space-y-3">
-    <div class="flex gap-2">
+    <div class="url-input-row">
       <InputText
         :model-value="modelValue"
         placeholder="Enter YouTube URL..."
@@ -29,12 +29,12 @@
     </Message>
 
     <div v-if="resolvedData" class="resolved-preview p-4 border border-surface-300 dark:border-surface-600 rounded bg-surface-50 dark:bg-surface-900">
-      <div class="flex gap-4">
+      <div class="resolved-content">
         <img
           v-if="resolvedData.thumbnail_url"
           :src="resolvedData.thumbnail_url"
           :alt="resolvedData.title"
-          class="w-32 h-24 object-cover rounded"
+          class="resolved-thumb"
         />
         <div class="flex-1 space-y-2">
           <div>
@@ -133,8 +133,25 @@ function handlePaste(_event: ClipboardEvent) {
   width: 100%;
 }
 
+.url-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .resolved-preview {
   animation: fadeIn 0.3s ease-in;
+}
+
+.resolved-content {
+  display: flex;
+  gap: 1rem;
+}
+
+.resolved-thumb {
+  width: 8rem;
+  height: 6rem;
+  object-fit: cover;
+  border-radius: 0.375rem;
 }
 
 @keyframes fadeIn {
@@ -145,6 +162,22 @@ function handlePaste(_event: ClipboardEvent) {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .url-input-row {
+    flex-direction: column;
+  }
+
+  .resolved-content {
+    flex-direction: column;
+  }
+
+  .resolved-thumb {
+    width: 100%;
+    height: auto;
+    max-height: 12rem;
   }
 }
 </style>
