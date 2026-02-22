@@ -8,7 +8,7 @@
 
     <div v-else-if="category">
       <!-- Header -->
-      <div class="flex items-center gap-3 mb-6">
+      <div class="detail-header">
         <Button
           icon="pi pi-arrow-left"
           severity="secondary"
@@ -17,7 +17,7 @@
         />
         <div class="flex-1">
           <h1 class="view-title">{{ category.name }}</h1>
-          <div v-if="breadcrumbs.length > 1" class="flex items-center gap-1 mt-1">
+          <div v-if="breadcrumbs.length > 1" class="breadcrumb-row">
             <template v-for="(crumb, i) in breadcrumbs" :key="crumb.id">
               <span v-if="i > 0" class="text-slate-600 text-xs">/</span>
               <a
@@ -322,6 +322,21 @@ watch(id, () => {
 </script>
 
 <style scoped>
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.breadcrumb-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  flex-wrap: wrap;
+}
+
 .detail-label {
   font-size: 0.7rem;
   font-weight: 600;
@@ -445,5 +460,11 @@ watch(id, () => {
   color: #64748b;
   margin-top: 0.375rem;
   font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .detail-header {
+    flex-wrap: wrap;
+  }
 }
 </style>

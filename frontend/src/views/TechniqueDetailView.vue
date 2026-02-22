@@ -18,7 +18,7 @@
     </div>
 
     <div v-else-if="technique">
-      <div class="flex items-center gap-4 mb-6">
+      <div class="detail-header">
         <Button
           icon="pi pi-arrow-left"
           severity="secondary"
@@ -28,20 +28,22 @@
           aria-label="Go back"
         />
         <h1 class="view-title flex-1">{{ technique.name }}</h1>
-        <Button
-          v-if="authStore.canEdit"
-          icon="pi pi-pencil"
-          label="Edit"
-          severity="info"
-          @click="openEditDialog"
-        />
-        <Button
-          v-if="authStore.canEdit"
-          icon="pi pi-trash"
-          label="Delete"
-          severity="danger"
-          @click="handleDelete"
-        />
+        <div class="detail-header-actions">
+          <Button
+            v-if="authStore.canEdit"
+            icon="pi pi-pencil"
+            label="Edit"
+            severity="info"
+            @click="openEditDialog"
+          />
+          <Button
+            v-if="authStore.canEdit"
+            icon="pi pi-trash"
+            label="Delete"
+            severity="danger"
+            @click="handleDelete"
+          />
+        </div>
       </div>
 
       <Card class="mb-6">
@@ -95,7 +97,7 @@
               </div>
             </div>
 
-            <div class="flex gap-4 text-sm text-slate-400 mt-4 pt-4 border-t border-white/10">
+            <div class="detail-meta">
               <div>
                 <span class="font-semibold">Created:</span>
                 {{ formatDate(technique.createdAt) }}
@@ -350,6 +352,45 @@ onMounted(async () => {
 
 <style scoped>
 .technique-detail-view {
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.detail-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.detail-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: #94a3b8;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 768px) {
+  .detail-header {
+    flex-wrap: wrap;
+  }
+
+  .detail-header-actions {
+    width: 100%;
+    order: 3;
+  }
+
+  .detail-meta {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
 }
 
 .prose {

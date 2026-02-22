@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import Button from 'primevue/button'
 import Toast from 'primevue/toast'
@@ -11,6 +11,8 @@ import { useAuthStore } from '../../stores/auth'
 const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
+
+const mobileMenuOpen = ref(false)
 
 const baseNavItems = [
   { label: 'Dashboard', icon: 'pi pi-home', to: '/', exact: true },
@@ -38,6 +40,15 @@ async function handleLogout() {
   await authStore.logout()
   router.push({ name: 'login' })
 }
+
+function closeMobileMenu() {
+  mobileMenuOpen.value = false
+}
+
+// Auto-close mobile menu on navigation
+watch(() => route.path, () => {
+  closeMobileMenu()
+})
 </script>
 
 <template>
@@ -47,6 +58,14 @@ async function handleLogout() {
     <header class="app-header">
       <div class="header-left">
         <h1 class="app-title">SkillHive</h1>
+        <Button
+          :icon="mobileMenuOpen ? 'pi pi-times' : 'pi pi-bars'"
+          class="burger-button"
+          severity="secondary"
+          text
+          @click="mobileMenuOpen = !mobileMenuOpen"
+          aria-label="Toggle menu"
+        />
       </div>
       <nav class="header-nav">
         <router-link
@@ -76,6 +95,44 @@ async function handleLogout() {
         />
       </div>
     </header>
+
+    <!-- Mobile Menu Panel -->
+    <div v-if="mobileMenuOpen" class="mobile-menu">
+      <nav class="mobile-nav">
+        <router-link
+          v-for="item in navItems"
+          :key="item.to"
+          :to="item.to"
+          class="mobile-nav-link"
+          :class="{ active: isActive(item) }"
+          @click="closeMobileMenu"
+        >
+          <i :class="item.icon" class="mobile-nav-icon"></i>
+          <span class="mobile-nav-label">{{ item.label }}</span>
+        </router-link>
+      </nav>
+
+      <div class="mobile-menu-section">
+        <DisciplinePicker />
+      </div>
+
+      <div class="mobile-menu-section mobile-user-section">
+        <router-link to="/profile" class="mobile-user-name" @click="closeMobileMenu">
+          {{ authStore.userName }}
+          <span class="role-badge" :class="'role-' + authStore.activeRole">{{ authStore.activeRole }}</span>
+        </router-link>
+        <Button
+          icon="pi pi-sign-out"
+          label="Logout"
+          severity="secondary"
+          outlined
+          @click="handleLogout"
+          aria-label="Logout"
+          class="mobile-logout-button"
+        />
+      </div>
+    </div>
+
     <main class="app-content">
       <RouterView />
     </main>
@@ -227,6 +284,91 @@ async function handleLogout() {
   padding: 1.5rem 1.5rem 0;
 }
 
+/* Mobile Menu Burger Button - hidden on desktop */
+.burger-button {
+  display: none;
+  margin-left: 0.75rem;
+}
+
+/* Mobile Menu Panel */
+.mobile-menu {
+  display: none;
+  position: absolute;
+  top: 3rem;
+  left: 0;
+  right: 0;
+  background: #1a1a1a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 1000;
+  overflow-y: auto;
+  max-height: calc(100vh - 3rem);
+}
+
+.mobile-nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+  transition: all 0.15s ease;
+  border-left: 3px solid transparent;
+  min-height: 44px;
+}
+
+.mobile-nav-link:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.mobile-nav-link.active {
+  color: var(--primary-color);
+  background: rgba(var(--primary-color-rgb, 96, 165, 250), 0.08);
+  border-left-color: var(--primary-color);
+}
+
+.mobile-nav-icon {
+  font-size: 1rem;
+  width: 1.25rem;
+  text-align: center;
+}
+
+.mobile-nav-label {
+  flex: 1;
+}
+
+.mobile-menu-section {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mobile-user-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mobile-user-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+  padding: 0.5rem 0;
+}
+
+.mobile-logout-button {
+  width: 100%;
+}
+
 @media (max-width: 768px) {
   .nav-label {
     display: none;
@@ -234,6 +376,22 @@ async function handleLogout() {
 
   .header-right .user-name {
     display: none;
+  }
+
+  .header-right {
+    display: none;
+  }
+
+  .header-nav {
+    display: none;
+  }
+
+  .burger-button {
+    display: inline-flex;
+  }
+
+  .mobile-menu {
+    display: block;
   }
 }
 </style>
