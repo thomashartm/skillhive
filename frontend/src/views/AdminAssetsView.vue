@@ -5,11 +5,13 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import InputSwitch from 'primevue/inputswitch'
+import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useDisciplineStore } from '../stores/discipline'
 import { useApi } from '../composables/useApi'
@@ -23,21 +25,48 @@ const { isAdmin } = storeToRefs(authStore)
 const api = useApi()
 const toast = useToast()
 const confirm = useConfirm()
+const router = useRouter()
 
 // State
 const assets = ref<Asset[]>([])
 const loading = ref(false)
 const statusFilter = ref('')
+const searchQuery = ref('')
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 // Status filter options
 const statusOptions = ref([
   { label: 'All', value: '' },
+  { label: 'Legacy', value: 'legacy' },
   { label: 'Pending', value: 'pending' },
   { label: 'Enriching', value: 'enriching' },
   { label: 'Completed', value: 'completed' },
   { label: 'Failed', value: 'failed' },
 ])
+
+// Client-side filtered assets
+const filteredAssets = computed(() => {
+  let result = assets.value
+
+  // Status filter
+  if (statusFilter.value === 'legacy') {
+    result = result.filter((a) => !a.processingStatus || a.processingStatus === '')
+  } else if (statusFilter.value) {
+    result = result.filter((a) => a.processingStatus === statusFilter.value)
+  }
+
+  // Search filter
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    result = result.filter(
+      (a) =>
+        (a.title && a.title.toLowerCase().includes(q)) ||
+        (a.description && a.description.toLowerCase().includes(q))
+    )
+  }
+
+  return result
+})
 
 // Computed
 const disciplineName = computed(() => activeDiscipline.value?.name || '')
@@ -47,23 +76,21 @@ const hasProcessingAssets = computed(() =>
   )
 )
 
-// Fetch assets
+// Fetch all assets (no status filter param — filtering is client-side)
 async function fetchAssets() {
   if (!activeDisciplineId.value) return
 
   loading.value = true
   try {
-    let url = `/api/v1/admin/assets?disciplineId=${activeDisciplineId.value}`
-    if (statusFilter.value) {
-      url += `&status=${statusFilter.value}`
-    }
+    const url = `/api/v1/admin/assets?disciplineId=${activeDisciplineId.value}`
     const data = await api.get<Asset[]>(url)
     assets.value = data
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Failed to fetch assets'
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.message || 'Failed to fetch assets',
+      detail: msg,
       life: 5000,
     })
   } finally {
@@ -84,11 +111,12 @@ async function toggleActive(asset: Asset) {
       detail: `Asset ${asset.active ? 'activated' : 'deactivated'}`,
       life: 3000,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Failed to update asset'
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.message || 'Failed to update asset',
+      detail: msg,
       life: 5000,
     })
   }
@@ -106,11 +134,12 @@ async function retryEnrichment(asset: Asset) {
       detail: 'Enrichment re-triggered',
       life: 3000,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Failed to retry enrichment'
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.message || 'Failed to retry enrichment',
+      detail: msg,
       life: 5000,
     })
   }
@@ -127,7 +156,7 @@ function confirmDelete(asset: Asset) {
     acceptClass: 'p-button-danger',
     accept: async () => {
       try {
-        await api.delete(`/api/v1/assets/${asset.id}`)
+        await api.del(`/api/v1/assets/${asset.id}`)
         assets.value = assets.value.filter((a) => a.id !== asset.id)
         toast.add({
           severity: 'success',
@@ -135,11 +164,12 @@ function confirmDelete(asset: Asset) {
           detail: 'Asset deleted successfully',
           life: 3000,
         })
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : 'Failed to delete asset'
         toast.add({
           severity: 'error',
           summary: 'Error',
-          detail: error.message || 'Failed to delete asset',
+          detail: msg,
           life: 5000,
         })
       }
@@ -203,10 +233,6 @@ watch(activeDisciplineId, (newId) => {
     startPolling()
   }
 })
-
-watch(statusFilter, () => {
-  fetchAssets()
-})
 </script>
 
 <template>
@@ -219,14 +245,22 @@ watch(statusFilter, () => {
           Managing assets for {{ disciplineName }}
         </p>
       </div>
-      <Button
-        label="Refresh"
-        icon="pi pi-refresh"
-        severity="secondary"
-        outlined
-        :loading="loading"
-        @click="fetchAssets"
-      />
+      <div class="flex gap-2">
+        <Button
+          label="New Asset"
+          icon="pi pi-plus"
+          severity="success"
+          @click="router.push({ name: 'admin-asset-manage', params: { id: 'new' } })"
+        />
+        <Button
+          label="Refresh"
+          icon="pi pi-refresh"
+          severity="secondary"
+          outlined
+          :loading="loading"
+          @click="fetchAssets"
+        />
+      </div>
     </div>
 
     <!-- Admin navigation -->
@@ -268,7 +302,7 @@ watch(statusFilter, () => {
 
     <template v-else>
       <!-- Filters -->
-      <div class="mb-4">
+      <div class="mb-4 flex gap-3 items-center flex-wrap">
         <Select
           v-model="statusFilter"
           :options="statusOptions"
@@ -277,16 +311,21 @@ watch(statusFilter, () => {
           placeholder="Filter by status"
           class="w-48"
         />
+        <InputText
+          v-model="searchQuery"
+          placeholder="Search title or description..."
+          class="w-72"
+        />
       </div>
 
       <!-- Assets table -->
       <DataTable
-        :value="assets"
+        :value="filteredAssets"
         :loading="loading"
         stripedRows
         dataKey="id"
         class="admin-table"
-        :paginator="assets.length > 20"
+        :paginator="filteredAssets.length > 20"
         :rows="20"
       >
         <template #empty>
@@ -333,7 +372,7 @@ watch(statusFilter, () => {
 
         <Column field="originator" header="Originator" :style="{ width: '150px' }">
           <template #body="{ data }">
-            <span class="text-gray-300">{{ data.originator || '—' }}</span>
+            <span class="text-gray-300">{{ data.originator || '\u2014' }}</span>
           </template>
         </Column>
 
@@ -346,7 +385,7 @@ watch(statusFilter, () => {
             >
               {{ data.processingError.length > 60 ? data.processingError.slice(0, 60) + '...' : data.processingError }}
             </span>
-            <span v-else class="text-gray-500">—</span>
+            <span v-else class="text-gray-500">&mdash;</span>
           </template>
         </Column>
 
@@ -354,12 +393,12 @@ watch(statusFilter, () => {
           <template #body="{ data }">
             <div class="flex gap-1">
               <Button
-                icon="pi pi-pencil"
+                icon="pi pi-cog"
                 severity="secondary"
                 text
                 size="small"
-                v-tooltip.top="'Edit'"
-                @click="$router.push({ name: 'asset-edit', params: { id: data.id } })"
+                v-tooltip.top="'Manage'"
+                @click="router.push({ name: 'admin-asset-manage', params: { id: data.id } })"
               />
               <Button
                 icon="pi pi-trash"
@@ -475,6 +514,11 @@ watch(statusFilter, () => {
 @media (max-width: 768px) {
   .admin-nav {
     flex-direction: column;
+  }
+
+  .view-header {
+    flex-direction: column;
+    gap: 1rem;
   }
 }
 </style>

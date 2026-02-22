@@ -419,6 +419,78 @@ func (h *AdminHandler) RetryEnrichment(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// UpdateAssetStatus manually sets the processing status on an asset.
+// PATCH /api/v1/admin/assets/{id}/status
+func (h *AdminHandler) UpdateAssetStatus(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := chi.URLParam(r, "id")
+
+	ref := h.fs.Collection("assets").Doc(id)
+	doc, err := ref.Get(ctx)
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			writeError(w, http.StatusNotFound, "asset not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to get asset")
+		return
+	}
+
+	var existing model.Asset
+	if err := doc.DataTo(&existing); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to parse asset")
+		return
+	}
+
+	if err := middleware.RequireAdmin(ctx, existing.DisciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "admin role required for this discipline")
+		return
+	}
+
+	var req struct {
+		ProcessingStatus string  `json:"processingStatus"`
+		ProcessingError  *string `json:"processingError"`
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Validate status against whitelist
+	validStatuses := map[string]bool{
+		"":          true,
+		"pending":   true,
+		"enriching": true,
+		"completed": true,
+		"failed":    true,
+	}
+	if !validStatuses[req.ProcessingStatus] {
+		writeError(w, http.StatusBadRequest, "processingStatus must be one of: empty, pending, enriching, completed, failed")
+		return
+	}
+
+	updates := []firestore.Update{
+		{Path: "processingStatus", Value: req.ProcessingStatus},
+		{Path: "updatedAt", Value: time.Now()},
+	}
+	if req.ProcessingError != nil {
+		updates = append(updates, firestore.Update{Path: "processingError", Value: *req.ProcessingError})
+	} else {
+		updates = append(updates, firestore.Update{Path: "processingError", Value: nil})
+	}
+
+	if _, err := ref.Update(ctx, updates); err != nil {
+		slog.Error("failed to update asset status", "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to update asset status")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"id":               id,
+		"processingStatus": req.ProcessingStatus,
+	})
+}
+
 // extractRoles parses the roles map from custom claims.
 func extractRoles(claims map[string]interface{}) map[string]string {
 	roles := map[string]string{}
