@@ -94,6 +94,7 @@ export interface Curriculum extends TimestampFields {
   disciplineId: string
   title: string
   description: string
+  duration?: string | null
   isPublic: boolean
   ownerUid: string
   elementCount?: number

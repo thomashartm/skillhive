@@ -23,7 +23,10 @@
 
     <Column field="description" header="Description" style="min-width: 300px">
       <template #body="{ data }">
-        <div class="text-sm text-slate-400 truncate">{{ data.description || '-' }}</div>
+        <div class="description-cell">
+          <MarkdownRenderer v-if="data.description" :content="data.description" class="text-sm text-slate-400" />
+          <span v-else class="text-sm text-slate-400">-</span>
+        </div>
       </template>
     </Column>
 
@@ -77,6 +80,7 @@
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
+import MarkdownRenderer from '../common/MarkdownRenderer.vue'
 import type { Curriculum } from '../../types'
 import { useAuthStore } from '../../stores/auth'
 
@@ -117,5 +121,27 @@ const formatDate = (dateString: string) => {
 
 .curriculum-name:hover {
   color: var(--primary-color);
+}
+
+.description-cell {
+  max-height: 3rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.description-cell :deep(p) {
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.description-cell :deep(ul),
+.description-cell :deep(ol),
+.description-cell :deep(h1),
+.description-cell :deep(h2),
+.description-cell :deep(h3) {
+  display: none;
 }
 </style>

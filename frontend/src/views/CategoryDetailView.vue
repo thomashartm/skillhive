@@ -42,9 +42,11 @@
       </div>
 
       <!-- Description -->
-      <p v-if="category.description" class="text-slate-300 text-sm mb-6">
-        {{ category.description }}
-      </p>
+      <MarkdownRenderer
+        v-if="category.description"
+        :content="category.description"
+        class="text-slate-300 text-sm mb-6"
+      />
 
       <!-- Children -->
       <div v-if="children.length" class="mb-6">
@@ -125,7 +127,7 @@
                   class="shrink-0 text-xs"
                 />
               </div>
-              <p v-if="asset.description" class="asset-description">{{ asset.description }}</p>
+              <MarkdownRenderer v-if="asset.description" :content="asset.description" class="asset-description" />
               <p v-if="asset.originator" class="asset-originator">{{ asset.originator }}</p>
             </div>
           </div>
@@ -169,6 +171,7 @@ import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
+import MarkdownRenderer from '../components/common/MarkdownRenderer.vue'
 import CategoryForm from '../components/categories/CategoryForm.vue'
 import { useCategoryStore } from '../stores/categories'
 import { useTechniqueStore } from '../stores/techniques'
