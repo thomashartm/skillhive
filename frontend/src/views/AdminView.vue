@@ -196,7 +196,7 @@ async function handleRoleChange(user: UserInfo, newRole: UserRole | 'none') {
 
   try {
     const disciplineId = activeDisciplineId.value!
-    const currentUser = users.value[userIndex]
+    const currentUser = users.value[userIndex]!
 
     if (newRole === 'none') {
       // Revoke access
@@ -204,9 +204,14 @@ async function handleRoleChange(user: UserInfo, newRole: UserRole | 'none') {
         `/api/v1/admin/users/${user.uid}/role?disciplineId=${disciplineId}`
       )
       // Update local state reactively
-      const updatedRoles = { ...currentUser.roles }
+      const updatedRoles: Record<string, UserRole> = { ...currentUser.roles }
       delete updatedRoles[disciplineId]
-      users.value[userIndex] = { ...currentUser, roles: updatedRoles }
+      users.value[userIndex] = {
+        uid: currentUser.uid,
+        email: currentUser.email,
+        displayName: currentUser.displayName,
+        roles: updatedRoles,
+      }
 
       toast.add({
         severity: 'success',
@@ -223,7 +228,9 @@ async function handleRoleChange(user: UserInfo, newRole: UserRole | 'none') {
 
       // Update local state reactively
       users.value[userIndex] = {
-        ...currentUser,
+        uid: currentUser.uid,
+        email: currentUser.email,
+        displayName: currentUser.displayName,
         roles: { ...currentUser.roles, [disciplineId]: newRole },
       }
 
