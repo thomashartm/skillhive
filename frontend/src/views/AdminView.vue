@@ -10,7 +10,6 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
-import { useConfirm } from 'primevue/useconfirm'
 import { useAuthStore } from '../stores/auth'
 import { useDisciplineStore } from '../stores/discipline'
 import { useRouter } from 'vue-router'
@@ -36,7 +35,6 @@ const { isAdmin } = storeToRefs(authStore)
 const router = useRouter()
 const api = useApi()
 const toast = useToast()
-const confirm = useConfirm()
 
 // State
 const users = ref<UserInfo[]>([])
@@ -197,15 +195,18 @@ async function handleRoleChange(user: UserInfo, newRole: UserRole | 'none') {
   if (userIndex === -1) return
 
   try {
+    const disciplineId = activeDisciplineId.value!
+    const currentUser = users.value[userIndex]
+
     if (newRole === 'none') {
       // Revoke access
       await api.del(
-        `/api/v1/admin/users/${user.uid}/role?disciplineId=${activeDisciplineId.value}`
+        `/api/v1/admin/users/${user.uid}/role?disciplineId=${disciplineId}`
       )
       // Update local state reactively
-      const updatedRoles = { ...users.value[userIndex].roles }
-      delete updatedRoles[activeDisciplineId.value]
-      users.value[userIndex] = { ...users.value[userIndex], roles: updatedRoles }
+      const updatedRoles = { ...currentUser.roles }
+      delete updatedRoles[disciplineId]
+      users.value[userIndex] = { ...currentUser, roles: updatedRoles }
 
       toast.add({
         severity: 'success',
@@ -216,14 +217,14 @@ async function handleRoleChange(user: UserInfo, newRole: UserRole | 'none') {
     } else {
       // Set role
       await api.put(`/api/v1/admin/users/${user.uid}/role`, {
-        disciplineId: activeDisciplineId.value,
+        disciplineId: disciplineId,
         role: newRole,
       })
 
       // Update local state reactively
       users.value[userIndex] = {
-        ...users.value[userIndex],
-        roles: { ...users.value[userIndex].roles, [activeDisciplineId.value]: newRole },
+        ...currentUser,
+        roles: { ...currentUser.roles, [disciplineId]: newRole },
       }
 
       toast.add({
@@ -246,57 +247,10 @@ async function handleRoleChange(user: UserInfo, newRole: UserRole | 'none') {
   }
 }
 
-// Revoke user access to current discipline
-function handleRevoke(user: UserInfo) {
-  if (!activeDisciplineId.value) return
-
-  confirm.require({
-    message: `Are you sure you want to revoke access for "${user.email}"? They will lose all permissions for this discipline.`,
-    header: 'Confirm Revoke Access',
-    icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'Revoke',
-    rejectLabel: 'Cancel',
-    acceptClass: 'p-button-danger',
-    accept: async () => {
-      try {
-        await api.del(
-          `/api/v1/admin/users/${user.uid}/role?disciplineId=${activeDisciplineId.value}`
-        )
-
-        toast.add({
-          severity: 'success',
-          summary: 'Success',
-          detail: 'Access revoked successfully',
-          life: 3000,
-        })
-
-        // Refresh claims in case admin revoked their own access
-        await authStore.refreshClaims()
-
-        // Refresh users list
-        await fetchUsers()
-      } catch (error: any) {
-        toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: error.message || 'Failed to revoke access',
-          life: 5000,
-        })
-      }
-    },
-  })
-}
-
 // Get user role for current discipline (returns 'none' if no access)
 function getUserRole(user: UserInfo): UserRole | 'none' {
   if (!activeDisciplineId.value) return 'none'
   return user.roles[activeDisciplineId.value] || 'none'
-}
-
-// Check if user has a role in current discipline
-function hasRoleInDiscipline(user: UserInfo): boolean {
-  if (!activeDisciplineId.value) return false
-  return !!user.roles[activeDisciplineId.value]
 }
 
 // Load users on mount and when discipline changes
