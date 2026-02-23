@@ -114,7 +114,17 @@
 
       <!-- Associated Assets -->
       <div class="mt-6">
-        <h2 class="text-lg font-semibold mb-4">Associated Assets</h2>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold">Associated Assets</h2>
+          <Button
+            v-if="authStore.canEdit"
+            icon="pi pi-link"
+            label="Manage Assets"
+            severity="secondary"
+            size="small"
+            @click="showAssetModal = true"
+          />
+        </div>
 
         <div v-if="assetsLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div v-for="n in 3" :key="n" class="p-3 border border-white/10 rounded">
@@ -181,6 +191,14 @@
       @close="closeEditDialog"
     />
 
+    <AssetAssociationModal
+      v-if="technique"
+      :visible="showAssetModal"
+      :technique-id="technique.id"
+      @close="showAssetModal = false"
+      @saved="handleAssetsSaved"
+    />
+
   </div>
 </template>
 
@@ -196,6 +214,7 @@ import MarkdownRenderer from '../components/common/MarkdownRenderer.vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import TechniqueForm from '../components/techniques/TechniqueForm.vue'
+import AssetAssociationModal from '../components/techniques/AssetAssociationModal.vue'
 import { useTechniqueStore } from '../stores/techniques'
 import { useCategoryStore } from '../stores/categories'
 import { useTagStore } from '../stores/tags'
@@ -224,6 +243,7 @@ const { activeDisciplineId } = storeToRefs(disciplineStore)
 const technique = ref<Technique | null>(null)
 const loading = ref(true)
 const showEditDialog = ref(false)
+const showAssetModal = ref(false)
 const assets = ref<Asset[]>([])
 const assetsLoading = ref(false)
 
@@ -340,6 +360,10 @@ const fetchAssets = async () => {
   } finally {
     assetsLoading.value = false
   }
+}
+
+const handleAssetsSaved = () => {
+  fetchAssets()
 }
 
 onMounted(async () => {
