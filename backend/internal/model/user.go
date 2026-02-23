@@ -8,6 +8,12 @@ type UserInfo struct {
 	Roles       map[string]string `json:"roles"`
 }
 
+// UsersListResponse is the paginated response for listing users.
+type UsersListResponse struct {
+	Users         []UserInfo `json:"users"`
+	NextPageToken string     `json:"nextPageToken,omitempty"`
+}
+
 // SetRoleRequest is the body for PUT /admin/users/{uid}/role.
 type SetRoleRequest struct {
 	DisciplineID string `json:"disciplineId"`

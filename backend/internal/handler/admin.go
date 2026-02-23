@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -34,8 +35,9 @@ func NewAdminHandler(authClient *auth.Client, fs *firestore.Client, pipeline *en
 	return &AdminHandler{authClient: authClient, fs: fs, pipeline: pipeline, enrichCtx: enrichCtx}
 }
 
-// ListUsers returns users with explicit roles for a given discipline.
-// GET /api/v1/admin/users?disciplineId=X
+// ListUsers returns all users with optional role filtering and pagination.
+// GET /api/v1/admin/users?disciplineId=X&role=Y&pageSize=Z&pageToken=T
+// role: "all" (default), "admin", "editor", "viewer", "none" (no role in discipline)
 func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	disciplineID := r.URL.Query().Get("disciplineId")
@@ -50,11 +52,36 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Iterate all Firebase Auth users and filter by those with roles for this discipline.
-	// For small user bases this is fine; for large ones, consider a Firestore user-roles collection.
+	// Parse pagination params
+	pageSize := 20
+	if ps := r.URL.Query().Get("pageSize"); ps != "" {
+		if parsed, err := strconv.Atoi(ps); err == nil && parsed > 0 && parsed <= 100 {
+			pageSize = parsed
+		}
+	}
+	pageToken := r.URL.Query().Get("pageToken")
+
+	// Parse role filter: "all", "admin", "editor", "viewer", "none"
+	roleFilter := r.URL.Query().Get("role")
+	if roleFilter == "" {
+		roleFilter = "all"
+	}
+
+	// Iterate Firebase Auth users with pagination
 	var users []model.UserInfo
-	iter := h.authClient.Users(ctx, "")
-	for {
+	iter := h.authClient.Users(ctx, pageToken)
+
+	// We need to fetch more than pageSize to account for filtering
+	// Firebase doesn't support server-side filtering on custom claims
+	fetchLimit := pageSize * 3 // Fetch extra to handle filtering
+	if roleFilter == "all" {
+		fetchLimit = pageSize
+	}
+
+	fetched := 0
+	var nextPageToken string
+
+	for len(users) < pageSize {
 		u, err := iter.Next()
 		if err == iterator.Done {
 			break
@@ -65,8 +92,22 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		fetched++
 		roles := extractRoles(u.CustomClaims)
-		if _, ok := roles[disciplineID]; ok {
+		userRole, hasRole := roles[disciplineID]
+
+		// Apply role filter
+		include := false
+		switch roleFilter {
+		case "all":
+			include = true
+		case "none":
+			include = !hasRole
+		case "admin", "editor", "viewer":
+			include = hasRole && userRole == roleFilter
+		}
+
+		if include {
 			users = append(users, model.UserInfo{
 				UID:         u.UID,
 				Email:       u.Email,
@@ -74,12 +115,26 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 				Roles:       roles,
 			})
 		}
+
+		// Safety limit to prevent infinite loops when filtering
+		if fetched >= fetchLimit*2 {
+			break
+		}
+	}
+
+	// Get next page token if there are more users
+	if pi := iter.PageInfo(); pi != nil && pi.Token != "" {
+		nextPageToken = pi.Token
 	}
 
 	if users == nil {
 		users = []model.UserInfo{}
 	}
-	writeJSON(w, http.StatusOK, users)
+
+	writeJSON(w, http.StatusOK, model.UsersListResponse{
+		Users:         users,
+		NextPageToken: nextPageToken,
+	})
 }
 
 // SearchUsers finds a user by exact email.
@@ -185,12 +240,9 @@ func (h *AdminHandler) SetRole(w http.ResponseWriter, r *http.Request) {
 		roles = map[string]interface{}{}
 	}
 
-	if req.Role == "viewer" {
-		// Viewer is default — remove explicit entry
-		delete(roles, req.DisciplineID)
-	} else {
-		roles[req.DisciplineID] = req.Role
-	}
+	// Store the role (viewer, editor, or admin)
+	// Note: "no access" is handled by RevokeRole, not SetRole
+	roles[req.DisciplineID] = req.Role
 
 	claims["roles"] = roles
 	if err := h.authClient.SetCustomUserClaims(ctx, targetUID, claims); err != nil {

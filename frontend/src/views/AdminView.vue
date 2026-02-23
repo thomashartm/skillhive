@@ -15,7 +15,7 @@ import { useAuthStore } from '../stores/auth'
 import { useDisciplineStore } from '../stores/discipline'
 import { useRouter } from 'vue-router'
 import { useApi } from '../composables/useApi'
-import type { UserInfo, UserRole } from '../types'
+import type { UserInfo, UserRole, UserRoleFilter, UsersListResponse } from '../types'
 
 /**
  * AdminView - User management page for discipline administrators
@@ -44,8 +44,27 @@ const loading = ref(false)
 const searchEmail = ref('')
 const searchLoading = ref(false)
 
-// Role options for dropdown
-const roleOptions = ref<{ label: string; value: UserRole }[]>([
+// Pagination state
+const pageSize = ref(20)
+const currentPageToken = ref<string | null>(null)
+const nextPageToken = ref<string | null>(null)
+const pageHistory = ref<string[]>([]) // Stack of previous page tokens for "Previous" navigation
+
+// Role filter state
+const selectedRoleFilter = ref<UserRoleFilter>('all')
+
+// Role filter options for dropdown
+const roleFilterOptions = ref<{ label: string; value: UserRoleFilter }[]>([
+  { label: 'All Users', value: 'all' },
+  { label: 'Admin', value: 'admin' },
+  { label: 'Editor', value: 'editor' },
+  { label: 'Viewer', value: 'viewer' },
+  { label: 'No Access', value: 'none' },
+])
+
+// Role options for user role dropdown (includes 'none' for no access)
+const roleOptions = ref<{ label: string; value: UserRole | 'none' }[]>([
+  { label: 'No Access', value: 'none' },
   { label: 'Viewer', value: 'viewer' },
   { label: 'Editor', value: 'editor' },
   { label: 'Admin', value: 'admin' },
@@ -54,16 +73,21 @@ const roleOptions = ref<{ label: string; value: UserRole }[]>([
 // Computed: discipline name for subtitle
 const disciplineName = computed(() => activeDiscipline.value?.name || '')
 
-// Fetch users for current discipline
-async function fetchUsers() {
+// Fetch users for current discipline with filtering and pagination
+async function fetchUsers(pageToken: string | null = null) {
   if (!activeDisciplineId.value) return
 
   loading.value = true
   try {
-    const data = await api.get<UserInfo[]>(
-      `/api/v1/admin/users?disciplineId=${activeDisciplineId.value}`
-    )
-    users.value = data
+    let url = `/api/v1/admin/users?disciplineId=${activeDisciplineId.value}&pageSize=${pageSize.value}&role=${selectedRoleFilter.value}`
+    if (pageToken) {
+      url += `&pageToken=${encodeURIComponent(pageToken)}`
+    }
+
+    const data = await api.get<UsersListResponse>(url)
+    users.value = data.users
+    nextPageToken.value = data.nextPageToken || null
+    currentPageToken.value = pageToken
   } catch (error: any) {
     toast.add({
       severity: 'error',
@@ -75,6 +99,36 @@ async function fetchUsers() {
     loading.value = false
   }
 }
+
+// Handle role filter change
+function handleRoleFilterChange() {
+  // Reset pagination when filter changes
+  currentPageToken.value = null
+  nextPageToken.value = null
+  pageHistory.value = []
+  fetchUsers()
+}
+
+// Go to next page
+function goToNextPage() {
+  if (!nextPageToken.value) return
+  // Save current token to history for "Previous" navigation
+  pageHistory.value.push(currentPageToken.value || '')
+  fetchUsers(nextPageToken.value)
+}
+
+// Go to previous page
+function goToPreviousPage() {
+  if (pageHistory.value.length === 0) return
+  const previousToken = pageHistory.value.pop() || null
+  fetchUsers(previousToken === '' ? null : previousToken)
+}
+
+// Check if we can go to previous page
+const canGoPrevious = computed(() => pageHistory.value.length > 0)
+
+// Check if we can go to next page
+const canGoNext = computed(() => !!nextPageToken.value)
 
 // Search for user by email
 async function handleSearch() {
@@ -132,33 +186,56 @@ async function handleSearch() {
 }
 
 // Update user role for current discipline
-async function handleRoleChange(user: UserInfo, newRole: UserRole) {
+async function handleRoleChange(user: UserInfo, newRole: UserRole | 'none') {
   if (!activeDisciplineId.value) return
 
-  const oldRole = user.roles[activeDisciplineId.value]
+  const oldRole = user.roles[activeDisciplineId.value] || 'none'
   if (oldRole === newRole) return
 
+  // Find user in the reactive array to ensure Vue tracks the change
+  const userIndex = users.value.findIndex((u) => u.uid === user.uid)
+  if (userIndex === -1) return
+
   try {
-    await api.put(`/api/v1/admin/users/${user.uid}/role`, {
-      disciplineId: activeDisciplineId.value,
-      role: newRole,
-    })
+    if (newRole === 'none') {
+      // Revoke access
+      await api.del(
+        `/api/v1/admin/users/${user.uid}/role?disciplineId=${activeDisciplineId.value}`
+      )
+      // Update local state reactively
+      const updatedRoles = { ...users.value[userIndex].roles }
+      delete updatedRoles[activeDisciplineId.value]
+      users.value[userIndex] = { ...users.value[userIndex], roles: updatedRoles }
 
-    // Update local state
-    user.roles[activeDisciplineId.value] = newRole
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Access revoked',
+        life: 3000,
+      })
+    } else {
+      // Set role
+      await api.put(`/api/v1/admin/users/${user.uid}/role`, {
+        disciplineId: activeDisciplineId.value,
+        role: newRole,
+      })
 
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: `Role updated to ${newRole}`,
-      life: 3000,
-    })
+      // Update local state reactively
+      users.value[userIndex] = {
+        ...users.value[userIndex],
+        roles: { ...users.value[userIndex].roles, [activeDisciplineId.value]: newRole },
+      }
+
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: `Role updated to ${newRole}`,
+        life: 3000,
+      })
+    }
 
     // Refresh claims in case admin changed their own role
     await authStore.refreshClaims()
-
-    // Refresh users list to ensure consistency
-    await fetchUsers()
   } catch (error: any) {
     toast.add({
       severity: 'error',
@@ -166,8 +243,6 @@ async function handleRoleChange(user: UserInfo, newRole: UserRole) {
       detail: error.message || 'Failed to update role',
       life: 5000,
     })
-    // Reload to revert local changes
-    await fetchUsers()
   }
 }
 
@@ -212,10 +287,10 @@ function handleRevoke(user: UserInfo) {
   })
 }
 
-// Get user role for current discipline
-function getUserRole(user: UserInfo): UserRole {
-  if (!activeDisciplineId.value) return 'viewer'
-  return user.roles[activeDisciplineId.value] || 'viewer'
+// Get user role for current discipline (returns 'none' if no access)
+function getUserRole(user: UserInfo): UserRole | 'none' {
+  if (!activeDisciplineId.value) return 'none'
+  return user.roles[activeDisciplineId.value] || 'none'
 }
 
 // Check if user has a role in current discipline
@@ -233,6 +308,10 @@ onMounted(() => {
 
 watch(activeDisciplineId, (newId) => {
   if (newId && isAdmin.value) {
+    // Reset pagination when discipline changes
+    currentPageToken.value = null
+    nextPageToken.value = null
+    pageHistory.value = []
     fetchUsers()
   }
 })
@@ -293,26 +372,42 @@ watch(activeDisciplineId, (newId) => {
     </Message>
 
     <template v-else>
-      <!-- Search bar -->
+      <!-- Filters and Search bar -->
       <div class="mb-6">
-        <form @submit.prevent="handleSearch" class="admin-search-form">
-          <IconField class="flex-1">
-            <InputIcon class="pi pi-search" />
-            <InputText
-              v-model="searchEmail"
-              placeholder="Search users by email..."
-              class="w-full"
-              :disabled="searchLoading"
+        <div class="admin-filters">
+          <!-- Role Filter -->
+          <div class="filter-group">
+            <label class="filter-label">Filter by Role</label>
+            <Select
+              v-model="selectedRoleFilter"
+              :options="roleFilterOptions"
+              optionLabel="label"
+              optionValue="value"
+              class="role-filter-select"
+              @change="handleRoleFilterChange"
             />
-          </IconField>
-          <Button
-            type="submit"
-            label="Search"
-            icon="pi pi-search"
-            :loading="searchLoading"
-            :disabled="!searchEmail.trim()"
-          />
-        </form>
+          </div>
+
+          <!-- Search -->
+          <form @submit.prevent="handleSearch" class="admin-search-form">
+            <IconField class="flex-1">
+              <InputIcon class="pi pi-search" />
+              <InputText
+                v-model="searchEmail"
+                placeholder="Search users by email..."
+                class="w-full"
+                :disabled="searchLoading"
+              />
+            </IconField>
+            <Button
+              type="submit"
+              label="Search"
+              icon="pi pi-search"
+              :loading="searchLoading"
+              :disabled="!searchEmail.trim()"
+            />
+          </form>
+        </div>
       </div>
 
       <!-- Users table -->
@@ -352,7 +447,6 @@ watch(activeDisciplineId, (newId) => {
         <Column header="Role" :style="{ width: '200px' }">
           <template #body="{ data }">
             <Select
-              v-if="hasRoleInDiscipline(data)"
               :modelValue="getUserRole(data)"
               @update:modelValue="(val) => handleRoleChange(data, val)"
               :options="roleOptions"
@@ -360,24 +454,31 @@ watch(activeDisciplineId, (newId) => {
               optionValue="value"
               class="w-full"
             />
-            <span v-else class="text-gray-500 italic">No access</span>
-          </template>
-        </Column>
-
-        <Column header="Actions" :style="{ width: '120px' }">
-          <template #body="{ data }">
-            <Button
-              v-if="hasRoleInDiscipline(data)"
-              label="Revoke"
-              icon="pi pi-times"
-              severity="danger"
-              text
-              size="small"
-              @click="handleRevoke(data)"
-            />
           </template>
         </Column>
       </DataTable>
+
+      <!-- Pagination Controls -->
+      <div class="pagination-controls">
+        <Button
+          label="Previous"
+          icon="pi pi-chevron-left"
+          :disabled="!canGoPrevious || loading"
+          @click="goToPreviousPage"
+          class="pagination-btn"
+        />
+        <span class="pagination-info">
+          Page {{ pageHistory.length + 1 }}
+        </span>
+        <Button
+          label="Next"
+          icon="pi pi-chevron-right"
+          iconPos="right"
+          :disabled="!canGoNext || loading"
+          @click="goToNextPage"
+          class="pagination-btn"
+        />
+      </div>
     </template>
   </div>
 </template>
@@ -409,10 +510,34 @@ watch(activeDisciplineId, (newId) => {
   flex-wrap: wrap;
 }
 
+/* Admin filters container */
+.admin-filters {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.filter-label {
+  font-size: 0.875rem;
+  color: var(--text-color-secondary);
+}
+
+.role-filter-select {
+  min-width: 150px;
+}
+
 /* Admin search form */
 .admin-search-form {
   display: flex;
   gap: 0.75rem;
+  flex: 1;
 }
 
 /* Admin nav buttons */
@@ -464,13 +589,41 @@ watch(activeDisciplineId, (newId) => {
   background: var(--surface-hover);
 }
 
+/* Pagination controls */
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 1rem 0;
+}
+
+.pagination-info {
+  color: var(--text-color-secondary);
+  font-size: 0.875rem;
+}
+
+.pagination-btn {
+  min-width: 100px;
+}
+
 @media (max-width: 768px) {
   .admin-nav {
     flex-direction: column;
   }
 
+  .admin-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .admin-search-form {
     flex-direction: column;
+  }
+
+  .role-filter-select {
+    width: 100%;
   }
 }
 </style>

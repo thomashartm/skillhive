@@ -107,7 +107,7 @@
                 v-for="tag in resolvedTags"
                 :key="tag.id"
                 class="tag-chip"
-                :style="tag.color ? { borderColor: tag.color, color: tag.color } : {}"
+                :style="tag.color ? { backgroundColor: tag.color, borderColor: tag.color, color: '#ffffff' } : {}"
               >
                 {{ tag.name }}
               </span>
@@ -279,8 +279,10 @@ onMounted(async () => {
   padding: 0.1rem 0.5rem;
   font-size: 0.7rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  background-color: #6b7280;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
 }
 
 @media (max-width: 768px) {
