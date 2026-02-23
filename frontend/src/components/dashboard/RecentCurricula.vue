@@ -18,9 +18,9 @@
           <div class="flex items-start justify-between">
             <div class="flex-1 min-w-0">
               <h3 class="font-semibold text-lg mb-1 truncate">{{ curriculum.title }}</h3>
-              <p v-if="curriculum.description" class="text-slate-400 text-sm mb-2 truncate">
-                {{ curriculum.description }}
-              </p>
+              <div v-if="curriculum.description" class="description-preview">
+                <MarkdownRenderer :content="curriculum.description" class="text-slate-400 text-sm" />
+              </div>
               <div class="flex items-center gap-3 text-sm text-slate-500">
                 <span v-if="curriculum.elementCount !== undefined">
                   <i class="pi pi-list mr-1"></i>
@@ -44,6 +44,7 @@
 <script setup lang="ts">
 import Card from 'primevue/card'
 import Tag from 'primevue/tag'
+import MarkdownRenderer from '../common/MarkdownRenderer.vue'
 
 interface Curriculum {
   id: string
@@ -86,3 +87,28 @@ const formatDate = (dateString: string): string => {
   }
 }
 </script>
+
+<style scoped>
+.description-preview {
+  max-height: 1.5rem;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.description-preview :deep(p) {
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.description-preview :deep(ul),
+.description-preview :deep(ol),
+.description-preview :deep(h1),
+.description-preview :deep(h2),
+.description-preview :deep(h3),
+.description-preview :deep(br) {
+  display: none;
+}
+</style>
