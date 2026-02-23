@@ -27,6 +27,9 @@
         :technique-count="techniques.length"
         :asset-count="assets.length"
         :curriculum-count="curricula.length"
+        @click:techniques="router.push('/techniques')"
+        @click:assets="router.push('/assets')"
+        @click:curricula="router.push('/curricula')"
       />
 
       <!-- Main Content: Two Column Layout -->

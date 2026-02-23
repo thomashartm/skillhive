@@ -1,7 +1,7 @@
 <template>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
     <!-- Techniques Card -->
-    <Card>
+    <Card class="stat-card" @click="$emit('click:techniques')">
       <template #content>
         <div class="flex items-center gap-4">
           <div class="bg-blue-900/40 p-3">
@@ -16,7 +16,7 @@
     </Card>
 
     <!-- Assets Card -->
-    <Card>
+    <Card class="stat-card" @click="$emit('click:assets')">
       <template #content>
         <div class="flex items-center gap-4">
           <div class="bg-purple-900/40 p-3">
@@ -31,7 +31,7 @@
     </Card>
 
     <!-- Curricula Card -->
-    <Card>
+    <Card class="stat-card" @click="$emit('click:curricula')">
       <template #content>
         <div class="flex items-center gap-4">
           <div class="bg-green-900/40 p-3">
@@ -57,4 +57,22 @@ interface Props {
 }
 
 defineProps<Props>()
+
+defineEmits<{
+  'click:techniques': []
+  'click:assets': []
+  'click:curricula': []
+}>()
 </script>
+
+<style scoped>
+.stat-card {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+</style>
