@@ -33,13 +33,23 @@
             title="Edit Curriculum"
           />
         </div>
-        <p v-if="curriculum.description" class="text-slate-400 mb-2">
-          {{ curriculum.description }}
-        </p>
-        <Tag
-          :value="curriculum.isPublic ? 'Public' : 'Private'"
-          :severity="curriculum.isPublic ? 'success' : 'secondary'"
+        <MarkdownRenderer
+          v-if="curriculum.description"
+          :content="curriculum.description"
+          class="text-slate-400 mb-2"
         />
+        <div class="flex items-center gap-2 flex-wrap">
+          <Tag
+            :value="curriculum.isPublic ? 'Public' : 'Private'"
+            :severity="curriculum.isPublic ? 'success' : 'secondary'"
+          />
+          <span
+            v-if="curriculum.duration"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-700 text-xs text-slate-300"
+          >
+            <i class="pi pi-clock text-xs"></i>{{ curriculum.duration }}
+          </span>
+        </div>
       </div>
 
       <div v-if="authStore.canEdit" class="mb-6">
@@ -112,6 +122,13 @@
       @close="handleCloseListModal"
     />
 
+    <ReferenceElementModal
+      :visible="showReferenceModal"
+      :element="editingElement"
+      @save="handleSaveReferenceElement"
+      @close="handleCloseReferenceModal"
+    />
+
   </div>
 </template>
 
@@ -131,6 +148,8 @@ import AssetSearchModal from '../components/curricula/modals/AssetSearchModal.vu
 import TextElementModal from '../components/curricula/modals/TextElementModal.vue'
 import ImageElementModal from '../components/curricula/modals/ImageElementModal.vue'
 import ListElementModal from '../components/curricula/modals/ListElementModal.vue'
+import ReferenceElementModal from '../components/curricula/modals/ReferenceElementModal.vue'
+import MarkdownRenderer from '../components/common/MarkdownRenderer.vue'
 import { useCurriculumStore } from '../stores/curricula'
 import { useAuthStore } from '../stores/auth'
 import type { Curriculum, CurriculumElement, Technique, Asset } from '../types'
@@ -166,6 +185,7 @@ const showAssetModal = ref(false)
 const showTextModal = ref(false)
 const showImageModal = ref(false)
 const showListModal = ref(false)
+const showReferenceModal = ref(false)
 const editingElement = ref<CurriculumElement | null>(null)
 
 onMounted(async () => {
@@ -353,6 +373,33 @@ const handleCloseListModal = () => {
   editingElement.value = null
 }
 
+const handleSaveReferenceElement = async (data: { details: string; duration: string }) => {
+  if (!editingElement.value) return
+  try {
+    await updateElement(id, editingElement.value.id, data)
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Element notes updated successfully',
+      life: 3000
+    })
+    handleCloseReferenceModal()
+    await loadElements()
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.message || 'Failed to update element notes',
+      life: 3000
+    })
+  }
+}
+
+const handleCloseReferenceModal = () => {
+  showReferenceModal.value = false
+  editingElement.value = null
+}
+
 const handleCloseTextModal = () => {
   showTextModal.value = false
   editingElement.value = null
@@ -368,13 +415,9 @@ const handleEditElement = (element: CurriculumElement) => {
   } else if (element.type === 'list') {
     editingElement.value = element
     showListModal.value = true
-  } else {
-    toast.add({
-      severity: 'info',
-      summary: 'Info',
-      detail: 'Only text notes can be edited. Technique and asset elements are snapshots.',
-      life: 3000
-    })
+  } else if (element.type === 'asset' || element.type === 'technique') {
+    editingElement.value = element
+    showReferenceModal.value = true
   }
 }
 

@@ -51,9 +51,10 @@
           <div class="flex flex-col gap-4">
             <div v-if="technique.description">
               <h3 class="text-lg font-semibold mb-2">Description</h3>
-              <div class="prose max-w-none">
-                {{ technique.description }}
-              </div>
+              <MarkdownRenderer
+                :content="technique.description"
+                class="prose max-w-none"
+              />
             </div>
             <div v-else class="text-slate-400 italic">
               No description available
@@ -151,7 +152,7 @@
                   class="shrink-0 text-xs"
                 />
               </div>
-              <p v-if="asset.description" class="asset-description">{{ asset.description }}</p>
+              <MarkdownRenderer v-if="asset.description" :content="asset.description" class="asset-description" />
               <p v-if="asset.originator" class="asset-originator">{{ asset.originator }}</p>
             </div>
           </div>
@@ -191,6 +192,7 @@ import Button from 'primevue/button'
 import Card from 'primevue/card'
 import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
+import MarkdownRenderer from '../components/common/MarkdownRenderer.vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import TechniqueForm from '../components/techniques/TechniqueForm.vue'

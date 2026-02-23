@@ -7,6 +7,7 @@ type Curriculum struct {
 	DisciplineID string    `json:"disciplineId" firestore:"disciplineId"`
 	Title        string    `json:"title" firestore:"title"`
 	Description  string    `json:"description" firestore:"description"`
+	Duration     *string   `json:"duration,omitempty" firestore:"duration,omitempty"`
 	IsPublic     bool      `json:"isPublic" firestore:"isPublic"`
 	OwnerUID     string    `json:"ownerUid" firestore:"ownerUid"`
 	CreatedAt    time.Time `json:"createdAt" firestore:"createdAt"`
@@ -47,14 +48,16 @@ type Snapshot struct {
 }
 
 type CreateCurriculumRequest struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	IsPublic    bool   `json:"isPublic"`
+	Title       string  `json:"title"`
+	Description string  `json:"description"`
+	Duration    *string `json:"duration"`
+	IsPublic    bool    `json:"isPublic"`
 }
 
 type UpdateCurriculumRequest struct {
 	Title       *string `json:"title"`
 	Description *string `json:"description"`
+	Duration    *string `json:"duration"`
 	IsPublic    *bool   `json:"isPublic"`
 }
 

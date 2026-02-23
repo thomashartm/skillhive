@@ -61,9 +61,11 @@
             {{ asset.url }}
           </a>
 
-          <p v-if="asset.description" class="text-slate-300 text-sm leading-relaxed">
-            {{ asset.description }}
-          </p>
+          <MarkdownRenderer
+            v-if="asset.description"
+            :content="asset.description"
+            class="text-slate-300 text-sm leading-relaxed"
+          />
         </div>
 
         <!-- Right: Metadata -->
@@ -144,6 +146,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
+import MarkdownRenderer from '../components/common/MarkdownRenderer.vue'
 import { useAssetStore } from '../stores/assets'
 import { useTechniqueStore } from '../stores/techniques'
 import { useTagStore } from '../stores/tags'

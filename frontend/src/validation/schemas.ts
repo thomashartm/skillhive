@@ -37,6 +37,7 @@ export const assetSchema = z.object({
 export const curriculumSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().max(2000).optional().default(''),
+  duration: z.string().max(50).nullable().optional(),
   isPublic: z.boolean().optional().default(false),
 })
 

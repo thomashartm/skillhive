@@ -1,17 +1,47 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, watch } from 'vue'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
+
+// Configure marked globally for consistent behavior
+marked.use({
+  breaks: true,
+  gfm: true
+})
 
 const props = defineProps<{
   content: string
 }>()
 
-const renderedHtml = computed(() => {
-  if (!props.content) return ''
-  const raw = marked.parse(props.content) as string
-  return DOMPurify.sanitize(raw)
-})
+const renderedHtml = ref('')
+
+const parseMarkdown = async (content: string) => {
+  if (!content) {
+    renderedHtml.value = ''
+    return
+  }
+  
+  try {
+    // marked.parse may return Promise in v17
+    let raw = marked.parse(content)
+    if (raw instanceof Promise) {
+      raw = await raw
+    }
+    
+    // Sanitize and return - allow common HTML tags
+    renderedHtml.value = DOMPurify.sanitize(raw as string, {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'b', 'i', 'u', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'code', 'pre', 'blockquote'],
+      ALLOWED_ATTR: ['href', 'target', 'rel']
+    })
+  } catch (error) {
+    console.error('[MarkdownRenderer] Error:', error)
+    renderedHtml.value = content // Fallback to raw content
+  }
+}
+
+watch(() => props.content, (newContent) => {
+  parseMarkdown(newContent)
+}, { immediate: true })
 </script>
 
 <template>

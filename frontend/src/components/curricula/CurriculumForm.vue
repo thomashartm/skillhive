@@ -35,6 +35,16 @@
         <small v-if="errors.description" class="text-red-500">{{ errors.description }}</small>
       </div>
 
+      <div>
+        <label for="duration" class="block text-sm font-medium mb-2">Duration</label>
+        <InputText
+          id="duration"
+          v-model="formData.duration"
+          class="w-full"
+          placeholder="e.g., 1h 30m, 45 min"
+        />
+      </div>
+
       <div class="flex items-center gap-2">
         <ToggleSwitch v-model="formData.isPublic" inputId="isPublic" />
         <label for="isPublic" class="text-sm font-medium">Public Curriculum</label>
@@ -71,6 +81,7 @@ const emit = defineEmits<{
 const formData = ref<CurriculumFormData>({
   title: '',
   description: '',
+  duration: '',
   isPublic: false
 })
 
@@ -85,12 +96,14 @@ watch(
         formData.value = {
           title: props.curriculum.title,
           description: props.curriculum.description || '',
+          duration: props.curriculum.duration || '',
           isPublic: props.curriculum.isPublic
         }
       } else {
         formData.value = {
           title: '',
           description: '',
+          duration: '',
           isPublic: false
         }
       }

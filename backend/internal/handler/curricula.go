@@ -176,6 +176,9 @@ func (h *CurriculumHandler) Create(w http.ResponseWriter, r *http.Request) {
 		"createdAt":    now,
 		"updatedAt":    now,
 	}
+	if req.Duration != nil {
+		data["duration"] = validate.StripAllHTML(*req.Duration)
+	}
 
 	ref, _, err := h.fs.Collection("curricula").Add(ctx, data)
 	if err != nil {
@@ -247,6 +250,9 @@ func (h *CurriculumHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.IsPublic != nil {
 		updates = append(updates, firestore.Update{Path: "isPublic", Value: *req.IsPublic})
+	}
+	if req.Duration != nil {
+		updates = append(updates, firestore.Update{Path: "duration", Value: validate.StripAllHTML(*req.Duration)})
 	}
 
 	if _, err := ref.Update(ctx, updates); err != nil {

@@ -46,13 +46,18 @@
           <i class="pi pi-clock text-xs"></i>{{ element.duration }}
         </span>
       </div>
-      <MarkdownRenderer
-        v-if="element.details && (element.type === 'text' || element.type === 'list')"
-        :content="element.details"
-        class="text-sm text-slate-400 mt-1"
-      />
-      <div v-else-if="element.details" class="text-sm text-slate-400 mt-1 truncate">
-        {{ element.details }}
+      <div v-if="element.details" class="mt-1">
+        <MarkdownRenderer
+          :content="displayedDetails"
+          class="text-sm text-slate-400"
+        />
+        <button
+          v-if="isDetailsTruncated"
+          @click="expanded = !expanded"
+          class="text-xs text-blue-400 hover:text-blue-300 mt-1"
+        >
+          {{ expanded ? 'Show less' : 'Show more' }}
+        </button>
       </div>
       <ul
         v-if="element.type === 'list' && element.items?.length"
@@ -89,7 +94,7 @@
         title="View Technique"
       />
       <Button
-        v-else-if="element.type === 'asset' && element.assetId"
+        v-if="element.type === 'asset' && element.assetId"
         icon="pi pi-arrow-right"
         severity="secondary"
         size="small"
@@ -97,16 +102,14 @@
         @click="router.push(`/assets/${element.assetId}`)"
         title="View Asset"
       />
-      <template v-else>
-        <Button
-          icon="pi pi-pencil"
-          severity="secondary"
-          size="small"
-          text
-          @click="$emit('edit', element)"
-          title="Edit"
-        />
-      </template>
+      <Button
+        icon="pi pi-pencil"
+        severity="secondary"
+        size="small"
+        text
+        @click="$emit('edit', element)"
+        title="Edit"
+      />
       <Button
         icon="pi pi-trash"
         severity="danger"
@@ -120,10 +123,13 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import MarkdownRenderer from '../common/MarkdownRenderer.vue'
 import type { CurriculumElement } from '../../types'
+
+const MAX_LINES = 3
 
 const router = useRouter()
 
@@ -141,6 +147,21 @@ defineEmits<{
   edit: [element: CurriculumElement]
   delete: [id: string]
 }>()
+
+const expanded = ref(false)
+
+const displayedDetails = computed(() => {
+  if (!props.element.details) return ''
+  if (expanded.value) return props.element.details
+  const lines = props.element.details.split('\n')
+  if (lines.length <= MAX_LINES) return props.element.details
+  return lines.slice(0, MAX_LINES).join('\n') + '...'
+})
+
+const isDetailsTruncated = computed(() => {
+  if (!props.element.details) return false
+  return props.element.details.split('\n').length > MAX_LINES
+})
 
 const getElementTitle = () => {
   if (props.element.type === 'technique' || props.element.type === 'asset') {
