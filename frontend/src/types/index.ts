@@ -2,12 +2,18 @@
 // Key changes: IDs are strings, ownerUid replaces createdBy
 
 export type UserRole = 'viewer' | 'editor' | 'admin'
+export type UserRoleFilter = 'all' | 'admin' | 'editor' | 'viewer' | 'none'
 
 export interface UserInfo {
   uid: string
   email: string
   displayName: string
   roles: Record<string, UserRole>
+}
+
+export interface UsersListResponse {
+  users: UserInfo[]
+  nextPageToken?: string
 }
 
 export interface TimestampFields {

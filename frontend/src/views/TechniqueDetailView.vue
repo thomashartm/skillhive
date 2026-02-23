@@ -86,7 +86,7 @@
                   v-for="tag in technique.tags"
                   :key="tag.id"
                   :value="tag.name"
-                  :style="tag.color ? { backgroundColor: tag.color } : {}"
+                  :style="tag.color ? { backgroundColor: tag.color, color: '#ffffff' } : {}"
                 />
               </div>
             </div>
@@ -352,6 +352,12 @@ onMounted(async () => {
 
 <style scoped>
 .technique-detail-view {
+}
+
+/* Override PrimeVue Tag to use full bright colors */
+:deep(.p-tag) {
+  color: #ffffff !important;
+  border: none !important;
 }
 
 .detail-header {
