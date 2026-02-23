@@ -26,6 +26,10 @@
                   <i class="pi pi-list mr-1"></i>
                   {{ curriculum.elementCount }} element{{ curriculum.elementCount !== 1 ? 's' : '' }}
                 </span>
+                <span v-if="curriculum.duration">
+                  <i class="pi pi-stopwatch mr-1"></i>
+                  {{ curriculum.duration }}
+                </span>
                 <span>
                   <i class="pi pi-clock mr-1"></i>
                   {{ formatDate(curriculum.updatedAt) }}
@@ -51,6 +55,7 @@ interface Curriculum {
   title: string
   description: string
   elementCount?: number
+  duration?: string | null
   updatedAt: string
   isPublic: boolean
 }
