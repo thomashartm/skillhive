@@ -217,13 +217,9 @@ const getAssetTags = (asset: Asset): TagType[] => {
   return tagStore.tags.filter((t) => asset.tagIds.includes(t.id))
 }
 
-// Debounced search handler
-let searchTimeout: ReturnType<typeof setTimeout>
+// Search handler - client-side filtering is instant via computed property
 const handleSearch = () => {
-  // Client-side filtering is instant, no need to refetch
-  // But if we want server-side search, uncomment below:
-  // clearTimeout(searchTimeout)
-  // searchTimeout = setTimeout(() => fetchAssets(), 300)
+  // No-op: filtering happens reactively via filteredAssets computed
 }
 
 // Tag filter change
