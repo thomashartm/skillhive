@@ -58,6 +58,7 @@ func main() {
 	dryRun := flag.Bool("dry-run", false, "Print JSON without writing to database")
 	outputFile := flag.String("output", "", "Write JSON to file (implies dry-run)")
 	concurrency := flag.Int("concurrency", 3, "Number of videos to process in parallel")
+	delayMs := flag.Int("delay", 0, "Delay in milliseconds between LLM calls to avoid rate limits (e.g., 1000 for 1 second)")
 	verbose := flag.Bool("verbose", false, "Enable verbose/debug logging")
 	flag.Parse()
 
@@ -189,6 +190,7 @@ func main() {
 		existingDisciplines,
 		existingTags,
 		*concurrency,
+		*delayMs,
 	)
 
 	// Calculate stats
@@ -377,10 +379,15 @@ func processVideos(
 	disciplines []string,
 	tags []string,
 	concurrency int,
+	delayMs int,
 ) []OutputVideo {
 	results := make([]OutputVideo, len(videos))
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, concurrency)
+
+	// Rate limiting: track last LLM call time
+	var rateLimitMu sync.Mutex
+	lastLLMCall := time.Now().Add(-time.Duration(delayMs) * time.Millisecond) // Allow first call immediately
 
 	for i, video := range videos {
 		wg.Add(1)
@@ -388,6 +395,19 @@ func processVideos(
 			defer wg.Done()
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
+
+			// Apply rate limiting delay if configured
+			if delayMs > 0 {
+				rateLimitMu.Lock()
+				elapsed := time.Since(lastLLMCall)
+				delay := time.Duration(delayMs)*time.Millisecond - elapsed
+				if delay > 0 {
+					slog.Debug("rate limit delay", "delay", delay, "videoId", v.VideoID)
+					time.Sleep(delay)
+				}
+				lastLLMCall = time.Now()
+				rateLimitMu.Unlock()
+			}
 
 			slog.Info("enriching video", "index", idx+1, "total", len(videos), "title", v.Title)
 

@@ -17,6 +17,8 @@ var (
 // Ported from packages/shared/src/utils/slug.ts
 func GenerateSlug(text string) string {
 	s := strings.ToLower(strings.TrimSpace(text))
+	// Replace "/" with "-" for cases like "50/50" -> "50-50"
+	s = strings.ReplaceAll(s, "/", "-")
 	s = nonAlphanumeric.ReplaceAllString(s, "")
 	s = whitespace.ReplaceAllString(s, "-")
 	s = multipleHyphens.ReplaceAllString(s, "-")
