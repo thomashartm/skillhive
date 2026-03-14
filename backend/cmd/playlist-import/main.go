@@ -111,6 +111,8 @@ var positionToCategorySlug = map[string]string{
 	"lasso-guard":     "lasso-guard",
 	"x-guard":         "x-guard",
 	"50/50":           "5050-guard",
+	"5050":            "5050-guard",
+	"50-50":           "5050-guard",
 	"side-control":    "side-control",
 	"mount":           "mount",
 	"back":            "back",
@@ -436,18 +438,23 @@ func extractVideoTechniques(v PlaylistVideo, categorySlugs map[string]bool) vide
 	// Extract technique slugs from suggestedTags
 	// A tag is a technique if it's NOT generic, NOT an instructor name, and NOT a category slug
 	for _, tag := range v.Enriched.SuggestedTags {
-		if genericTags[tag] {
+		// Sanitize the tag to create a valid slug (handles cases like "50/50" -> "5050")
+		slug := validate.GenerateSlug(tag)
+		if slug == "" {
 			continue
 		}
-		if categorySlugs[tag] {
+		if genericTags[slug] {
+			continue
+		}
+		if categorySlugs[slug] {
 			// This is a category, add it to category slugs if not already there
-			if !containsStr(vt.CategorySlugs, tag) {
-				vt.CategorySlugs = append(vt.CategorySlugs, tag)
+			if !containsStr(vt.CategorySlugs, slug) {
+				vt.CategorySlugs = append(vt.CategorySlugs, slug)
 			}
 			continue
 		}
-		if !containsStr(vt.TechSlugs, tag) {
-			vt.TechSlugs = append(vt.TechSlugs, tag)
+		if !containsStr(vt.TechSlugs, slug) {
+			vt.TechSlugs = append(vt.TechSlugs, slug)
 		}
 	}
 
