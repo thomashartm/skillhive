@@ -26,6 +26,7 @@ npm-debug.log*
 backend/bin/
 backend/tmp/
 backend/seed/production-data.json
+backend/data/
 
 # Vue frontend
 frontend/dist/
@@ -58,3 +59,6 @@ deploy/secrets/secrets.yaml
 /backend/internal/store/CLAUDE.md
 /backend/internal/youtube/CLAUDE.md
 /frontend/src/types/CLAUDE.md
+/backend/serviceAccountKey.json
+/backend/playlist-import
+/backend/yt-enrich
