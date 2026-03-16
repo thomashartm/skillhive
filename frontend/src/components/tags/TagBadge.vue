@@ -9,19 +9,23 @@ import type { Tag as TagType } from '../../types'
  * @example
  * <TagBadge :tag="tag" />
  * <TagBadge :tag="tag" closable @close="handleRemove" />
+ * <TagBadge :tag="tag" clickable @click="handleFilter" />
  */
 
 interface Props {
   tag: TagType
   closable?: boolean
+  clickable?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   closable: false,
+  clickable: false,
 })
 
 const emit = defineEmits<{
   close: []
+  click: []
 }>()
 
 const badgeStyle = computed(() => ({
@@ -29,8 +33,12 @@ const badgeStyle = computed(() => ({
   color: '#ffffff',
 }))
 
-const handleRemove = () => {
-  emit('close')
+const handleClick = () => {
+  if (props.closable) {
+    emit('close')
+  } else if (props.clickable) {
+    emit('click')
+  }
 }
 </script>
 
@@ -39,13 +47,18 @@ const handleRemove = () => {
     :value="tag.name"
     :style="badgeStyle"
     :icon="closable ? 'pi pi-times' : undefined"
-    :class="{ 'cursor-pointer': closable }"
-    @click="closable && handleRemove()"
+    :class="{ 'tag-badge--interactive': closable || clickable }"
+    @click.stop="handleClick"
   />
 </template>
 
 <style scoped>
-.cursor-pointer {
+.tag-badge--interactive {
   cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.tag-badge--interactive:hover {
+  filter: brightness(1.2);
 }
 </style>
