@@ -10,9 +10,14 @@ export const useCurriculumStore = defineStore('curricula', () => {
 
   async function fetchCurricula() {
     const api = useApi()
+    const discipline = useDisciplineStore()
+    if (!discipline.activeDisciplineId) return
+
     loading.value = true
     try {
-      curricula.value = await api.get<Curriculum[]>('/api/v1/curricula')
+      curricula.value = await api.get<Curriculum[]>(
+        `/api/v1/curricula?disciplineId=${discipline.activeDisciplineId}`
+      )
     } finally {
       loading.value = false
     }

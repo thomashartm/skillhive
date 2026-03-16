@@ -43,7 +43,19 @@ Use specialist agents for the listed tasks:
 
 - frontend-dev: Expert developer for Vue 3, PrimeVue, and responsive design
 
+## Rules of Engagement
+
+- **Go Binaries** Do not put any compiled go binaries outside of the `backend/bin` directory
+- **Frontend Code** Frontend assets must be located in the `frontend/dist` directory
+- **Frontend Code** All frontend code must be TypeScript
+- **Backend Code** All backend code must be Go
+- **Multitenancy** everything is per-discipline, meaning every view and API is scoped to a single discipline
+- **Mandatory Auth** All API routes require authentication via Firebase Auth token
+- **No Alerts or Prompts** Use PrimeVue Toast. ConfirmDialog, and Dialog for modals
+- **Layout Consistency** Use the same layout for all pages.
+
 ## Project Structure
+
 
 ### Backend (`backend/`)
 

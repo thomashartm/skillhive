@@ -24,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -33,6 +33,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import CurriculumList from '../components/curricula/CurriculumList.vue'
 import CurriculumForm from '../components/curricula/CurriculumForm.vue'
 import { useCurriculumStore } from '../stores/curricula'
+import { useDisciplineStore } from '../stores/discipline'
 import { useAuthStore } from '../stores/auth'
 import type { Curriculum } from '../types'
 import type { CurriculumFormData } from '../validation/schemas'
@@ -42,6 +43,8 @@ const toast = useToast()
 const confirm = useConfirm()
 const authStore = useAuthStore()
 const curriculumStore = useCurriculumStore()
+const disciplineStore = useDisciplineStore()
+const { activeDisciplineId } = storeToRefs(disciplineStore)
 
 const { curricula, loading } = storeToRefs(curriculumStore)
 const { fetchCurricula, createCurriculum, updateCurriculum, deleteCurriculum } = curriculumStore
@@ -49,8 +52,16 @@ const { fetchCurricula, createCurriculum, updateCurriculum, deleteCurriculum } =
 const showForm = ref(false)
 const editingCurriculum = ref<Curriculum | null>(null)
 
-onMounted(async () => {
-  await fetchCurricula()
+onMounted(() => {
+  if (activeDisciplineId.value) {
+    fetchCurricula()
+  }
+})
+
+watch(activeDisciplineId, (newDisciplineId) => {
+  if (newDisciplineId) {
+    fetchCurricula()
+  }
 })
 
 const handleView = (id: string) => {
