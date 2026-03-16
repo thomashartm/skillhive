@@ -15,7 +15,7 @@
           icon="pi pi-arrow-left"
           severity="secondary"
           text
-          @click="router.push('/assets')"
+          @click="goBack"
         />
         <h1 class="view-title flex-1">{{ asset.title }}</h1>
         <div class="detail-header-actions">
@@ -105,14 +105,13 @@
           <div>
             <h3 class="detail-label">Tags</h3>
             <div v-if="resolvedTags.length" class="flex flex-wrap gap-1">
-              <span
+              <TagBadge
                 v-for="tag in resolvedTags"
                 :key="tag.id"
-                class="tag-chip"
-                :style="tag.color ? { backgroundColor: tag.color, borderColor: tag.color, color: '#ffffff' } : {}"
-              >
-                {{ tag.name }}
-              </span>
+                :tag="tag"
+                clickable
+                @click="navigateWithTag(tag.id)"
+              />
             </div>
             <span v-else class="text-xs text-slate-500">None</span>
           </div>
@@ -147,6 +146,7 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
 import MarkdownRenderer from '../components/common/MarkdownRenderer.vue'
+import TagBadge from '../components/tags/TagBadge.vue'
 import { useAssetStore } from '../stores/assets'
 import { useTechniqueStore } from '../stores/techniques'
 import { useTagStore } from '../stores/tags'
@@ -182,6 +182,21 @@ const formatDate = (dateString: string): string => {
     month: 'short',
     day: 'numeric',
   })
+}
+
+function navigateWithTag(tagId: string) {
+  router.push({ name: 'assets', query: { tags: tagId } })
+}
+
+function goBack() {
+  // Use browser history if available (preserves search context)
+  // Otherwise fall back to /assets
+  const back = window.history.state?.back
+  if (back && typeof back === 'string' && back.startsWith('/assets')) {
+    router.back()
+  } else {
+    router.push('/assets')
+  }
 }
 
 const handleDelete = () => {
@@ -275,17 +290,6 @@ onMounted(async () => {
 
 .technique-link:hover {
   color: var(--primary-color);
-}
-
-.tag-chip {
-  display: inline-block;
-  padding: 0.1rem 0.5rem;
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: #ffffff;
-  background-color: #6b7280;
-  border: 1px solid transparent;
-  border-radius: 0.25rem;
 }
 
 @media (max-width: 768px) {

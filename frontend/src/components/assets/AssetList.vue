@@ -57,14 +57,13 @@
     <Column header="Tags" style="width: 160px">
       <template #body="{ data }">
         <div class="flex flex-wrap gap-1">
-          <span
+          <TagBadge
             v-for="tag in resolveTags(data.tagIds)"
             :key="tag.id"
-            class="tag-chip"
-            :style="tag.color ? { backgroundColor: tag.color, borderColor: tag.color, color: '#ffffff' } : {}"
-          >
-            {{ tag.name }}
-          </span>
+            :tag="tag"
+            clickable
+            @click="emit('tagClick', tag.id)"
+          />
           <span v-if="!data.tagIds?.length" class="text-xs text-slate-500">&mdash;</span>
         </div>
       </template>
@@ -105,6 +104,7 @@
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
+import TagBadge from '../tags/TagBadge.vue'
 import type { Asset, Technique, Tag } from '../../types'
 import { useAuthStore } from '../../stores/auth'
 
@@ -124,6 +124,7 @@ const emit = defineEmits<{
   delete: [asset: Asset]
   view: [asset: Asset]
   viewTechnique: [techniqueId: string]
+  tagClick: [tagId: string]
 }>()
 
 const resolveTechniques = (techniqueIds: string[] | undefined): Technique[] => {
@@ -170,15 +171,5 @@ const resolveTags = (tagIds: string[] | undefined): Tag[] => {
   color: var(--primary-color);
 }
 
-.tag-chip {
-  display: inline-block;
-  padding: 0.1rem 0.4rem;
-  font-size: 0.65rem;
-  font-weight: 500;
-  color: #ffffff;
-  background-color: #6b7280;
-  border: 1px solid transparent;
-  border-radius: 0.25rem;
-  white-space: nowrap;
-}
+
 </style>

@@ -18,12 +18,28 @@
         />
       </div>
 
-      <!-- Search -->
-      <div class="mb-4">
+      <!-- Filters -->
+      <div class="filter-bar mb-4">
         <InputText
           v-model="searchQuery"
           placeholder="Search assets..."
           class="filter-search"
+        />
+        <TagFilterSelect
+          :available-tags="tags"
+          :selected-tag-ids="selectedTagIds"
+          class="filter-tags"
+          @add-tag="addTag"
+          @remove-tag="removeTag"
+        />
+        <Button
+          v-if="hasActiveFilters"
+          label="Clear"
+          icon="pi pi-times"
+          severity="secondary"
+          text
+          size="small"
+          @click="clearAll"
         />
       </div>
 
@@ -37,6 +53,7 @@
         @edit="handleEdit"
         @delete="handleDeleteConfirm"
         @view-technique="handleViewTechnique"
+        @tag-click="addTag"
       />
     </template>
   </div>
@@ -52,12 +69,13 @@ import Message from 'primevue/message'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import AssetList from '../components/assets/AssetList.vue'
+import TagFilterSelect from '../components/assets/TagFilterSelect.vue'
 import { useAssetStore } from '../stores/assets'
 import { useTechniqueStore } from '../stores/techniques'
 import { useTagStore } from '../stores/tags'
 import { useDisciplineStore } from '../stores/discipline'
 import { useAuthStore } from '../stores/auth'
-import { useDebouncedRef } from '../composables/useDebounce'
+import { useAssetFilters } from '../composables/useAssetFilters'
 import type { Asset } from '../types'
 
 const router = useRouter()
@@ -72,26 +90,56 @@ const { activeDisciplineId } = storeToRefs(disciplineStore)
 const { techniques } = storeToRefs(techniqueStore)
 const { tags } = storeToRefs(tagStore)
 
-const searchQuery = ref('')
-const debouncedSearch = useDebouncedRef(searchQuery, 300)
+const {
+  searchQuery,
+  selectedTagIds,
+  debouncedSearchQuery,
+  addTag,
+  removeTag,
+  clearAll,
+  hasActiveFilters,
+} = useAssetFilters()
+
 const loading = ref(false)
 
 const filteredAssets = computed(() => {
-  if (!debouncedSearch.value) {
-    return assetStore.assets
+  let result = assetStore.assets
+
+  // Client-side multi-tag AND filter (server only handles first tag)
+  if (selectedTagIds.value.length > 1) {
+    result = result.filter(asset =>
+      selectedTagIds.value.every(tagId => asset.tagIds?.includes(tagId))
+    )
   }
 
-  const query = debouncedSearch.value.toLowerCase()
-  return assetStore.assets.filter(asset =>
-    asset.title.toLowerCase().includes(query) ||
-    asset.description?.toLowerCase().includes(query) ||
-    asset.originator?.toLowerCase().includes(query) ||
-    asset.url.toLowerCase().includes(query)
-  )
+  // Client-side text search (supplements server slug-prefix matching)
+  if (debouncedSearchQuery.value) {
+    const q = debouncedSearchQuery.value.toLowerCase()
+    result = result.filter(asset =>
+      asset.title.toLowerCase().includes(q) ||
+      asset.description?.toLowerCase().includes(q) ||
+      asset.originator?.toLowerCase().includes(q) ||
+      asset.url.toLowerCase().includes(q)
+    )
+  }
+
+  return result
 })
+
+// Re-fetch when debounced search or tags change
+watch(
+  [debouncedSearchQuery, selectedTagIds],
+  () => {
+    if (activeDisciplineId.value) {
+      loadData()
+    }
+  },
+  { deep: true }
+)
 
 watch(activeDisciplineId, async (newId) => {
   if (newId) {
+    clearAll()
     await loadData()
   }
 })
@@ -105,8 +153,16 @@ onMounted(() => {
 async function loadData() {
   loading.value = true
   try {
+    const fetchParams: { tagId?: string; q?: string } = {}
+    if (selectedTagIds.value.length > 0) {
+      fetchParams.tagId = selectedTagIds.value[0]
+    }
+    if (debouncedSearchQuery.value) {
+      fetchParams.q = debouncedSearchQuery.value
+    }
+
     await Promise.all([
-      assetStore.fetchAssets(),
+      assetStore.fetchAssets(Object.keys(fetchParams).length > 0 ? fetchParams : undefined),
       techniqueStore.fetchTechniques(),
       tagStore.fetchTags(),
     ])
@@ -169,12 +225,24 @@ async function handleDelete(asset: Asset) {
 </script>
 
 <style scoped>
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
 .filter-search {
   width: 16rem;
 }
 
+.filter-tags {
+  width: 16rem;
+}
+
 @media (max-width: 768px) {
-  .filter-search {
+  .filter-search,
+  .filter-tags {
     width: 100%;
   }
 }
