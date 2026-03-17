@@ -30,6 +30,21 @@
       </template>
     </Column>
 
+    <Column header="Tags" style="min-width: 150px">
+      <template #body="{ data }">
+        <div class="flex flex-wrap gap-1">
+          <PTag
+            v-for="tagId in (data.tagIds || [])"
+            :key="tagId"
+            :value="getTagName(tagId)"
+            severity="info"
+            class="cursor-pointer text-xs"
+            @click="$emit('tag-click', tagId)"
+          />
+        </div>
+      </template>
+    </Column>
+
     <Column field="elementCount" header="Elements" :sortable="true" style="width: 100px">
       <template #body="{ data }">
         <div class="text-center text-sm text-slate-400">{{ data.elementCount || 0 }}</div>
@@ -80,14 +95,16 @@
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
+import PTag from 'primevue/tag'
 import MarkdownRenderer from '../common/MarkdownRenderer.vue'
-import type { Curriculum } from '../../types'
+import type { Curriculum, Tag } from '../../types'
 import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
 
-defineProps<{
+const props = defineProps<{
   curricula: Curriculum[]
+  tags: Tag[]
   loading: boolean
 }>()
 
@@ -95,7 +112,13 @@ defineEmits<{
   view: [id: string]
   edit: [curriculum: Curriculum]
   delete: [id: string]
+  'tag-click': [tagId: string]
 }>()
+
+function getTagName(tagId: string): string {
+  const tag = props.tags.find(t => t.id === tagId)
+  return tag?.name || tagId
+}
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)

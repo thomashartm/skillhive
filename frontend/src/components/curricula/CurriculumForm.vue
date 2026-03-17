@@ -45,6 +45,16 @@
         />
       </div>
 
+      <div>
+        <label class="block text-sm font-medium mb-2">Tags</label>
+        <TagFilterSelect
+          :available-tags="tags"
+          :selected-tag-ids="formData.tagIds"
+          @add-tag="(id: string) => { if (!formData.tagIds.includes(id)) formData.tagIds = [...formData.tagIds, id] }"
+          @remove-tag="(id: string) => { formData.tagIds = formData.tagIds.filter(t => t !== id) }"
+        />
+      </div>
+
       <div class="flex items-center gap-2">
         <ToggleSwitch v-model="formData.isPublic" inputId="isPublic" />
         <label for="isPublic" class="text-sm font-medium">Public Curriculum</label>
@@ -60,13 +70,19 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
 import ToggleSwitch from 'primevue/toggleswitch'
+import TagFilterSelect from '../common/TagFilterSelect.vue'
 import { curriculumSchema, type CurriculumFormData } from '../../validation/schemas'
 import type { Curriculum } from '../../types'
+import { useTagStore } from '../../stores/tags'
+
+const tagStore = useTagStore()
+const { tags } = storeToRefs(tagStore)
 
 const props = defineProps<{
   visible: boolean
@@ -82,7 +98,8 @@ const formData = ref<CurriculumFormData>({
   title: '',
   description: '',
   duration: '',
-  isPublic: false
+  isPublic: false,
+  tagIds: [],
 })
 
 const errors = ref<Record<string, string>>({})
@@ -97,14 +114,16 @@ watch(
           title: props.curriculum.title,
           description: props.curriculum.description || '',
           duration: props.curriculum.duration || '',
-          isPublic: props.curriculum.isPublic
+          isPublic: props.curriculum.isPublic,
+          tagIds: props.curriculum.tagIds || [],
         }
       } else {
         formData.value = {
           title: '',
           description: '',
           duration: '',
-          isPublic: false
+          isPublic: false,
+          tagIds: [],
         }
       }
       errors.value = {}

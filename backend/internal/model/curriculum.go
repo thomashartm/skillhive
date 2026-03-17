@@ -10,6 +10,9 @@ type Curriculum struct {
 	Duration     *string   `json:"duration,omitempty" firestore:"duration,omitempty"`
 	IsPublic     bool      `json:"isPublic" firestore:"isPublic"`
 	OwnerUID     string    `json:"ownerUid" firestore:"ownerUid"`
+	TagIDs       []string  `json:"tagIds" firestore:"tagIds"`
+	AllTagIDs    []string  `json:"allTagIds" firestore:"allTagIds"`
+	SearchText   string    `json:"-" firestore:"searchText"`
 	CreatedAt    time.Time `json:"createdAt" firestore:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt" firestore:"updatedAt"`
 	ElementCount int       `json:"elementCount,omitempty" firestore:"-"`
@@ -42,23 +45,27 @@ type CurriculumElement struct {
 }
 
 type Snapshot struct {
-	Name         string `json:"name,omitempty" firestore:"name,omitempty"`
-	ThumbnailURL string `json:"thumbnailUrl,omitempty" firestore:"thumbnailUrl,omitempty"`
-	URL          string `json:"url,omitempty" firestore:"url,omitempty"`
+	Name         string   `json:"name,omitempty" firestore:"name,omitempty"`
+	ThumbnailURL string   `json:"thumbnailUrl,omitempty" firestore:"thumbnailUrl,omitempty"`
+	URL          string   `json:"url,omitempty" firestore:"url,omitempty"`
+	Description  string   `json:"description,omitempty" firestore:"description,omitempty"`
+	TagIDs       []string `json:"tagIds,omitempty" firestore:"tagIds,omitempty"`
 }
 
 type CreateCurriculumRequest struct {
-	Title       string  `json:"title"`
-	Description string  `json:"description"`
-	Duration    *string `json:"duration"`
-	IsPublic    bool    `json:"isPublic"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Duration    *string  `json:"duration"`
+	IsPublic    bool     `json:"isPublic"`
+	TagIDs      []string `json:"tagIds"`
 }
 
 type UpdateCurriculumRequest struct {
-	Title       *string `json:"title"`
-	Description *string `json:"description"`
-	Duration    *string `json:"duration"`
-	IsPublic    *bool   `json:"isPublic"`
+	Title       *string  `json:"title"`
+	Description *string  `json:"description"`
+	Duration    *string  `json:"duration"`
+	IsPublic    *bool    `json:"isPublic"`
+	TagIDs      []string `json:"tagIds"`
 }
 
 type CreateElementRequest struct {

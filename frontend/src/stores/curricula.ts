@@ -8,16 +8,18 @@ export const useCurriculumStore = defineStore('curricula', () => {
   const curricula = ref<Curriculum[]>([])
   const loading = ref(false)
 
-  async function fetchCurricula() {
+  async function fetchCurricula(params?: { tagId?: string; q?: string }) {
     const api = useApi()
     const discipline = useDisciplineStore()
     if (!discipline.activeDisciplineId) return
 
     loading.value = true
     try {
-      curricula.value = await api.get<Curriculum[]>(
-        `/api/v1/curricula?disciplineId=${discipline.activeDisciplineId}`
-      )
+      const query = new URLSearchParams({ disciplineId: discipline.activeDisciplineId })
+      if (params?.tagId) query.set('tagId', params.tagId)
+      if (params?.q) query.set('q', params.q)
+
+      curricula.value = await api.get<Curriculum[]>(`/api/v1/curricula?${query}`)
     } finally {
       loading.value = false
     }
@@ -32,6 +34,7 @@ export const useCurriculumStore = defineStore('curricula', () => {
     title: string
     description?: string
     isPublic?: boolean
+    tagIds?: string[]
   }) {
     const api = useApi()
     const discipline = useDisciplineStore()
@@ -47,12 +50,30 @@ export const useCurriculumStore = defineStore('curricula', () => {
     title?: string
     description?: string
     isPublic?: boolean
+    tagIds?: string[]
   }) {
     const api = useApi()
     const updated = await api.patch<Curriculum>(`/api/v1/curricula/${id}`, data)
     const idx = curricula.value.findIndex((c) => c.id === id)
     if (idx !== -1) curricula.value[idx] = updated
     return updated
+  }
+
+  async function fetchPublicCurricula(params?: { tagId?: string; q?: string }) {
+    const api = useApi()
+    loading.value = true
+    try {
+      const query = new URLSearchParams()
+      if (params?.tagId) query.set('tagId', params.tagId)
+      if (params?.q) query.set('q', params.q)
+
+      const qs = query.toString()
+      curricula.value = await api.get<Curriculum[]>(
+        `/api/v1/curricula/public${qs ? '?' + qs : ''}`
+      )
+    } finally {
+      loading.value = false
+    }
   }
 
   async function deleteCurriculum(id: string) {
@@ -106,6 +127,7 @@ export const useCurriculumStore = defineStore('curricula', () => {
     curricula,
     loading,
     fetchCurricula,
+    fetchPublicCurricula,
     getCurriculum,
     createCurriculum,
     updateCurriculum,
