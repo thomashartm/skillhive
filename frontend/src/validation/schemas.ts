@@ -39,6 +39,7 @@ export const curriculumSchema = z.object({
   description: z.string().max(2000).optional().default(''),
   duration: z.string().max(50).nullable().optional(),
   isPublic: z.boolean().optional().default(false),
+  tagIds: z.array(z.string()).optional().default([]),
 })
 
 export const curriculumElementSchema = z.object({

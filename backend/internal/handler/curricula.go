@@ -3,6 +3,7 @@ package handler
 import (
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -23,15 +24,40 @@ func NewCurriculumHandler(fs *firestore.Client) *CurriculumHandler {
 	return &CurriculumHandler{fs: fs}
 }
 
+func normalizeCurriculum(c *model.Curriculum) {
+	if c.TagIDs == nil {
+		c.TagIDs = []string{}
+	}
+	if c.AllTagIDs == nil {
+		c.AllTagIDs = []string{}
+	}
+}
+
 func (h *CurriculumHandler) List(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	disciplineID := r.URL.Query().Get("disciplineId")
+	searchQuery := r.URL.Query().Get("q")
+	tagID := r.URL.Query().Get("tagId")
 
 	query := h.fs.Collection("curricula").OrderBy("updatedAt", firestore.Desc)
 	if disciplineID != "" {
 		query = h.fs.Collection("curricula").
 			Where("disciplineId", "==", disciplineID).
 			OrderBy("updatedAt", firestore.Desc)
+	}
+
+	// Add tag filter if provided (uses allTagIds for own + inherited tags)
+	if tagID != "" {
+		if disciplineID != "" {
+			query = h.fs.Collection("curricula").
+				Where("disciplineId", "==", disciplineID).
+				Where("allTagIds", "array-contains", tagID).
+				OrderBy("updatedAt", firestore.Desc)
+		} else {
+			query = h.fs.Collection("curricula").
+				Where("allTagIds", "array-contains", tagID).
+				OrderBy("updatedAt", firestore.Desc)
+		}
 	}
 
 	iter := query.Documents(ctx)
@@ -55,6 +81,15 @@ func (h *CurriculumHandler) List(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		c.ID = doc.Ref.ID
+		normalizeCurriculum(&c)
+
+		// Server-side text search on denormalized searchText
+		if searchQuery != "" {
+			searchSlug := strings.ToLower(searchQuery)
+			if !strings.Contains(c.SearchText, searchSlug) {
+				continue
+			}
+		}
 
 		// Count elements
 		elemIter := doc.Ref.Collection("elements").Documents(ctx)
@@ -80,10 +115,21 @@ func (h *CurriculumHandler) List(w http.ResponseWriter, r *http.Request) {
 
 func (h *CurriculumHandler) ListPublic(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	searchQuery := r.URL.Query().Get("q")
+	tagID := r.URL.Query().Get("tagId")
+	disciplineID := r.URL.Query().Get("disciplineId")
 
 	query := h.fs.Collection("curricula").
 		Where("isPublic", "==", true).
 		OrderBy("updatedAt", firestore.Desc)
+
+	// Add tag filter if provided
+	if tagID != "" {
+		query = h.fs.Collection("curricula").
+			Where("isPublic", "==", true).
+			Where("allTagIds", "array-contains", tagID).
+			OrderBy("updatedAt", firestore.Desc)
+	}
 
 	iter := query.Documents(ctx)
 	defer iter.Stop()
@@ -106,6 +152,21 @@ func (h *CurriculumHandler) ListPublic(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		c.ID = doc.Ref.ID
+		normalizeCurriculum(&c)
+
+		// Post-filter by discipline (cannot combine all filters in Firestore)
+		if disciplineID != "" && c.DisciplineID != disciplineID {
+			continue
+		}
+
+		// Server-side text search on denormalized searchText
+		if searchQuery != "" {
+			searchSlug := strings.ToLower(searchQuery)
+			if !strings.Contains(c.SearchText, searchSlug) {
+				continue
+			}
+		}
+
 		curricula = append(curricula, c)
 	}
 
@@ -132,6 +193,7 @@ func (h *CurriculumHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c.ID = doc.Ref.ID
+	normalizeCurriculum(&c)
 
 	writeJSON(w, http.StatusOK, c)
 }
@@ -166,13 +228,26 @@ func (h *CurriculumHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Normalize tagIds: nil → empty slice
+	if req.TagIDs == nil {
+		req.TagIDs = []string{}
+	}
+
 	now := time.Now()
+	title := validate.StripAllHTML(req.Title)
+	description := validate.StripAllHTML(req.Description)
+	// Inline denorm: no elements exist yet, so allTagIds = own tagIds
+	// and searchText = lowered title + description. Must stay in sync
+	// with recomputeCurriculumDenorm.
 	data := map[string]interface{}{
 		"disciplineId": disciplineID,
-		"title":        validate.StripAllHTML(req.Title),
-		"description":  validate.StripAllHTML(req.Description),
+		"title":        title,
+		"description":  description,
 		"isPublic":     req.IsPublic,
 		"ownerUid":     uid,
+		"tagIds":       req.TagIDs,
+		"allTagIds":    req.TagIDs,
+		"searchText":   strings.ToLower(title + " " + description),
 		"createdAt":    now,
 		"updatedAt":    now,
 	}
@@ -190,10 +265,11 @@ func (h *CurriculumHandler) Create(w http.ResponseWriter, r *http.Request) {
 	c := model.Curriculum{
 		ID:           ref.ID,
 		DisciplineID: disciplineID,
-		Title:        data["title"].(string),
-		Description:  data["description"].(string),
+		Title:        title,
+		Description:  description,
 		IsPublic:     req.IsPublic,
 		OwnerUID:     uid,
+		TagIDs:       req.TagIDs,
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}
@@ -254,11 +330,19 @@ func (h *CurriculumHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.Duration != nil {
 		updates = append(updates, firestore.Update{Path: "duration", Value: validate.StripAllHTML(*req.Duration)})
 	}
+	if req.TagIDs != nil {
+		updates = append(updates, firestore.Update{Path: "tagIds", Value: req.TagIDs})
+	}
 
 	if _, err := ref.Update(ctx, updates); err != nil {
 		slog.Error("failed to update curriculum", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to update curriculum")
 		return
+	}
+
+	// Recompute denormalized search data (title/description/tagIds may have changed)
+	if err := recomputeCurriculumDenorm(ctx, h.fs, id); err != nil {
+		slog.Error("failed to recompute curriculum denorm after update", "id", id, "error", err)
 	}
 
 	updatedDoc, err := ref.Get(ctx)
@@ -273,6 +357,7 @@ func (h *CurriculumHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	updated.ID = id
+	normalizeCurriculum(&updated)
 
 	writeJSON(w, http.StatusOK, updated)
 }

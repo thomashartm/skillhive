@@ -46,6 +46,15 @@ dev-frontend:
 	@sleep 3
 	cd frontend && npm run dev
 
+sync-data: ## Export production Firestore data and import into local emulator
+	@echo "Exporting from production Firestore..."
+	cd backend && GCP_PROJECT=level-dragon-478821-t3 FIREBASE_KEY_PATH=./serviceAccountKey.json go run ./cmd/firestore-sync export
+	@echo ""
+	@echo "Importing into local emulator..."
+	cd backend && FIRESTORE_EMULATOR_HOST=localhost:8181 FIREBASE_AUTH_EMULATOR_HOST=localhost:9099 go run ./cmd/firestore-sync import
+	@echo ""
+	@echo "Done — local emulator now has production data."
+
 stop: ## Kill all native dev processes
 	@echo "Stopping dev stack..."
 	@-lsof -ti :8080 | xargs kill 2>/dev/null || true

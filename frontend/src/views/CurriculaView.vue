@@ -5,12 +5,40 @@
       <Button v-if="authStore.canEdit" label="New Curriculum" icon="pi pi-plus" size="small" @click="showForm = true" />
     </div>
 
+    <!-- Filters -->
+    <div class="filter-bar mb-4">
+      <InputText
+        v-model="searchQuery"
+        placeholder="Search curricula..."
+        class="filter-search"
+        aria-label="Search curricula"
+      />
+      <TagFilterSelect
+        :available-tags="tags"
+        :selected-tag-ids="selectedTagIds"
+        class="filter-tags"
+        @add-tag="addTag"
+        @remove-tag="removeTag"
+      />
+      <Button
+        v-if="hasActiveFilters"
+        label="Clear"
+        icon="pi pi-times"
+        severity="secondary"
+        text
+        size="small"
+        @click="clearAll"
+      />
+    </div>
+
     <CurriculumList
-      :curricula="curricula"
+      :curricula="filteredCurricula"
+      :tags="tags"
       :loading="loading"
       @view="handleView"
       @edit="handleEdit"
       @delete="handleDelete"
+      @tag-click="addTag"
     />
 
     <CurriculumForm
@@ -24,17 +52,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import CurriculumList from '../components/curricula/CurriculumList.vue'
 import CurriculumForm from '../components/curricula/CurriculumForm.vue'
+import TagFilterSelect from '../components/common/TagFilterSelect.vue'
 import { useCurriculumStore } from '../stores/curricula'
 import { useDisciplineStore } from '../stores/discipline'
+import { useTagStore } from '../stores/tags'
 import { useAuthStore } from '../stores/auth'
+import { useCurriculaFilters } from '../composables/useCurriculaFilters'
 import type { Curriculum } from '../types'
 import type { CurriculumFormData } from '../validation/schemas'
 
@@ -44,25 +76,86 @@ const confirm = useConfirm()
 const authStore = useAuthStore()
 const curriculumStore = useCurriculumStore()
 const disciplineStore = useDisciplineStore()
+const tagStore = useTagStore()
 const { activeDisciplineId } = storeToRefs(disciplineStore)
+const { tags } = storeToRefs(tagStore)
 
 const { curricula, loading } = storeToRefs(curriculumStore)
 const { fetchCurricula, createCurriculum, updateCurriculum, deleteCurriculum } = curriculumStore
 
+const {
+  searchQuery,
+  selectedTagIds,
+  debouncedSearchQuery,
+  addTag,
+  removeTag,
+  clearAll,
+  hasActiveFilters,
+} = useCurriculaFilters()
+
 const showForm = ref(false)
 const editingCurriculum = ref<Curriculum | null>(null)
 
-onMounted(() => {
-  if (activeDisciplineId.value) {
-    fetchCurricula()
+const filteredCurricula = computed(() => {
+  let result = curricula.value
+
+  // Client-side multi-tag AND filter (server only handles first tag via array-contains)
+  if (selectedTagIds.value.length > 1) {
+    result = result.filter(c =>
+      selectedTagIds.value.every(tagId => c.allTagIds?.includes(tagId))
+    )
+  }
+
+  // Client-side text search (supplements server slug-prefix matching)
+  if (debouncedSearchQuery.value) {
+    const q = debouncedSearchQuery.value.toLowerCase()
+    result = result.filter(c =>
+      c.title.toLowerCase().includes(q) ||
+      c.description?.toLowerCase().includes(q)
+    )
+  }
+
+  return result
+})
+
+// Re-fetch when debounced search or tags change
+watch(
+  [debouncedSearchQuery, selectedTagIds],
+  () => {
+    if (activeDisciplineId.value) {
+      loadData()
+    }
+  },
+  { deep: true }
+)
+
+watch(activeDisciplineId, async (newId) => {
+  if (newId) {
+    clearAll()
+    await loadData()
   }
 })
 
-watch(activeDisciplineId, (newDisciplineId) => {
-  if (newDisciplineId) {
-    fetchCurricula()
+onMounted(() => {
+  if (activeDisciplineId.value) {
+    loadData()
   }
 })
+
+async function loadData() {
+  const fetchParams: { tagId?: string; q?: string } = {}
+  if (selectedTagIds.value.length > 0) {
+    fetchParams.tagId = selectedTagIds.value[0]
+  }
+  if (debouncedSearchQuery.value) {
+    fetchParams.q = debouncedSearchQuery.value
+  }
+
+  await Promise.all([
+    fetchCurricula(Object.keys(fetchParams).length > 0 ? fetchParams : undefined),
+    tagStore.fetchTags(),
+  ])
+}
 
 const handleView = (id: string) => {
   router.push(`/curricula/${id}`)
@@ -88,7 +181,7 @@ const handleDelete = (id: string) => {
           detail: 'Curriculum deleted successfully',
           life: 3000
         })
-        await fetchCurricula()
+        await loadData()
       } catch (error: any) {
         toast.add({
           severity: 'error',
@@ -122,7 +215,7 @@ const handleSave = async (data: CurriculumFormData) => {
     }
     showForm.value = false
     editingCurriculum.value = null
-    await fetchCurricula()
+    await loadData()
   } catch (error: any) {
     toast.add({
       severity: 'error',
@@ -138,3 +231,27 @@ const handleCloseForm = () => {
   editingCurriculum.value = null
 }
 </script>
+
+<style scoped>
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.filter-search {
+  width: 16rem;
+}
+
+.filter-tags {
+  width: 16rem;
+}
+
+@media (max-width: 768px) {
+  .filter-search,
+  .filter-tags {
+    width: 100%;
+  }
+}
+</style>

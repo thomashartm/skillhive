@@ -4,7 +4,7 @@ import MultiSelect from 'primevue/multiselect'
 import type { Tag } from '../../types'
 
 /**
- * TagFilterSelect - Multi-select dropdown for filtering assets by tags.
+ * TagFilterSelect - Multi-select dropdown for filtering entities by tags.
  * Selected tags are shown as colored chips. Dropdown includes type-ahead filtering.
  *
  * @example

@@ -98,6 +98,8 @@ export interface Curriculum extends TimestampFields {
   isPublic: boolean
   ownerUid: string
   elementCount?: number
+  tagIds: string[]
+  allTagIds: string[]
 }
 
 export type ElementType = 'technique' | 'asset' | 'text' | 'image' | 'list'
@@ -117,6 +119,8 @@ export interface CurriculumElement extends TimestampFields {
     name?: string
     thumbnailUrl?: string
     url?: string
+    description?: string
+    tagIds?: string[]
   }
 }
 

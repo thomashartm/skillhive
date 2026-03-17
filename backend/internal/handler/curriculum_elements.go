@@ -191,10 +191,27 @@ func (h *ElementHandler) CreateElement(w http.ResponseWriter, r *http.Request) {
 	if req.Type == "technique" && req.TechniqueID != nil {
 		techDoc, err := h.fs.Collection("techniques").Doc(*req.TechniqueID).Get(ctx)
 		if err == nil {
-			name, _ := techDoc.DataAt("name")
-			if nameStr, ok := name.(string); ok {
-				snapshot = &model.Snapshot{Name: nameStr}
+			s := &model.Snapshot{}
+			if name, _ := techDoc.DataAt("name"); name != nil {
+				if nameStr, ok := name.(string); ok {
+					s.Name = nameStr
+				}
 			}
+			if desc, _ := techDoc.DataAt("description"); desc != nil {
+				if descStr, ok := desc.(string); ok {
+					s.Description = descStr
+				}
+			}
+			if tags, _ := techDoc.DataAt("tagIds"); tags != nil {
+				if tagSlice, ok := tags.([]interface{}); ok {
+					for _, t := range tagSlice {
+						if tStr, ok := t.(string); ok {
+							s.TagIDs = append(s.TagIDs, tStr)
+						}
+					}
+				}
+			}
+			snapshot = s
 		}
 	} else if req.Type == "asset" && req.AssetID != nil {
 		assetDoc, err := h.fs.Collection("assets").Doc(*req.AssetID).Get(ctx)
@@ -213,6 +230,20 @@ func (h *ElementHandler) CreateElement(w http.ResponseWriter, r *http.Request) {
 			if u, _ := assetDoc.DataAt("url"); u != nil {
 				if uStr, ok := u.(string); ok {
 					s.URL = uStr
+				}
+			}
+			if desc, _ := assetDoc.DataAt("description"); desc != nil {
+				if descStr, ok := desc.(string); ok {
+					s.Description = descStr
+				}
+			}
+			if tags, _ := assetDoc.DataAt("tagIds"); tags != nil {
+				if tagSlice, ok := tags.([]interface{}); ok {
+					for _, t := range tagSlice {
+						if tStr, ok := t.(string); ok {
+							s.TagIDs = append(s.TagIDs, tStr)
+						}
+					}
 				}
 			}
 			snapshot = s
@@ -243,9 +274,16 @@ func (h *ElementHandler) CreateElement(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update curriculum updatedAt
-	h.fs.Collection("curricula").Doc(curriculumID).Update(ctx, []firestore.Update{
+	if _, err := h.fs.Collection("curricula").Doc(curriculumID).Update(ctx, []firestore.Update{
 		{Path: "updatedAt", Value: now},
-	})
+	}); err != nil {
+		slog.Error("failed to update curriculum updatedAt", "curriculumID", curriculumID, "error", err)
+	}
+
+	// Recompute curriculum denormalized search data
+	if err := recomputeCurriculumDenorm(ctx, h.fs, curriculumID); err != nil {
+		slog.Error("failed to recompute curriculum denorm after element create", "curriculumID", curriculumID, "error", err)
+	}
 
 	elem := model.CurriculumElement{
 		ID:          ref.ID,
@@ -336,6 +374,11 @@ func (h *ElementHandler) UpdateElement(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Recompute curriculum denormalized search data
+	if err := recomputeCurriculumDenorm(ctx, h.fs, curriculumID); err != nil {
+		slog.Error("failed to recompute curriculum denorm after element update", "curriculumID", curriculumID, "error", err)
+	}
+
 	updatedDoc, err := ref.Get(ctx)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to get updated element")
@@ -365,6 +408,11 @@ func (h *ElementHandler) DeleteElement(w http.ResponseWriter, r *http.Request) {
 		slog.Error("failed to delete element", "error", err)
 		writeError(w, http.StatusInternalServerError, "failed to delete element")
 		return
+	}
+
+	// Recompute curriculum denormalized search data
+	if err := recomputeCurriculumDenorm(ctx, h.fs, curriculumID); err != nil {
+		slog.Error("failed to recompute curriculum denorm after element delete", "curriculumID", curriculumID, "error", err)
 	}
 
 	w.WriteHeader(http.StatusNoContent)

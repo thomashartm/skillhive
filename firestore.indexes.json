@@ -116,6 +116,24 @@
         { "fieldPath": "isPublic", "order": "ASCENDING" },
         { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "curricula",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "disciplineId", "order": "ASCENDING" },
+        { "fieldPath": "allTagIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "curricula",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isPublic", "order": "ASCENDING" },
+        { "fieldPath": "allTagIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
