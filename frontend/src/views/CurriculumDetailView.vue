@@ -449,24 +449,26 @@ const handleDeleteElement = (elementId: string) => {
   })
 }
 
-const handleReorder = async (orderedIds: string[]) => {
-  try {
-    await reorderElements(id, orderedIds)
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'Elements reordered successfully',
-      life: 3000
-    })
-    await loadElements()
-  } catch (error: any) {
+const handleReorder = (orderedIds: string[]) => {
+  const snapshot = elements.value.map(el => ({ ...el }))
+  const byId = new Map(elements.value.map(el => [el.id, el]))
+  const reordered: CurriculumElement[] = []
+  orderedIds.forEach((elemId, idx) => {
+    const el = byId.get(elemId)
+    if (el) reordered.push({ ...el, ord: idx })
+  })
+  if (reordered.length !== elements.value.length) return
+  elements.value = reordered
+
+  reorderElements(id, orderedIds).catch((error: any) => {
+    elements.value = snapshot
     toast.add({
       severity: 'error',
-      summary: 'Error',
+      summary: 'Reorder failed',
       detail: error.message || 'Failed to reorder elements',
       life: 3000
     })
-  }
+  })
 }
 </script>
 
