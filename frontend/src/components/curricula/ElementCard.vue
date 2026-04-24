@@ -1,7 +1,6 @@
 <template>
   <div
     class="flex items-start gap-3 p-4 bg-white/5 border border-white/10 transition-colors hover:bg-white/8"
-    :draggable="editable"
   >
     <div v-if="editable" class="cursor-move text-slate-500 hover:text-slate-300 mt-1">
       <i class="pi pi-bars"></i>
