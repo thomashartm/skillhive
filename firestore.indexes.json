@@ -134,6 +134,33 @@
         { "fieldPath": "allTagIds", "arrayConfig": "CONTAINS" },
         { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "cleanupPromptTemplates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "disciplineId", "order": "ASCENDING" },
+        { "fieldPath": "entityType", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "cleanupJobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "disciplineId", "order": "ASCENDING" },
+        { "fieldPath": "entityType", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "cleanupJobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "disciplineId", "order": "ASCENDING" },
+        { "fieldPath": "entityType", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
