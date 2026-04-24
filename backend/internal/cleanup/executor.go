@@ -79,7 +79,7 @@ func (e *Executor) Apply(ctx context.Context, jobID, actorUID string) (*Job, err
 		if p.Action != ActionUpdate {
 			continue
 		}
-		if err := e.applyUpdate(ctx, job.EntityType, p.TargetID, *p.After); err != nil {
+		if err := e.applyUpdate(ctx, job.EntityType, p); err != nil {
 			result.Skipped = append(result.Skipped, SkippedOp{Index: p.Index, Reason: fmt.Sprintf("update failed: %v", err)})
 			continue
 		}
@@ -323,7 +323,10 @@ func applyArrayRewrite(ctx context.Context, fs *firestore.Client, iter *firestor
 	return nil
 }
 
-func (e *Executor) applyUpdate(ctx context.Context, entityType EntityType, id string, after ProposedFields) error {
+func (e *Executor) applyUpdate(ctx context.Context, entityType EntityType, p Proposal) error {
+	after := *p.After
+	before := p.Before
+
 	collection := "categories"
 	if entityType == EntityTechnique {
 		collection = "techniques"
@@ -334,16 +337,91 @@ func (e *Executor) applyUpdate(ctx context.Context, entityType EntityType, id st
 		{Path: "description", Value: after.Description},
 		{Path: "updatedAt", Value: time.Now().UTC()},
 	}
+
 	switch entityType {
 	case EntityCategory:
-		var parentVal interface{} = nil
-		if after.ParentID != nil {
-			parentVal = *after.ParentID
+		// Only write parentId when the admin intentionally changed it. Pass 2
+		// may have already rewritten this field for us (e.g., the original
+		// parent was merged); blindly writing the proposal's parentId would
+		// clobber that rewrite.
+		if !equalNullableString(after.ParentID, before.ParentID) {
+			disciplineID, err := e.lookupDiscipline(ctx, EntityCategory, p.TargetID)
+			if err != nil {
+				return err
+			}
+			if after.ParentID != nil && *after.ParentID != "" {
+				if err := e.checkLiveParentCycle(ctx, disciplineID, p.TargetID, *after.ParentID); err != nil {
+					return err
+				}
+			}
+			var parentVal interface{} = nil
+			if after.ParentID != nil {
+				parentVal = *after.ParentID
+			}
+			updates = append(updates, firestore.Update{Path: "parentId", Value: parentVal})
 		}
-		updates = append(updates, firestore.Update{Path: "parentId", Value: parentVal})
 	case EntityTechnique:
-		updates = append(updates, firestore.Update{Path: "categoryIds", Value: after.CategoryIDs})
+		// Only write categoryIds when the admin intentionally changed them —
+		// otherwise preserve any Pass 2 rewrites.
+		if !equalStringSlices(after.CategoryIDs, before.CategoryIDs) {
+			updates = append(updates, firestore.Update{Path: "categoryIds", Value: after.CategoryIDs})
+		}
 	}
-	_, err := e.fs.Collection(collection).Doc(id).Update(ctx, updates)
+
+	_, err := e.fs.Collection(collection).Doc(p.TargetID).Update(ctx, updates)
 	return err
+}
+
+// checkLiveParentCycle walks the live Firestore parent chain from
+// proposedParentID. If selfID appears anywhere in the chain, the proposed
+// edge would form a cycle. Used as a Pass 3 re-check because Pass 2 may
+// have changed the graph since the proposal was created.
+func (e *Executor) checkLiveParentCycle(ctx context.Context, disciplineID, selfID, proposedParentID string) error {
+	if proposedParentID == selfID {
+		return fmt.Errorf("cycle: parent of %q would be itself", selfID)
+	}
+	seen := map[string]bool{selfID: true}
+	current := proposedParentID
+	for current != "" {
+		if seen[current] {
+			return fmt.Errorf("cycle detected at %q", current)
+		}
+		seen[current] = true
+		doc, err := e.fs.Collection("categories").Doc(current).Get(ctx)
+		if err != nil {
+			// Parent not found — no cycle from here.
+			return nil
+		}
+		var snap RecordSnapshot
+		if err := doc.DataTo(&snap); err != nil {
+			return nil
+		}
+		if snap.ParentID == nil || *snap.ParentID == "" {
+			return nil
+		}
+		current = *snap.ParentID
+	}
+	return nil
+}
+
+func equalNullableString(a, b *string) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
+}
+
+func equalStringSlices(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
