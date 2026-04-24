@@ -254,11 +254,12 @@ func (e *Executor) rewriteElementTechniqueID(ctx context.Context, disciplineID, 
 }
 
 // applyBatches streams docs from `iter` and applies single-field updates in
-// Firestore batches of up to 450 (safely under the 500 limit).
+// Firestore batches of up to 450 (safely under the 500-write transaction
+// limit). Uses WriteBatch.Commit so any per-batch failure surfaces as an
+// error to the caller.
 func applyBatches(ctx context.Context, fs *firestore.Client, iter *firestore.DocumentIterator, updatesFor func(*firestore.DocumentRef) []firestore.Update) error {
 	const batchSize = 450
-	bulk := fs.BulkWriter(ctx)
-	defer bulk.End()
+	batch := fs.Batch()
 	pending := 0
 	for {
 		doc, err := iter.Next()
@@ -268,25 +269,29 @@ func applyBatches(ctx context.Context, fs *firestore.Client, iter *firestore.Doc
 		if err != nil {
 			return err
 		}
-		if _, err := bulk.Update(doc.Ref, updatesFor(doc.Ref)); err != nil {
-			return err
-		}
+		batch.Update(doc.Ref, updatesFor(doc.Ref))
 		pending++
 		if pending >= batchSize {
-			bulk.Flush()
+			if _, err := batch.Commit(ctx); err != nil {
+				return fmt.Errorf("commit batch: %w", err)
+			}
+			batch = fs.Batch()
 			pending = 0
 		}
 	}
-	bulk.Flush()
+	if pending > 0 {
+		if _, err := batch.Commit(ctx); err != nil {
+			return fmt.Errorf("commit batch: %w", err)
+		}
+	}
 	return nil
 }
 
-// applyArrayRewrite rewrites a slice field by reading current value and writing
-// back the deduped replacement. Done via BulkWriter with per-doc Set.
+// applyArrayRewrite reads the current array value for each matching doc and
+// writes back the deduped replacement. Surfaces commit errors.
 func applyArrayRewrite(ctx context.Context, fs *firestore.Client, iter *firestore.DocumentIterator, field, from, to string) error {
 	const batchSize = 450
-	bulk := fs.BulkWriter(ctx)
-	defer bulk.End()
+	batch := fs.Batch()
 	pending := 0
 	for {
 		doc, err := iter.Next()
@@ -307,19 +312,24 @@ func applyArrayRewrite(ctx context.Context, fs *firestore.Client, iter *firestor
 			}
 		}
 		next := replaceAndDedupe(cur, from, to)
-		if _, err := bulk.Update(doc.Ref, []firestore.Update{
+		batch.Update(doc.Ref, []firestore.Update{
 			{Path: field, Value: next},
 			{Path: "updatedAt", Value: time.Now().UTC()},
-		}); err != nil {
-			return err
-		}
+		})
 		pending++
 		if pending >= batchSize {
-			bulk.Flush()
+			if _, err := batch.Commit(ctx); err != nil {
+				return fmt.Errorf("commit batch: %w", err)
+			}
+			batch = fs.Batch()
 			pending = 0
 		}
 	}
-	bulk.Flush()
+	if pending > 0 {
+		if _, err := batch.Commit(ctx); err != nil {
+			return fmt.Errorf("commit batch: %w", err)
+		}
+	}
 	return nil
 }
 
