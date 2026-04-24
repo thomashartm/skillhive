@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -39,6 +40,11 @@ func (e *Executor) Apply(ctx context.Context, jobID, actorUID string) (*Job, err
 
 	approved := filterApproved(job.Proposals)
 	result := AppliedResult{}
+	// realErrors counts mid-flow Firestore failures during merge/update,
+	// distinct from stale-record skips (which are expected and recoverable
+	// by re-running the job). Any real error flips the job to StatusFailed
+	// at finalize time so the audit trail reflects partial application.
+	realErrors := []string{}
 
 	// Pass 1: concurrency check (read-only).
 	fresh := map[string]RecordSnapshot{}
@@ -63,12 +69,15 @@ func (e *Executor) Apply(ctx context.Context, jobID, actorUID string) (*Job, err
 		}
 		if _, ok := fresh[p.MergeInto]; !ok {
 			if cur, err := e.currentSnapshot(ctx, job.EntityType, p.MergeInto); err != nil || cur == nil {
+				// Stale: target was deleted between analysis and apply.
 				result.Skipped = append(result.Skipped, SkippedOp{Index: p.Index, Reason: "mergeInto target missing at apply time"})
 				continue
 			}
 		}
 		if err := e.applyMerge(ctx, job.EntityType, p.TargetID, p.MergeInto); err != nil {
-			result.Skipped = append(result.Skipped, SkippedOp{Index: p.Index, Reason: fmt.Sprintf("merge failed: %v", err)})
+			reason := fmt.Sprintf("merge failed: %v", err)
+			result.Skipped = append(result.Skipped, SkippedOp{Index: p.Index, Reason: reason})
+			realErrors = append(realErrors, fmt.Sprintf("proposal %d: %s", p.Index, reason))
 			continue
 		}
 		result.Deleted++
@@ -80,15 +89,26 @@ func (e *Executor) Apply(ctx context.Context, jobID, actorUID string) (*Job, err
 			continue
 		}
 		if err := e.applyUpdate(ctx, job.EntityType, p); err != nil {
-			result.Skipped = append(result.Skipped, SkippedOp{Index: p.Index, Reason: fmt.Sprintf("update failed: %v", err)})
+			reason := fmt.Sprintf("update failed: %v", err)
+			result.Skipped = append(result.Skipped, SkippedOp{Index: p.Index, Reason: reason})
+			realErrors = append(realErrors, fmt.Sprintf("proposal %d: %s", p.Index, reason))
 			continue
 		}
 		result.Updated++
 	}
 
-	// Pass 4: finalize.
+	// Pass 4: finalize. If any real Firestore error occurred mid-flow, the
+	// job is partially applied — record StatusFailed with details so the
+	// admin sees there's something to investigate. Stale-only skips are not
+	// errors; the job lands as StatusApplied.
 	now := time.Now().UTC()
-	job.Status = StatusApplied
+	if len(realErrors) > 0 {
+		job.Status = StatusFailed
+		job.Error = fmt.Sprintf("partial application: %d operation(s) failed mid-flow: %s",
+			len(realErrors), strings.Join(realErrors, "; "))
+	} else {
+		job.Status = StatusApplied
+	}
 	job.AppliedBy = actorUID
 	job.AppliedAt = &now
 	job.AppliedResult = &result
@@ -98,7 +118,8 @@ func (e *Executor) Apply(ctx context.Context, jobID, actorUID string) (*Job, err
 	slog.Info("cleanup job applied",
 		"jobId", job.ID, "entityType", job.EntityType,
 		"actor", actorUID, "updated", result.Updated,
-		"deleted", result.Deleted, "skipped", len(result.Skipped))
+		"deleted", result.Deleted, "skipped", len(result.Skipped),
+		"status", job.Status)
 
 	return &job, nil
 }
