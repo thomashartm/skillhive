@@ -68,7 +68,7 @@ func Validate(entityType EntityType, input []RecordSnapshot, actions []LLMAction
 				warnings = append(warnings, fmt.Sprintf("update for %q missing 'after' (dropped)", a.ID))
 				continue
 			}
-			after, err := validateUpdate(entityType, *rec, *a.After, byID)
+			after, err := validateUpdate(entityType, *rec, *a.After, byID, deletes)
 			if err != nil {
 				warnings = append(warnings, fmt.Sprintf("update %q invalid: %v (dropped)", a.ID, err))
 				continue
@@ -113,7 +113,7 @@ func validateDelete(a LLMAction, input []RecordSnapshot, deletes map[string]bool
 	return nil
 }
 
-func validateUpdate(entityType EntityType, before RecordSnapshot, after ProposedFields, byID map[string]*RecordSnapshot) (ProposedFields, error) {
+func validateUpdate(entityType EntityType, before RecordSnapshot, after ProposedFields, byID map[string]*RecordSnapshot, deletes map[string]bool) (ProposedFields, error) {
 	if !slugPattern.MatchString(after.Slug) {
 		return ProposedFields{}, fmt.Errorf("slug %q fails format", after.Slug)
 	}
@@ -124,6 +124,11 @@ func validateUpdate(entityType EntityType, before RecordSnapshot, after Proposed
 	switch entityType {
 	case EntityCategory:
 		if after.ParentID != nil && *after.ParentID != "" {
+			// Reject if parentId points at a record being deleted in this job —
+			// otherwise Pass 3 would write a dangling reference.
+			if deletes[*after.ParentID] {
+				return ProposedFields{}, fmt.Errorf("parentId %q is being deleted in this job", *after.ParentID)
+			}
 			if err := checkCategoryCycle(before.ID, *after.ParentID, byID, after); err != nil {
 				return ProposedFields{}, err
 			}
@@ -132,6 +137,12 @@ func validateUpdate(entityType EntityType, before RecordSnapshot, after Proposed
 		}
 		after.CategoryIDs = nil // not applicable
 	case EntityTechnique:
+		// Reject if any categoryId is being deleted — same dangling-ref concern.
+		for _, id := range after.CategoryIDs {
+			if deletes[id] {
+				return ProposedFields{}, fmt.Errorf("categoryId %q is being deleted in this job", id)
+			}
+		}
 		// Dedupe categoryIds, preserving order.
 		seen := map[string]bool{}
 		unique := make([]string, 0, len(after.CategoryIDs))

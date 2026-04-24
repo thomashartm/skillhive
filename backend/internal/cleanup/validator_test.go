@@ -130,3 +130,52 @@ func TestValidate_TechniqueCategoryIDsDedupe(t *testing.T) {
 		t.Errorf("categoryIds should be deduped preserving order: %+v", got)
 	}
 }
+
+func TestValidate_RejectsCategoryUpdateWithDeletedParent(t *testing.T) {
+	deletedID := "b"
+	mergeTarget := "c"
+	input := []RecordSnapshot{
+		{ID: "a", UpdatedAt: time.Unix(0, 0)},
+		{ID: "b", UpdatedAt: time.Unix(0, 0)},
+		{ID: "c", UpdatedAt: time.Unix(0, 0)},
+	}
+	actions := []LLMAction{
+		{Action: ActionDelete, ID: deletedID, MergeInto: mergeTarget, Rationale: "dup"},
+		{Action: ActionUpdate, ID: "a",
+			After:     &ProposedFields{Name: "A", Slug: "a", Description: "x", ParentID: &deletedID},
+			Rationale: "r"},
+	}
+	proposals, warnings := Validate(EntityCategory, input, actions)
+	// Only the delete should survive. The update points parent at a deleted id.
+	for _, p := range proposals {
+		if p.Action == ActionUpdate {
+			t.Errorf("update with parentId pointing at deleted id must be rejected, got %+v", p)
+		}
+	}
+	if len(warnings) == 0 {
+		t.Errorf("expected warning about deleted parent")
+	}
+}
+
+func TestValidate_RejectsTechniqueUpdateWithDeletedCategoryID(t *testing.T) {
+	input := []RecordSnapshot{
+		{ID: "tech_x", UpdatedAt: time.Unix(0, 0)},
+		{ID: "cat_dup", UpdatedAt: time.Unix(0, 0)},
+		{ID: "cat_keep", UpdatedAt: time.Unix(0, 0)},
+	}
+	actions := []LLMAction{
+		{Action: ActionDelete, ID: "cat_dup", MergeInto: "cat_keep", Rationale: "dup"},
+		{Action: ActionUpdate, ID: "tech_x",
+			After:     &ProposedFields{Name: "T", Slug: "t", Description: "d", CategoryIDs: []string{"cat_keep", "cat_dup"}},
+			Rationale: "r"},
+	}
+	proposals, warnings := Validate(EntityTechnique, input, actions)
+	for _, p := range proposals {
+		if p.Action == ActionUpdate {
+			t.Errorf("update with categoryIds containing deleted id must be rejected, got %+v", p)
+		}
+	}
+	if len(warnings) == 0 {
+		t.Errorf("expected warning about deleted categoryId")
+	}
+}
