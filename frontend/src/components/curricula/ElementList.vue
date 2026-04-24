@@ -10,7 +10,6 @@
       :draggable="editable"
       @dragstart="handleDragStart(index, $event)"
       @dragover.prevent="handleDragOver(index, $event)"
-      @dragleave="handleDragLeave(index)"
       @drop.prevent="handleDrop"
       @dragend="handleDragEnd"
     >
@@ -95,19 +94,20 @@ const handleDragOver = (index: number, event: DragEvent) => {
   }
 }
 
-const handleDragLeave = (index: number) => {
-  if (dragOverIndex.value === index) {
-    dragOverIndex.value = null
-  }
-}
-
 const handleDrop = () => {
-  if (!props.editable || draggedIndex.value === null || dragOverIndex.value === null) {
+  if (!props.editable || draggedIndex.value === null) {
     resetDragState()
     return
   }
 
   const from = draggedIndex.value
+  // If we have no dragOver target (user released over empty gap), keep the source
+  // where it was rather than failing silently — avoids the "release-too-early" bug.
+  if (dragOverIndex.value === null) {
+    resetDragState()
+    return
+  }
+
   const overIndex = dragOverIndex.value
   let to = dropPosition.value === 'before' ? overIndex : overIndex + 1
   // When the source sits before the insertion point, removing it shifts the target left by one.
