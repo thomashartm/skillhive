@@ -309,6 +309,12 @@ watch(activeDisciplineId, (newId) => {
         class="admin-nav-btn"
         @click="router.push({ name: 'admin-tags' })"
       />
+      <Button
+        label="Cleanup"
+        icon="pi pi-sparkles"
+        class="admin-nav-btn"
+        @click="router.push({ name: 'admin-cleanup' })"
+      />
     </div>
 
     <!-- No discipline selected message -->
