@@ -116,6 +116,24 @@ create_secret \
     "Firebase App ID (starts with 1:...)"
 
 echo ""
+echo "=== Backend Runtime API Keys ==="
+echo "Get these from:"
+echo "  - Gemini:  https://aistudio.google.com/apikey  (issue against project ${PROJECT_ID})"
+echo "  - YouTube: https://console.cloud.google.com/apis/credentials?project=${PROJECT_ID}"
+echo "Both are optional — leave blank to keep enrichment + cleanup features disabled in prod."
+echo ""
+
+create_secret \
+    "${SECRET_GEMINI_API_KEY}" \
+    "Google Gemini API key (used by enrichment + cleanup admin)" \
+    "Gemini API key"
+
+create_secret \
+    "${SECRET_YOUTUBE_API_KEY}" \
+    "YouTube Data API v3 key (used by enrichment pipeline)" \
+    "YouTube API key"
+
+echo ""
 echo "=== Secrets configured successfully ==="
 echo ""
 echo "To view secrets:"

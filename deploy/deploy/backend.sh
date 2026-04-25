@@ -37,6 +37,30 @@ fi
 echo ""
 echo "=== Step 2: Deploying to Cloud Run ==="
 
+# Build the --set-secrets value. CORS is required; runtime API keys are
+# included only if the secret already exists in Secret Manager. This keeps
+# the deploy script idempotent and safe to run before/after configuring
+# new secrets via setup/03-setup-secrets.sh — existing prod deploys keep
+# working unchanged when the new secrets aren't configured yet.
+SECRETS_LIST="CORS_ALLOWED_ORIGINS=${SECRET_CORS_ORIGINS}:latest"
+
+maybe_add_secret() {
+    local env_var="$1"
+    local secret_name="$2"
+    if gcloud secrets describe "${secret_name}" --project="${PROJECT_ID}" >/dev/null 2>&1; then
+        SECRETS_LIST="${SECRETS_LIST},${env_var}=${secret_name}:latest"
+        echo "  + ${env_var} <- ${secret_name}"
+    else
+        echo "  - ${env_var} unset (secret '${secret_name}' not found; run setup/03-setup-secrets.sh to enable)"
+    fi
+}
+
+echo ""
+echo "Resolving runtime secrets:"
+maybe_add_secret "GEMINI_API_KEY" "${SECRET_GEMINI_API_KEY:-skillhive-gemini-api-key}"
+maybe_add_secret "YOUTUBE_API_KEY" "${SECRET_YOUTUBE_API_KEY:-skillhive-youtube-api-key}"
+echo ""
+
 DEPLOY_ARGS=(
     "--image=${IMAGE_NAME}:${VERSION}"
     "--region=${REGION}"
@@ -48,7 +72,7 @@ DEPLOY_ARGS=(
     "--min-instances=0"
     "--max-instances=10"
     "--set-env-vars=GCP_PROJECT=${PROJECT_ID},ENV=production"
-    "--set-secrets=CORS_ALLOWED_ORIGINS=${SECRET_CORS_ORIGINS}:latest"
+    "--set-secrets=${SECRETS_LIST}"
     "--project=${PROJECT_ID}"
 )
 

@@ -51,3 +51,11 @@ export SECRET_FIREBASE_PROJECT_ID="skillhive-firebase-project-id"
 export SECRET_FIREBASE_STORAGE_BUCKET="skillhive-firebase-storage-bucket"
 export SECRET_FIREBASE_MESSAGING_SENDER_ID="skillhive-firebase-messaging-sender-id"
 export SECRET_FIREBASE_APP_ID="skillhive-firebase-app-id"
+
+# Backend runtime API keys.
+# These are optional: backend degrades gracefully if a secret is missing
+# (enrichment pipeline + cleanup admin disabled). The deploy script only
+# wires --set-secrets for whichever of these exist in Secret Manager, so
+# adding them is non-breaking for existing deployments.
+export SECRET_GEMINI_API_KEY="skillhive-gemini-api-key"
+export SECRET_YOUTUBE_API_KEY="skillhive-youtube-api-key"
