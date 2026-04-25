@@ -62,3 +62,4 @@ deploy/secrets/secrets.yaml
 /backend/serviceAccountKey.json
 /backend/playlist-import
 /backend/yt-enrich
+/backend/skillhive-api
