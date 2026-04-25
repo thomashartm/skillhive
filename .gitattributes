@@ -1,0 +1,13 @@
+# GitHub Linguist overrides — keep language stats accurate on the profile.
+# https://github.com/github-linguist/linguist/blob/main/docs/overrides.md
+
+# Built artifacts (also gitignored, but in case something slips in).
+frontend/dist/*       linguist-generated=true
+
+# Static assets shipped as-is.
+frontend/public/*     linguist-vendored=true
+
+# Vue SFCs dominate the line count of this repo but the work is split
+# across Go (backend), TypeScript (frontend logic), and Vue templates.
+# Excluding `.vue` from stats lets the profile reflect the actual mix.
+*.vue                 linguist-detectable=false
