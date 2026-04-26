@@ -78,6 +78,13 @@ func main() {
 	elementHandler := handler.NewElementHandler(clients.Firestore)
 	adminHandler := handler.NewAdminHandler(clients.Auth, clients.Firestore, pipeline, enrichCtx)
 
+	// LLM client for cleanup admin (may be nil if Gemini not configured).
+	var cleanupLLM llm.Client
+	if cfg.GeminiAPIKey != "" {
+		cleanupLLM, _ = llm.NewClient(llm.ProviderGemini, cfg.GeminiModel, cfg.GeminiAPIKey)
+	}
+	adminCleanupHandler := handler.NewAdminCleanupHandler(clients.Firestore, cleanupLLM)
+
 	// Protected API routes
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(middleware.FirebaseAuth(clients.Auth))
@@ -98,6 +105,20 @@ func main() {
 			r.Patch("/assets/{id}/active", adminHandler.ToggleAssetActive)
 			r.Post("/assets/{id}/enrich", adminHandler.RetryEnrichment)
 			r.Patch("/assets/{id}/status", adminHandler.UpdateAssetStatus)
+
+			// Cleanup — templates
+			r.Get("/cleanup/templates", adminCleanupHandler.ListTemplates)
+			r.Post("/cleanup/templates", adminCleanupHandler.CreateTemplate)
+			r.Patch("/cleanup/templates/{id}", adminCleanupHandler.UpdateTemplate)
+			r.Delete("/cleanup/templates/{id}", adminCleanupHandler.DeleteTemplate)
+
+			// Cleanup — jobs
+			r.Post("/cleanup/jobs", adminCleanupHandler.CreateJob)
+			r.Get("/cleanup/jobs", adminCleanupHandler.ListJobs)
+			r.Get("/cleanup/jobs/{id}", adminCleanupHandler.GetJob)
+			r.Patch("/cleanup/jobs/{id}/proposals/{index}", adminCleanupHandler.PatchProposal)
+			r.Post("/cleanup/jobs/{id}/apply", adminCleanupHandler.ApplyJob)
+			r.Post("/cleanup/jobs/{id}/discard", adminCleanupHandler.DiscardJob)
 		})
 
 		// Disciplines (read-only)
