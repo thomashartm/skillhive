@@ -114,6 +114,15 @@ export const useCleanupStore = defineStore('cleanup', () => {
     }
   }
 
+  async function forceFailJob(jobId: string, reason: string): Promise<CleanupJob> {
+    const j = await api.post<CleanupJob>(
+      `/api/v1/admin/cleanup/jobs/${jobId}/force-fail`,
+      { reason },
+    )
+    activeJob.value = j
+    return j
+  }
+
   return {
     templates,
     jobs,
@@ -129,5 +138,6 @@ export const useCleanupStore = defineStore('cleanup', () => {
     updateProposal,
     applyJob,
     discardJob,
+    forceFailJob,
   }
 })

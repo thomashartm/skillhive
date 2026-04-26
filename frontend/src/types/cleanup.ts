@@ -4,7 +4,7 @@ export type CleanupEntityType = 'category' | 'technique'
 
 export type CleanupActionType = 'update' | 'delete'
 
-export type CleanupJobStatus = 'proposed' | 'applied' | 'discarded' | 'failed'
+export type CleanupJobStatus = 'proposed' | 'applying' | 'applied' | 'discarded' | 'failed'
 
 export interface CleanupTemplate {
   id: string
@@ -57,7 +57,9 @@ export interface CleanupProposal {
 export interface CleanupAppliedResult {
   updated: number
   deleted: number
-  skipped: { index: number; reason: string }[]
+  // Backend may serialize an empty slice as null on older records; always
+  // coalesce on read (e.g. `skipped ?? []`).
+  skipped: { index: number; reason: string }[] | null
 }
 
 export interface CleanupJob {

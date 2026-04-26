@@ -21,6 +21,7 @@ type JobStatus string
 
 const (
 	StatusProposed  JobStatus = "proposed"
+	StatusApplying  JobStatus = "applying"
 	StatusApplied   JobStatus = "applied"
 	StatusDiscarded JobStatus = "discarded"
 	StatusFailed    JobStatus = "failed"
@@ -49,10 +50,10 @@ type Template struct {
 
 // Filter narrows the input record set for a job.
 type Filter struct {
-	ParentID    *string `json:"parentId,omitempty"    firestore:"parentId,omitempty"`
-	CategoryID  *string `json:"categoryId,omitempty"  firestore:"categoryId,omitempty"`
-	TagSlug     *string `json:"tagSlug,omitempty"     firestore:"tagSlug,omitempty"`
-	Search      *string `json:"search,omitempty"      firestore:"search,omitempty"`
+	ParentID   *string `json:"parentId,omitempty"    firestore:"parentId,omitempty"`
+	CategoryID *string `json:"categoryId,omitempty"  firestore:"categoryId,omitempty"`
+	TagSlug    *string `json:"tagSlug,omitempty"     firestore:"tagSlug,omitempty"`
+	Search     *string `json:"search,omitempty"      firestore:"search,omitempty"`
 }
 
 // RecordSnapshot is the minimal view of a category or technique used in a
@@ -78,14 +79,14 @@ type ProposedFields struct {
 
 // Proposal is one reviewable item in a job.
 type Proposal struct {
-	Index     int            `json:"index"            firestore:"index"`
-	Action    ActionType     `json:"action"           firestore:"action"`
-	TargetID  string         `json:"targetId"         firestore:"targetId"`
-	Before    RecordSnapshot `json:"before"           firestore:"before"`
+	Index     int             `json:"index"            firestore:"index"`
+	Action    ActionType      `json:"action"           firestore:"action"`
+	TargetID  string          `json:"targetId"         firestore:"targetId"`
+	Before    RecordSnapshot  `json:"before"           firestore:"before"`
 	After     *ProposedFields `json:"after,omitempty"  firestore:"after,omitempty"`
-	MergeInto string         `json:"mergeInto,omitempty" firestore:"mergeInto,omitempty"`
-	Rationale string         `json:"rationale"        firestore:"rationale"`
-	Approved  bool           `json:"approved"         firestore:"approved"`
+	MergeInto string          `json:"mergeInto,omitempty" firestore:"mergeInto,omitempty"`
+	Rationale string          `json:"rationale"        firestore:"rationale"`
+	Approved  bool            `json:"approved"         firestore:"approved"`
 }
 
 // AppliedResult is written after Apply() completes.
@@ -122,11 +123,11 @@ type Job struct {
 
 // LLMAction is the raw parsed shape returned by Gemini before validation.
 type LLMAction struct {
-	Action    ActionType     `json:"action"`
-	ID        string         `json:"id"`
+	Action    ActionType      `json:"action"`
+	ID        string          `json:"id"`
 	After     *ProposedFields `json:"after,omitempty"`
-	MergeInto string         `json:"mergeInto,omitempty"`
-	Rationale string         `json:"rationale"`
+	MergeInto string          `json:"mergeInto,omitempty"`
+	Rationale string          `json:"rationale"`
 }
 
 // LLMResponse is the top-level JSON shape we require from Gemini.

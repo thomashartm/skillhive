@@ -165,7 +165,7 @@ The cleanest path:
 
 ---
 
-### [ ] I7 — `Apply` is not idempotent against concurrent double-clicks
+### [x] I7 — `Apply` is not idempotent against concurrent double-clicks (DONE in resilience PR)
 
 **Where:** `backend/internal/cleanup/executor.go:24-29` and 89-97 (`Apply`)
 
@@ -350,7 +350,7 @@ watch(() => [props.visible, props.entityType], ([v]) => {
 
 ---
 
-### [ ] M7 — Normalize `ListJobs` empty-proposals to `[]` on the wire
+### [x] M7 — Normalize `ListJobs` empty-proposals to `[]` on the wire (DONE in resilience PR)
 
 **Where:** `backend/internal/cleanup/service.go:150`
 
