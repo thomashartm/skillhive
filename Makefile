@@ -17,8 +17,8 @@ seed: ## Seed Firestore emulator with sample data
 logs: ## Tail logs for all services
 	docker compose logs -f
 
-build: ## Build both frontend and backend (local, no Docker)
-	cd backend && go build ./...
+build: ## Build server + tools into backend/bin/, frontend into frontend/dist/
+	$(MAKE) -C backend build
 	cd frontend && npm run build
 
 # === Native (no Docker) ===

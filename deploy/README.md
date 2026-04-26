@@ -148,6 +148,10 @@ Secrets are stored in Google Cloud Secret Manager and injected at runtime:
 | `skillhive-cors-origins` | Cloud Run | Allowed CORS origins |
 | `skillhive-api-url` | Frontend build | API endpoint URL |
 | `skillhive-firebase-*` | Frontend build | Firebase configuration |
+| `skillhive-gemini-api-key` | Cloud Run (optional) | Gemini API key — enables enrichment + cleanup admin |
+| `skillhive-youtube-api-key` | Cloud Run (optional) | YouTube Data API v3 key — enables enrichment pipeline |
+
+Optional secrets are wired by `deploy/backend.sh` only when they exist in Secret Manager. Deploys without them succeed and the dependent features stay disabled (the backend already degrades gracefully — see `main.go:46`). To enable: run `setup/03-setup-secrets.sh` (interactive, prompts for the key value), then redeploy with `deploy/backend.sh`.
 
 ### Updating Secrets
 
