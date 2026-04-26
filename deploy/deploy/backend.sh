@@ -71,6 +71,7 @@ DEPLOY_ARGS=(
     "--memory=512Mi"
     "--min-instances=0"
     "--max-instances=10"
+    "--timeout=3600"
     "--set-env-vars=GCP_PROJECT=${PROJECT_ID},ENV=production"
     "--set-secrets=${SECRETS_LIST}"
     "--project=${PROJECT_ID}"
