@@ -8,11 +8,15 @@ import Button from 'primevue/button'
 import CleanupDiff from './CleanupDiff.vue'
 import type { CleanupProposal, CleanupEntityType, CleanupProposedFields } from '../../types/cleanup'
 
-const props = defineProps<{
-  proposal: CleanupProposal
-  entityType: CleanupEntityType
-  mergeTargetName?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    proposal: CleanupProposal
+    entityType: CleanupEntityType
+    mergeTargetName?: string
+    readOnly?: boolean
+  }>(),
+  { readOnly: false },
+)
 const emit = defineEmits<{
   (e: 'approveToggle', index: number, next: boolean): void
   (e: 'saveAfter', index: number, after: CleanupProposedFields): void
@@ -20,6 +24,11 @@ const emit = defineEmits<{
 
 const editing = ref(false)
 const draft = ref<CleanupProposedFields>({ name: '', slug: '', description: '' })
+
+function startEdit() {
+  if (props.readOnly) return
+  editing.value = true
+}
 
 watch(() => props.proposal, (p) => {
   if (p.after) {
@@ -50,9 +59,17 @@ function save() {
       </span>
       <div class="grow" />
       <div class="approve">
-        <Checkbox :modelValue="proposal.approved" :binary="true"
-                  @update:modelValue="emit('approveToggle', proposal.index, $event as boolean)" />
-        <span>Approve</span>
+        <template v-if="readOnly">
+          <Tag
+            :value="proposal.approved ? 'Approved' : 'Not approved'"
+            :severity="proposal.approved ? 'success' : 'secondary'"
+          />
+        </template>
+        <template v-else>
+          <Checkbox :modelValue="proposal.approved" :binary="true"
+                    @update:modelValue="emit('approveToggle', proposal.index, $event as boolean)" />
+          <span>Approve</span>
+        </template>
       </div>
     </div>
 
@@ -60,12 +77,12 @@ function save() {
 
     <div v-if="proposal.action === 'update' && !editing">
       <CleanupDiff :before="proposal.before" :after="proposal.after" :entity-type="entityType" />
-      <div class="mt-2">
-        <Button label="Edit after" icon="pi pi-pencil" size="small" text @click="editing = true" />
+      <div v-if="!readOnly" class="mt-2">
+        <Button label="Edit after" icon="pi pi-pencil" size="small" text @click="startEdit" />
       </div>
     </div>
 
-    <div v-else-if="proposal.action === 'update' && editing" class="edit-form">
+    <div v-else-if="proposal.action === 'update' && editing && !readOnly" class="edit-form">
       <div class="form-row">
         <label>name</label>
         <InputText v-model="draft.name" />

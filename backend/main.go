@@ -119,6 +119,7 @@ func main() {
 			r.Patch("/cleanup/jobs/{id}/proposals/{index}", adminCleanupHandler.PatchProposal)
 			r.Post("/cleanup/jobs/{id}/apply", adminCleanupHandler.ApplyJob)
 			r.Post("/cleanup/jobs/{id}/discard", adminCleanupHandler.DiscardJob)
+			r.Post("/cleanup/jobs/{id}/force-fail", adminCleanupHandler.ForceFailJob)
 		})
 
 		// Disciplines (read-only)
