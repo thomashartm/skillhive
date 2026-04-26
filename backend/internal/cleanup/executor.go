@@ -19,36 +19,125 @@ func NewExecutor(fs *firestore.Client) *Executor {
 	return &Executor{fs: fs}
 }
 
+// finalizeTimeout caps the background finalize Set so a healthy Firestore
+// can land the terminal state even when the request context has been
+// cancelled (e.g. client disconnect mid-flight).
+const finalizeTimeout = 30 * time.Second
+
 // Apply runs the four-pass executor. Returns the final job (with
 // appliedResult). Operations that fail concurrency or validation at apply
 // time are skipped and recorded in the result — the rest still apply.
-func (e *Executor) Apply(ctx context.Context, jobID, actorUID string) (*Job, error) {
+//
+// Resilience guarantees:
+//   - The job is reserved transactionally at the start: status flips
+//     proposed → applying. A second concurrent caller sees the non-proposed
+//     status and is rejected.
+//   - A panic mid-flow is recovered; the job is finalized as `failed` with
+//     the panic message via a fresh background context.
+//   - If the request context is cancelled mid-flow (client disconnect,
+//     proxy timeout), the executor stops at the next pass boundary and
+//     finalizes as `failed` with the cancellation reason — again via a
+//     background context so the terminal state lands.
+//   - The terminal Set always uses a background context with a short
+//     timeout, so the audit trail is preserved even when ctx is dead.
+func (e *Executor) Apply(ctx context.Context, jobID, actorUID string) (resultJob *Job, returnErr error) {
 	jobRef := e.fs.Collection(jobsCollection).Doc(jobID)
-	jobDoc, err := jobRef.Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("load job: %w", err)
-	}
-	var job Job
-	if err := jobDoc.DataTo(&job); err != nil {
-		return nil, fmt.Errorf("parse job: %w", err)
-	}
-	job.ID = jobRef.ID
 
-	if job.Status != StatusProposed {
-		return nil, fmt.Errorf("job status %q is not 'proposed'", job.Status)
+	// Reserve the job: read + status check + flip to applying, all in one
+	// transaction. If two callers race here, exactly one wins; the other
+	// sees status="applying" on its read and returns an error.
+	var job Job
+	if err := e.fs.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+		snap, err := tx.Get(jobRef)
+		if err != nil {
+			return err
+		}
+		if err := snap.DataTo(&job); err != nil {
+			return err
+		}
+		job.ID = jobRef.ID
+		if job.Status != StatusProposed {
+			return fmt.Errorf("job status %q is not 'proposed'", job.Status)
+		}
+		return tx.Update(jobRef, []firestore.Update{
+			{Path: "status", Value: string(StatusApplying)},
+		})
+	}); err != nil {
+		return nil, fmt.Errorf("reserve job: %w", err)
 	}
+	job.Status = StatusApplying
 
 	approved := filterApproved(job.Proposals)
-	result := AppliedResult{}
+	// Initialize Skipped to a non-nil empty slice so JSON marshalling produces
+	// `[]` rather than `null` (the frontend's `skipped.length` access cannot
+	// survive null).
+	result := AppliedResult{Skipped: []SkippedOp{}}
 	// realErrors counts mid-flow Firestore failures during merge/update,
 	// distinct from stale-record skips (which are expected and recoverable
 	// by re-running the job). Any real error flips the job to StatusFailed
 	// at finalize time so the audit trail reflects partial application.
 	realErrors := []string{}
 
+	// Single deferred finalize: runs on normal return, on panic (after
+	// recover), and on early break-out from ctx cancellation. Always uses a
+	// fresh background context so the terminal state lands even when the
+	// request context is dead.
+	defer func() {
+		var panicErr error
+		if r := recover(); r != nil {
+			panicErr = fmt.Errorf("panic: %v", r)
+			slog.Error("cleanup apply panicked", "jobId", jobID, "panic", r)
+			realErrors = append(realErrors, panicErr.Error())
+		}
+
+		finalizeCtx, cancel := context.WithTimeout(context.Background(), finalizeTimeout)
+		defer cancel()
+
+		now := time.Now().UTC()
+		if ctx.Err() != nil && panicErr == nil {
+			realErrors = append(realErrors, fmt.Sprintf("execution interrupted: %v", ctx.Err()))
+		}
+		if len(realErrors) > 0 {
+			job.Status = StatusFailed
+			job.Error = fmt.Sprintf("partial application: %d operation(s) failed: %s",
+				len(realErrors), strings.Join(realErrors, "; "))
+		} else {
+			job.Status = StatusApplied
+		}
+		job.AppliedBy = actorUID
+		job.AppliedAt = &now
+		job.AppliedResult = &result
+
+		if _, err := jobRef.Set(finalizeCtx, job); err != nil {
+			slog.Error("cleanup finalize Set failed",
+				"jobId", jobID, "error", err, "intendedStatus", job.Status)
+			// Caller's returnErr stays whatever it was; we logged the
+			// finalize failure for forensic recovery.
+			return
+		}
+		slog.Info("cleanup job finalized",
+			"jobId", job.ID, "entityType", job.EntityType,
+			"actor", actorUID, "updated", result.Updated,
+			"deleted", result.Deleted, "skipped", len(result.Skipped),
+			"status", job.Status)
+
+		// Surface a return value: on success path, callers expect the
+		// finalized job; on panic, propagate the panic message as an error.
+		resultJob = &job
+		if panicErr != nil && returnErr == nil {
+			returnErr = panicErr
+		}
+	}()
+
 	// Pass 1: concurrency check (read-only).
+	if err := ctx.Err(); err != nil {
+		return // finalize defer will record as interrupted
+	}
 	fresh := map[string]RecordSnapshot{}
 	for _, p := range approved {
+		if err := ctx.Err(); err != nil {
+			return
+		}
 		cur, err := e.currentSnapshot(ctx, job.EntityType, p.TargetID)
 		if err != nil || cur == nil {
 			result.Skipped = append(result.Skipped, SkippedOp{Index: p.Index, Reason: fmt.Sprintf("current record unavailable: %v", err)})
@@ -64,6 +153,9 @@ func (e *Executor) Apply(ctx context.Context, jobID, actorUID string) (*Job, err
 
 	// Pass 2: deletes + merges. For each, rewrite refs then delete.
 	for _, p := range survivors {
+		if err := ctx.Err(); err != nil {
+			return
+		}
 		if p.Action != ActionDelete {
 			continue
 		}
@@ -85,6 +177,9 @@ func (e *Executor) Apply(ctx context.Context, jobID, actorUID string) (*Job, err
 
 	// Pass 3: updates.
 	for _, p := range survivors {
+		if err := ctx.Err(); err != nil {
+			return
+		}
 		if p.Action != ActionUpdate {
 			continue
 		}
@@ -97,31 +192,8 @@ func (e *Executor) Apply(ctx context.Context, jobID, actorUID string) (*Job, err
 		result.Updated++
 	}
 
-	// Pass 4: finalize. If any real Firestore error occurred mid-flow, the
-	// job is partially applied — record StatusFailed with details so the
-	// admin sees there's something to investigate. Stale-only skips are not
-	// errors; the job lands as StatusApplied.
-	now := time.Now().UTC()
-	if len(realErrors) > 0 {
-		job.Status = StatusFailed
-		job.Error = fmt.Sprintf("partial application: %d operation(s) failed mid-flow: %s",
-			len(realErrors), strings.Join(realErrors, "; "))
-	} else {
-		job.Status = StatusApplied
-	}
-	job.AppliedBy = actorUID
-	job.AppliedAt = &now
-	job.AppliedResult = &result
-	if _, err := jobRef.Set(ctx, job); err != nil {
-		return nil, fmt.Errorf("finalize job: %w", err)
-	}
-	slog.Info("cleanup job applied",
-		"jobId", job.ID, "entityType", job.EntityType,
-		"actor", actorUID, "updated", result.Updated,
-		"deleted", result.Deleted, "skipped", len(result.Skipped),
-		"status", job.Status)
-
-	return &job, nil
+	// Normal return: finalize defer writes terminal state.
+	return
 }
 
 func filterApproved(ps []Proposal) []Proposal {

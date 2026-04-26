@@ -308,3 +308,42 @@ func (h *AdminCleanupHandler) DiscardJob(w http.ResponseWriter, r *http.Request)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+type forceFailReq struct {
+	Reason string `json:"reason"`
+}
+
+// ForceFailJob is the admin recovery action for a job stuck in `proposed`
+// or `applying` after an aborted apply (Cloud Run timeout, panic, etc.).
+// Marks the job `failed` with an audit-trail reason. Idempotent in the
+// sense that calling on an already-terminal job returns a clear error.
+func (h *AdminCleanupHandler) ForceFailJob(w http.ResponseWriter, r *http.Request) {
+	if h.llmRequired(w) {
+		return
+	}
+	jobID := chi.URLParam(r, "id")
+	job, err := h.service.GetJob(r.Context(), jobID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	if err := middleware.RequireAdmin(r.Context(), job.DisciplineID); err != nil {
+		writeError(w, http.StatusForbidden, "admin role required for this discipline")
+		return
+	}
+	var req forceFailReq
+	// Body is optional; an empty body is fine.
+	_ = decodeJSON(r, &req)
+	actor := middleware.GetUserUID(r.Context())
+	if err := h.service.ForceFail(r.Context(), jobID, req.Reason, actor); err != nil {
+		slog.Warn("force-fail rejected", "jobId", jobID, "actor", actor, "error", err)
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	updated, err := h.service.GetJob(r.Context(), jobID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, updated)
+}

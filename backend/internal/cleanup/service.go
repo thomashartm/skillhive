@@ -116,7 +116,19 @@ func (s *Service) GetJob(ctx context.Context, id string) (*Job, error) {
 		return nil, fmt.Errorf("parse job: %w", err)
 	}
 	j.ID = doc.Ref.ID
+	normalizeJob(&j)
 	return &j, nil
+}
+
+// normalizeJob defends against Go nil slices that came back from Firestore as
+// stored nulls. Frontend types treat Skipped/Proposals as non-null arrays.
+func normalizeJob(j *Job) {
+	if j.AppliedResult != nil && j.AppliedResult.Skipped == nil {
+		j.AppliedResult.Skipped = []SkippedOp{}
+	}
+	if j.Proposals == nil {
+		j.Proposals = []Proposal{}
+	}
 }
 
 // ListJobs returns jobs for a discipline + entity type, optionally filtered
@@ -146,8 +158,10 @@ func (s *Service) ListJobs(ctx context.Context, disciplineID string, entityType 
 			return nil, fmt.Errorf("parse job: %w", err)
 		}
 		j.ID = doc.Ref.ID
-		// Trim proposals in list view to avoid bloated payloads.
-		j.Proposals = nil
+		// Trim proposals in list view to avoid bloated payloads. Empty (not
+		// nil) so JSON serializes as `[]`.
+		j.Proposals = []Proposal{}
+		normalizeJob(&j)
 		out = append(out, j)
 	}
 	return out, nil
@@ -193,6 +207,41 @@ func (s *Service) Discard(ctx context.Context, jobID string) error {
 		{Path: "status", Value: string(StatusDiscarded)},
 	})
 	return err
+}
+
+// ForceFail manually flips a job to `failed` with an admin-supplied reason.
+// Only valid against jobs in `proposed` or `applying` (i.e. not yet
+// terminal). Used to recover stuck jobs after an aborted apply where the
+// executor's terminal-state write didn't land.
+func (s *Service) ForceFail(ctx context.Context, jobID, reason, actorUID string) error {
+	if reason == "" {
+		reason = "force-failed by admin"
+	}
+	ref := s.fs.Collection(jobsCollection).Doc(jobID)
+	return s.fs.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+		snap, err := tx.Get(ref)
+		if err != nil {
+			return err
+		}
+		var j Job
+		if err := snap.DataTo(&j); err != nil {
+			return err
+		}
+		if j.Status != StatusProposed && j.Status != StatusApplying {
+			return fmt.Errorf("cannot force-fail job in status %q", j.Status)
+		}
+		now := time.Now().UTC()
+		errMsg := fmt.Sprintf("force-failed by %s: %s", actorUID, reason)
+		if j.Error != "" {
+			errMsg = j.Error + "; " + errMsg
+		}
+		return tx.Update(ref, []firestore.Update{
+			{Path: "status", Value: string(StatusFailed)},
+			{Path: "error", Value: errMsg},
+			{Path: "appliedBy", Value: actorUID},
+			{Path: "appliedAt", Value: now},
+		})
+	})
 }
 
 func estimateTokens(s string) int { return len(s) / 4 }

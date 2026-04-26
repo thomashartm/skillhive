@@ -42,6 +42,7 @@ function onJobCreated(id: string) {
 function statusSeverity(s: CleanupJobStatus) {
   switch (s) {
     case 'proposed': return 'info'
+    case 'applying': return 'info'
     case 'applied': return 'success'
     case 'discarded': return 'warn'
     case 'failed': return 'danger'
