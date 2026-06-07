@@ -419,7 +419,7 @@ cd /Users/thomas/projects/skillhive/backend
 FIRESTORE_EMULATOR_HOST=localhost:8181 \
   GCLOUD_PROJECT=skillhive \
   GEMINI_API_KEY=<real key> \
-  GEMINI_MODEL=gemini-2.0-flash \
+  GEMINI_MODEL=gemini-2.5-flash \
   go run .
 
 # Terminal C — frontend

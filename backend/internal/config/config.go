@@ -28,7 +28,7 @@ func Load() *Config {
 		Env:                getEnv("ENV", "development"),
 		YouTubeAPIKey:      getEnv("YOUTUBE_API_KEY", ""),
 		GeminiAPIKey:       getEnv("GEMINI_API_KEY", ""),
-		GeminiModel:        getEnv("GEMINI_MODEL", "gemini-2.0-flash"),
+		GeminiModel:        getEnv("GEMINI_MODEL", "gemini-2.5-flash"),
 	}
 }
 

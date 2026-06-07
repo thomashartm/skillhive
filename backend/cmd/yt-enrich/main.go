@@ -51,7 +51,7 @@ func main() {
 	videoURL := flag.String("video", "", "Single YouTube video URL")
 	disciplineID := flag.String("discipline", "", "Discipline ID (optional, LLM auto-detects if omitted)")
 	llmProvider := flag.String("llm-provider", "ollama", "LLM provider: ollama or gemini")
-	llmModel := flag.String("model", "", "LLM model name (default: llama3.2 for ollama, gemini-2.0-flash for gemini)")
+	llmModel := flag.String("model", "", "LLM model name (default: llama3.2 for ollama, gemini-2.5-flash for gemini)")
 	ownerUID := flag.String("owner-uid", "system", "Owner UID for created assets")
 	videoType := flag.String("video-type", "", "Override video type: short, full, instructional, seminar")
 	createTags := flag.Bool("create-tags", false, "Auto-create suggested tags in Firestore")
@@ -106,7 +106,7 @@ func main() {
 		if *llmProvider == "ollama" {
 			*llmModel = "llama3.2"
 		} else {
-			*llmModel = "gemini-2.0-flash"
+			*llmModel = "gemini-2.5-flash"
 		}
 	}
 

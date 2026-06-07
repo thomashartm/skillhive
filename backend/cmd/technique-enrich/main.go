@@ -80,7 +80,7 @@ func main() {
 	dryRun := flag.Bool("dry-run", false, "Print what would be changed without writing")
 	deleteInvalid := flag.Bool("delete-invalid", false, "Delete techniques that Gemini says are not real techniques")
 	cleanupRefs := flag.Bool("cleanup-refs", false, "Clean up stale technique references in assets (no Gemini needed)")
-	model := flag.String("model", "gemini-2.0-flash", "Gemini model to use")
+	model := flag.String("model", "gemini-2.5-flash", "Gemini model to use")
 	batchSize := flag.Int("batch-size", 25, "Number of techniques per Gemini call")
 	flag.Parse()
 
