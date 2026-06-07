@@ -9,7 +9,6 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
-import ConfirmDialog from 'primevue/confirmdialog'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useDisciplineStore } from '../stores/discipline'
@@ -159,8 +158,6 @@ function askDelete(t: CleanupTemplate) {
         <Button label="Save" icon="pi pi-check" @click="save" />
       </template>
     </Dialog>
-
-    <ConfirmDialog />
   </div>
 </template>
 
