@@ -114,7 +114,7 @@ yt-enrich --playlist PLxxxxxx --discipline jkd --create-tags
 | `--video` | - | Single YouTube video URL |
 | `--discipline` | - | Target discipline ID (optional, LLM auto-detects if omitted) |
 | `--llm-provider` | `ollama` | LLM provider: `ollama` or `gemini` |
-| `--model` | auto | Model name (e.g., `llama3.2`, `gemini-2.0-flash`) |
+| `--model` | auto | Model name (e.g., `llama3.2`, `gemini-2.5-flash`) |
 | `--owner-uid` | `system` | Owner UID for created assets |
 | `--video-type` | - | Override video type classification |
 | `--create-tags` | `false` | Auto-create suggested tags in Firestore |
