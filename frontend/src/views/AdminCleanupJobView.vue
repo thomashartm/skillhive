@@ -5,7 +5,6 @@ import { storeToRefs } from 'pinia'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
-import ConfirmDialog from 'primevue/confirmdialog'
 import Message from 'primevue/message'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
@@ -227,8 +226,6 @@ function confirmForceFail() {
       <Button label="Force-fail (recovery)" icon="pi pi-exclamation-triangle"
               severity="danger" outlined :disabled="working" @click="confirmForceFail" />
     </div>
-
-    <ConfirmDialog />
   </div>
 </template>
 
