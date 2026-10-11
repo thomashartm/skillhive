@@ -249,7 +249,11 @@ All `/api/v1/*` routes require a Firebase Auth token in the `Authorization: Bear
 
 ### Concept trees
 
-Open **Concept trees** and select a discipline. Admins can create a family, select a card to add children or edit its name and description, and link existing techniques and assets at any level. A node becomes a leaf when it has no children.
+Open **Concept trees** and select a discipline. Admins can create a family, use the Edit button on any family, node, or leaf to change its name, description, and links, and select a card to add children. A node becomes a leaf when it has no children.
+
+Each family has its own saved orientation (top to bottom or left to right) and alignment (left, center, or right). Set these in the toolbar above the family chart. Existing families default to a centered, top-to-bottom layout.
+
+Non-admins open the read-only rendered charts at `/concept-trees/view`. They can select elements, follow technique and asset links, filter families, zoom, and collapse branches. Admins can use **Read-only preview** to see the same presentation without editing or dragging controls.
 
 Move an entire branch by dragging its card onto another card, or use **Move** in the details panel. The destination can be in another family; choosing **Top level** creates a family from that branch. Deleting a branch removes its descendants and their links from the chart, while keeping the linked techniques and assets in the library. Viewers and editors can browse the chart, collapse branches, filter families, and follow links.
 
