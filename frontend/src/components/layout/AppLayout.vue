@@ -17,6 +17,7 @@ const mobileMenuOpen = ref(false)
 const baseNavItems = [
   { label: 'Dashboard', icon: 'pi pi-home', to: '/', exact: true },
   { label: 'Curricula', icon: 'pi pi-book', to: '/curricula', exact: true },
+  { label: 'Concept trees', icon: 'pi pi-sitemap', to: '/concept-trees' },
   { label: 'Techniques', icon: 'pi pi-bolt', to: '/techniques' },
   { label: 'Assets', icon: 'pi pi-video', to: '/assets' },
   { label: 'Categories', icon: 'pi pi-folder', to: '/categories' },

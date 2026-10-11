@@ -70,6 +70,7 @@ func main() {
 	// Handlers
 	disciplineHandler := handler.NewDisciplineHandler(clients.Firestore)
 	tagHandler := handler.NewTagHandler(clients.Firestore)
+	conceptTreeHandler := handler.NewConceptTreeHandler(clients.Firestore)
 	categoryHandler := handler.NewCategoryHandler(clients.Firestore)
 	techniqueHandler := handler.NewTechniqueHandler(clients.Firestore)
 	assetHandler := handler.NewAssetHandler(clients.Firestore, pipeline, enrichCtx)
@@ -131,6 +132,10 @@ func main() {
 		r.Get("/tags/{id}", tagHandler.Get)
 		r.Patch("/tags/{id}", tagHandler.Update)
 		r.Delete("/tags/{id}", tagHandler.Delete)
+
+		// Concept trees (shared read, discipline-admin write)
+		r.Get("/concept-trees", conceptTreeHandler.Get)
+		r.Put("/concept-trees", conceptTreeHandler.Save)
 
 		// Categories
 		r.Get("/categories", categoryHandler.List)
