@@ -10,6 +10,7 @@ export interface ConceptNode {
   description: string
   techniqueIds: string[]
   assetIds: string[]
+  curriculumIds: string[]
   layout?: ConceptLayout
 }
 

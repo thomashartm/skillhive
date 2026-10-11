@@ -1,5 +1,22 @@
 import type { ConceptNode } from '../types/concepts'
 
+// IDs, rather than names or parent paths, keep links stable after renames/moves.
+export function conceptTreeLink(disciplineId: string, nodeId = '', readOnly = true): string {
+  const query = new URLSearchParams({ disciplineId })
+  if (nodeId) query.set('nodeId', nodeId)
+  return `/concept-trees${readOnly ? '/view' : ''}?${query}`
+}
+
+export function familyFor(nodes: ConceptNode[], id: string): ConceptNode | undefined {
+  let node = nodes.find(n => n.id === id)
+  const seen = new Set<string>()
+  while (node?.parentId && !seen.has(node.id)) {
+    seen.add(node.id)
+    node = nodes.find(n => n.id === node!.parentId)
+  }
+  return node && !node.parentId ? node : undefined
+}
+
 export function descendants(nodes: ConceptNode[], id: string): Set<string> {
   const result = new Set([id])
   const queue = [id]

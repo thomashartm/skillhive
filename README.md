@@ -251,11 +251,15 @@ All `/api/v1/*` routes require a Firebase Auth token in the `Authorization: Bear
 
 Open **Concept trees** and select a discipline. Admins can create a family, use the Edit button on any family, node, or leaf to change its name, description, and links, and select a card to add children. A node becomes a leaf when it has no children.
 
+Every family, node, and leaf has a stable URL: `/concept-trees/view?disciplineId=<discipline-id>&nodeId=<element-id>`. Selecting a family or element updates the address; **Copy link** copies its read-only URL for use in categories, curriculum descriptions, or other pages. Opening a link selects the correct discipline and family and highlights the element. Links survive renames and moves; deleted elements show a not-found message. Sign-in is still required. Browser Back and Forward restore the selection, and **Edit trees** / **Read-only preview** retain it.
+
+Use **Edit / link → Curricula** to associate one or more existing curricula from the same discipline with any family, node, or leaf. Selected elements list their curricula, and each curriculum detail page shows links back to all associated tree elements. Removing an association does not delete the curriculum.
+
 Each family has its own saved orientation (top to bottom or left to right) and alignment (left, center, or right). Set these in the toolbar above the family chart. Existing families default to a centered, top-to-bottom layout.
 
-Non-admins open the read-only rendered charts at `/concept-trees/view`. They can select elements, follow technique and asset links, filter families, zoom, and collapse branches. Admins can use **Read-only preview** to see the same presentation without editing or dragging controls.
+Non-admins open the read-only rendered charts at `/concept-trees/view`. They can select elements, follow technique, asset, and curriculum links, filter families, zoom, and collapse branches. Admins can use **Read-only preview** to see the same presentation without editing or dragging controls.
 
-Move an entire branch by dragging its card onto another card, or use **Move** in the details panel. The destination can be in another family; choosing **Top level** creates a family from that branch. Deleting a branch removes its descendants and their links from the chart, while keeping the linked techniques and assets in the library. Viewers and editors can browse the chart, collapse branches, filter families, and follow links.
+Move an entire branch by dragging its card onto another card, or use **Move** in the details panel. The destination can be in another family; choosing **Top level** creates a family from that branch. Deleting a branch removes its descendants and their links from the chart, while keeping the linked techniques, assets, and curricula in the library. Viewers and editors can browse the chart, collapse branches, filter families, and follow links.
 
 The API stores each discipline's forest in one document and requires its current `revision` on PUT. Concurrent stale saves return HTTP 409; reload before reapplying changes. Missing parents, cycles, and new links to another discipline are rejected. Limits are 500 nodes per discipline, 50 levels, 100 links of each kind per node, and 750 KB of serialized nodes. Deleted library items appear as unavailable links and can be removed through **Edit / link**.
 
