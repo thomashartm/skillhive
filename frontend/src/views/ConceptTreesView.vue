@@ -81,7 +81,14 @@ async function load() {
       api.get<Asset[]>(`/api/v1/assets${query}`),
     ])
     if (sequence !== loadSequence) return
-    tree.value = forest
+    tree.value = {
+      ...forest,
+      nodes: (forest.nodes ?? []).map(node => ({
+        ...node,
+        techniqueIds: node.techniqueIds ?? [],
+        assetIds: node.assetIds ?? [],
+      })),
+    }
     techniques.value = techniqueData
     assets.value = assetData
   } catch (e) {
