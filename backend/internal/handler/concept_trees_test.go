@@ -24,6 +24,9 @@ func TestValidateConceptTree(t *testing.T) {
 		want  string
 	}{
 		{"deep valid tree", []model.ConceptNode{{ID: "family", Name: "Family"}, {ID: "branch", Name: "Branch", ParentID: "family"}, {ID: "leaf", Name: "Leaf", ParentID: "branch", AssetIDs: []string{"asset"}}}, ""},
+		{"invalid orientation", []model.ConceptNode{{ID: "a", Name: "A", Layout: &model.ConceptLayout{Orientation: "diagonal", Alignment: "center"}}}, "orientation"},
+		{"invalid alignment", []model.ConceptNode{{ID: "a", Name: "A", Layout: &model.ConceptLayout{Orientation: "vertical", Alignment: "unknown"}}}, "alignment"},
+		{"valid layout", []model.ConceptNode{{ID: "a", Name: "A", Layout: &model.ConceptLayout{Orientation: "horizontal", Alignment: "end"}}}, ""},
 		{"self parent", []model.ConceptNode{{ID: "a", Name: "A", ParentID: "a"}}, "descendants"},
 		{"cycle", []model.ConceptNode{{ID: "a", Name: "A", ParentID: "b"}, {ID: "b", Name: "B", ParentID: "c"}, {ID: "c", Name: "C", ParentID: "a"}}, "descendants"},
 		{"missing parent", []model.ConceptNode{{ID: "a", Name: "A", ParentID: "missing"}}, "parent node"},
@@ -109,6 +112,7 @@ func TestIntegrationConceptTreeLifecycle(t *testing.T) {
 	assertStatus(call(http.MethodPut, 0, nodes, "admin"), 200)
 	// Move a whole branch across families, preserving its child's links.
 	nodes[2].ParentID = "b"
+	nodes[1].Layout = &model.ConceptLayout{Orientation: "horizontal", Alignment: "end"}
 	assertStatus(call(http.MethodPut, 1, nodes, "admin"), 200)
 	var saved model.ConceptTree
 	w := call(http.MethodGet, 0, nil, "viewer")
@@ -119,6 +123,11 @@ func TestIntegrationConceptTreeLifecycle(t *testing.T) {
 	if saved.Revision != 2 || saved.Nodes[2].ParentID != "b" || saved.Nodes[3].ParentID != "branch" || saved.Nodes[3].AssetIDs[0] != id {
 		t.Fatalf("bad persisted move: %+v", saved)
 	}
+	if saved.Nodes[1].Layout == nil || *saved.Nodes[1].Layout != *nodes[1].Layout {
+		t.Fatalf("layout was not persisted for read-only viewers: %+v", saved.Nodes[1])
+	}
+	assertStatus(call(http.MethodPut, 2, nodes, "viewer"), 403)
+	assertStatus(call(http.MethodPut, 2, nodes, "editor"), 403)
 	assertStatus(call(http.MethodPut, 1, nodes, "admin"), 409)
 	nodes[1].ParentID = "leaf"
 	assertStatus(call(http.MethodPut, 2, nodes, "admin"), 400)

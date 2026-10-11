@@ -25,7 +25,9 @@ const baseNavItems = [
 ]
 
 const navItems = computed(() => {
-  const items = [...baseNavItems]
+  const items = baseNavItems.map(item => item.to === '/concept-trees' && !authStore.isAdmin
+    ? { ...item, to: '/concept-trees/view' }
+    : item)
   if (authStore.isAdmin) {
     items.push({ label: 'Admin', icon: 'pi pi-users', to: '/admin', exact: true })
   }
@@ -33,6 +35,7 @@ const navItems = computed(() => {
 })
 
 function isActive(item: { to: string; exact?: boolean }) {
+  if (item.to.startsWith('/concept-trees')) return route.path.startsWith('/concept-trees')
   if (item.exact) return route.path === item.to
   return route.path.startsWith(item.to)
 }

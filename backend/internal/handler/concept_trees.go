@@ -150,6 +150,14 @@ func validateConceptTree(req *model.SaveConceptTreeRequest) error {
 	parents := make(map[string]string)
 	for i := range req.Nodes {
 		n := &req.Nodes[i]
+		if n.Layout != nil {
+			if n.Layout.Orientation != "vertical" && n.Layout.Orientation != "horizontal" {
+				return fmt.Errorf("orientation must be vertical or horizontal")
+			}
+			if n.Layout.Alignment != "start" && n.Layout.Alignment != "center" && n.Layout.Alignment != "end" {
+				return fmt.Errorf("alignment must be start, center, or end")
+			}
+		}
 		if !conceptID.MatchString(n.ID) {
 			return fmt.Errorf("invalid node ID")
 		}

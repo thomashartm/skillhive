@@ -1,3 +1,8 @@
+export interface ConceptLayout {
+  orientation: 'vertical' | 'horizontal'
+  alignment: 'start' | 'center' | 'end'
+}
+
 export interface ConceptNode {
   id: string
   parentId: string
@@ -5,6 +10,7 @@ export interface ConceptNode {
   description: string
   techniqueIds: string[]
   assetIds: string[]
+  layout?: ConceptLayout
 }
 
 export interface ConceptTree {

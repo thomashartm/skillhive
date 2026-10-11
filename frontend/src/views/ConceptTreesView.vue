@@ -13,9 +13,10 @@ import { useAuthStore } from '../stores/auth'
 import { useDisciplineStore } from '../stores/discipline'
 import ConceptBranch from '../components/concepts/ConceptBranch.vue'
 import type { Asset, Technique } from '../types'
-import type { ConceptNode, ConceptTree } from '../types/concepts'
+import type { ConceptLayout, ConceptNode, ConceptTree } from '../types/concepts'
 import { descendants, moveNode, nodePath } from '../utils/conceptTree'
 
+const props = withDefaults(defineProps<{ readOnly?: boolean }>(), { readOnly: false })
 const api = useApi()
 const auth = useAuthStore()
 const discipline = useDisciplineStore()
@@ -29,6 +30,7 @@ const error = ref('')
 const selectedId = ref('')
 const familyId = ref('')
 const zoom = ref(100)
+const layoutControlVersion = ref(0)
 const dialog = ref<'edit' | 'move' | null>(null)
 const editingId = ref('')
 const dialogDiscipline = ref('')
@@ -43,7 +45,8 @@ const nodes = computed(() => tree.value?.nodes ?? [])
 const selected = computed(() => nodes.value.find(n => n.id === selectedId.value))
 const roots = computed(() => nodes.value.filter(n => !n.parentId))
 const visibleRoots = computed(() => roots.value.filter(n => !familyId.value || n.id === familyId.value))
-const editable = computed(() => auth.isAdmin && !!tree.value && !loading.value && !saving.value)
+const canManage = computed(() => auth.isAdmin && !props.readOnly)
+const editable = computed(() => canManage.value && !!tree.value && !loading.value && !saving.value)
 const familyOptions = computed(() => [{ id: '', name: 'All families' }, ...roots.value])
 const moveOptions = computed(() => {
   const excluded = descendants(nodes.value, editingId.value)
@@ -88,6 +91,26 @@ async function load() {
   }
 }
 watch(() => discipline.activeDisciplineId, load, { immediate: true })
+watch(canManage, () => { dialog.value = null })
+
+const orientations = [
+  { value: 'vertical', label: 'Top to bottom' },
+  { value: 'horizontal', label: 'Left to right' },
+]
+const alignments = [
+  { value: 'start', label: 'Left' },
+  { value: 'center', label: 'Center' },
+  { value: 'end', label: 'Right' },
+]
+function layoutFor(node: ConceptNode): ConceptLayout {
+  return node.layout ?? { orientation: 'vertical', alignment: 'center' }
+}
+async function setLayout(node: ConceptNode, change: Partial<ConceptLayout>) {
+  const saved = await persist(nodes.value.map(n => n.id === node.id ? { ...n, layout: { ...layoutFor(n), ...change } } : n))
+  // Reset select widgets to the persisted values if the server rejects a save.
+  if (!saved) layoutControlVersion.value++
+}
+
 
 async function persist(next: ConceptNode[]): Promise<boolean> {
   if (!editable.value || !tree.value) return false
@@ -110,6 +133,7 @@ async function persist(next: ConceptNode[]): Promise<boolean> {
 }
 
 function edit(node?: ConceptNode, parentId = '') {
+  if (!editable.value) return
   editingId.value = node?.id ?? ''
   draft.value = node ? { ...node, techniqueIds: [...node.techniqueIds], assetIds: [...node.assetIds] } : blankNode(parentId)
   dialogDiscipline.value = discipline.activeDisciplineId
@@ -167,7 +191,11 @@ function remove() {
   <div class="concept-view">
     <div class="view-header">
       <div><h1 class="view-title">Concept trees</h1><p class="subtitle">Map technical families, explore techniques, and connect learning assets.</p></div>
-      <Button v-if="auth.isAdmin" label="New family" icon="pi pi-plus" :disabled="!editable" @click="edit()" />
+      <div class="header-actions">
+        <span v-if="!canManage" class="read-only-badge"><i class="pi pi-eye" /> Read-only view</span>
+        <RouterLink v-if="auth.isAdmin" :to="props.readOnly ? '/concept-trees' : '/concept-trees/view'" class="view-mode-link">{{ props.readOnly ? 'Edit trees' : 'Read-only preview' }}</RouterLink>
+        <Button v-if="canManage" label="New family" icon="pi pi-plus" :disabled="!editable" @click="edit()" />
+      </div>
     </div>
     <Message v-if="error" severity="error" :closable="false" class="feedback">{{ error }}</Message>
     <Message v-if="!discipline.activeDisciplineId" severity="info" :closable="false">Select a discipline to explore its concept trees.</Message>
@@ -182,25 +210,38 @@ function remove() {
           <Button icon="pi pi-refresh" text label="Reload" :disabled="loading || saving" @click="load" />
         </div>
       </div>
-      <p class="hint">Select an element to explore its links.<template v-if="auth.isAdmin"> Drag an element onto another to move its branch, or use Move in the details panel.</template></p>
+      <p class="hint">Select an element to explore its links.<template v-if="canManage"> Use Edit on any element to change its name, description, or links. Drag an element to move its branch.</template></p>
       <div v-if="loading" class="empty" role="status"><i class="pi pi-spin pi-spinner" /> Loading concept trees…</div>
       <div v-else-if="tree && !nodes.length" class="empty">
         <i class="pi pi-sitemap empty-icon" /><h2>Start with a technical family</h2>
-        <p>{{ auth.isAdmin ? 'Add a family, build its branches, then link techniques and assets at any level.' : 'An admin can add technical families and connect techniques and assets here.' }}</p>
-        <Button v-if="auth.isAdmin" label="Create first family" icon="pi pi-plus" :disabled="!editable" @click="edit()" />
+        <p>{{ canManage ? 'Add a family, build its branches, then link techniques and assets at any level.' : 'An admin can add technical families and connect techniques and assets here.' }}</p>
+        <Button v-if="canManage" label="Create first family" icon="pi pi-plus" :disabled="!editable" @click="edit()" />
       </div>
       <div v-else-if="tree" class="workspace" :class="{ 'has-selection': selected }" :aria-busy="saving">
-        <div class="chart-viewport" tabindex="0" role="region" aria-label="Concept tree chart; scroll to explore">
-          <ul class="forest" :style="{ zoom: `${zoom}%` }">
-            <ConceptBranch v-for="root in visibleRoots" :key="root.id" :node="root" :nodes="nodes" :selected-id="selectedId" :editable="editable" @select="selectedId = $event" @move="move" />
-          </ul>
+        <div class="tree-gallery">
+          <section v-for="root in visibleRoots" :key="root.id" class="family-chart" :aria-label="`${root.name} tree`">
+            <div class="family-toolbar">
+              <h2>{{ root.name }}</h2>
+              <div v-if="canManage" :key="layoutControlVersion" class="layout-controls">
+                <label :id="`orientation-label-${root.id}`">Orientation</label>
+                <Select :model-value="layoutFor(root).orientation" :options="orientations" option-label="label" option-value="value" :aria-labelledby="`orientation-label-${root.id}`" :disabled="!editable" @update:model-value="value => setLayout(root, { orientation: value })" />
+                <label :id="`alignment-label-${root.id}`">Alignment</label>
+                <Select :model-value="layoutFor(root).alignment" :options="alignments" option-label="label" option-value="value" :aria-labelledby="`alignment-label-${root.id}`" :disabled="!editable" @update:model-value="value => setLayout(root, { alignment: value })" />
+              </div>
+            </div>
+            <div class="chart-viewport" tabindex="0" role="region" :aria-label="`${root.name} chart; scroll to explore`">
+              <ul class="forest" :class="`align-${layoutFor(root).alignment}`" :style="{ zoom: `${zoom}%` }">
+                <ConceptBranch :node="root" :nodes="nodes" :orientation="layoutFor(root).orientation" :selected-id="selectedId" :editable="editable" @select="selectedId = $event" @move="move" @edit="edit($event)" />
+              </ul>
+            </div>
+          </section>
         </div>
         <aside v-if="selected" class="details" aria-label="Selected concept details">
           <div class="detail-heading"><span>{{ !selected.parentId ? 'Technical family' : nodes.some(n => n.parentId === selected!.id) ? 'Concept node' : 'Concept leaf' }}</span><Button icon="pi pi-times" text aria-label="Close details" @click="selectedId = ''" /></div>
           <h2>{{ selected.name }}</h2>
           <p class="breadcrumb">{{ nodePath(nodes, selected) }}</p>
           <p v-if="selected.description" class="node-description">{{ selected.description }}</p>
-          <div v-if="auth.isAdmin" class="actions">
+          <div v-if="canManage" class="actions">
             <Button label="Add child" icon="pi pi-plus" size="small" :disabled="!editable" @click="edit(undefined, selected.id)" />
             <Button label="Edit / link" icon="pi pi-pencil" size="small" outlined :disabled="!editable" @click="edit(selected)" />
             <Button label="Move" icon="pi pi-arrows-alt" size="small" outlined :disabled="!editable" @click="openMove" />
@@ -210,7 +251,7 @@ function remove() {
           <p v-if="!selected.techniqueIds.length" class="hint">No techniques linked yet.</p>
           <ul class="links">
             <li v-for="id in selected.techniqueIds" :key="id">
-              <RouterLink v-if="techniques.some(t => t.id === id)" :to="`/techniques/${id}`"><i class="pi pi-bolt" /> {{ techniques.find(t => t.id === id)?.name }}</RouterLink>
+              <RouterLink v-if="techniques.some(t => t.id === id)" :to="`/techniques/${id}`"><i class="pi pi-bolt" aria-hidden="true" /> {{ techniques.find(t => t.id === id)?.name }}</RouterLink>
               <span v-else class="hint">Unavailable technique</span>
             </li>
           </ul>
@@ -218,7 +259,7 @@ function remove() {
           <p v-if="!selected.assetIds.length" class="hint">No assets linked yet.</p>
           <ul class="links">
             <li v-for="id in selected.assetIds" :key="id">
-              <RouterLink v-if="assets.some(a => a.id === id)" :to="`/assets/${id}`"><i class="pi pi-link" /> {{ assets.find(a => a.id === id)?.title }}</RouterLink>
+              <RouterLink v-if="assets.some(a => a.id === id)" :to="`/assets/${id}`"><i class="pi pi-link" aria-hidden="true" /> {{ assets.find(a => a.id === id)?.title }}</RouterLink>
               <span v-else class="hint">Unavailable asset</span>
             </li>
           </ul>
@@ -227,7 +268,7 @@ function remove() {
       <p v-if="saving" role="status" class="hint">Saving changes…</p>
     </div>
 
-    <Dialog :visible="dialog !== null" modal :header="dialog === 'move' ? 'Move branch' : editingId ? 'Edit concept and links' : draft.parentId ? 'Add child concept' : 'New technical family'" :style="{ width: '36rem', maxWidth: '95vw' }" :closable="!saving" @update:visible="value => { if (!value && !saving) dialog = null }">
+    <Dialog :visible="canManage && dialog !== null" modal :header="dialog === 'move' ? 'Move branch' : editingId ? 'Edit concept and links' : draft.parentId ? 'Add child concept' : 'New technical family'" :style="{ width: '36rem', maxWidth: '95vw' }" :closable="!saving" @update:visible="value => { if (!value && !saving) dialog = null }">
       <Message v-if="error" severity="error" :closable="false" class="feedback">{{ error }}</Message>
       <form v-if="dialog === 'edit'" class="node-form" @submit.prevent="saveNode">
         <label for="concept-name">Name</label>
@@ -251,6 +292,16 @@ function remove() {
 </template>
 
 <style scoped>
+.header-actions, .layout-controls { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }
+.read-only-badge { display: inline-flex; align-items: center; gap: .4rem; font-size: .75rem; color: #a1a1aa; }
+.view-mode-link { color: var(--p-primary-color, #34d399); font-size: .8rem; }
+.tree-gallery { min-width: 0; }
+.family-chart + .family-chart { border-top: 1px solid #35353e; }
+.family-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; padding: 1rem; background: #1c1c22; }
+.family-toolbar h2 { font-size: .95rem; margin: 0; overflow-wrap: anywhere; }
+.layout-controls { font-size: .75rem; }
+.forest.align-start { justify-content: flex-start; }
+.forest.align-end { justify-content: flex-end; }
 .subtitle, .hint, .tree-count { color: #a1a1aa; font-size: .8rem; }
 .subtitle { margin: .35rem 0 0; }
 .feedback { margin-bottom: 1rem; }
@@ -259,9 +310,9 @@ function remove() {
 .zoom-controls { margin-left: auto; gap: .25rem; font-size: .8rem; }
 .workspace { display: grid; grid-template-columns: minmax(0, 1fr); border: 1px solid #35353e; border-radius: 12px; overflow: hidden; margin-top: 1rem; }
 .workspace.has-selection { grid-template-columns: minmax(0, 1fr) 320px; }
-.chart-viewport { overflow: auto; min-height: 560px; max-height: 75vh; background-color: #16161c; background-image: radial-gradient(#35353e 1px, transparent 1px); background-size: 20px 20px; }
+.chart-viewport { overflow: auto; min-height: 280px; max-height: 75vh; background-color: #16161c; background-image: radial-gradient(#35353e 1px, transparent 1px); background-size: 20px 20px; }
 .forest { display: flex; justify-content: center; align-items: flex-start; width: max-content; min-width: 100%; padding: 1.5rem 1rem 3rem; margin: 0; list-style: none; }
-.details { background: #1c1c22; padding: 1rem; border-left: 1px solid #35353e; overflow-y: auto; max-height: 75vh; }
+.details { position: sticky; top: 0; align-self: start; background: #1c1c22; padding: 1rem; border-left: 1px solid #35353e; overflow-y: auto; max-height: 75vh; }
 .detail-heading { display: flex; align-items: center; justify-content: space-between; color: #aaa; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; }
 .details h2 { font-size: 1.2rem; margin: .5rem 0; overflow-wrap: anywhere; }
 .breadcrumb { color: #a1a1aa; font-size: .7rem; overflow-wrap: anywhere; }
