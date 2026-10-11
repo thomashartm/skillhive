@@ -19,7 +19,7 @@ it('links back to each associated level and ignores legacy and unrelated nodes',
   const wrapper = mount(CurriculumConceptLinks, options)
   await flushPromises()
   expect(get).toHaveBeenCalledWith('/api/v1/concept-trees?disciplineId=bjj')
-  expect(wrapper.findAll('a').map(a => a.attributes('href'))).toEqual(['family', 'branch', 'leaf'].map(id => `/concept-trees/view?disciplineId=bjj&nodeId=${id}`))
+  expect(wrapper.findAll('a').map(a => a.attributes('href'))).toEqual(['family', 'branch', 'leaf'].map(id => `/concept-trees/view/bjj/${id}`))
   expect(wrapper.findAll('a')[2]!.text()).toContain('Guard / Half guard / Frames')
   wrapper.unmount()
 })

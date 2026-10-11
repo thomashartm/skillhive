@@ -32,11 +32,12 @@ const curricula = ref<Curriculum[]>([])
 const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
-const selectedId = computed(() => typeof route.query.nodeId === 'string' ? route.query.nodeId : '')
+const selectedId = computed(() => typeof route.params.nodeId === 'string' ? route.params.nodeId : '')
 const familyId = computed(() => familyFor(nodes.value, selectedId.value)?.id ?? '')
 const linkFeedback = ref('')
 const zoom = ref(100)
 const layoutControlVersion = ref(0)
+const curriculumControlVersion = ref(0)
 const dialog = ref<'edit' | 'move' | null>(null)
 const editingId = ref('')
 const dialogDiscipline = ref('')
@@ -81,10 +82,18 @@ const assetOptions = computed(() => [
   ...assets.value,
   ...draft.value.assetIds.filter(id => !assets.value.some(a => a.id === id)).map(id => ({ id, title: `Unavailable asset (${id})` })),
 ])
-const curriculumOptions = computed(() => [
-  ...curricula.value,
-  ...draft.value.curriculumIds.filter(id => !curricula.value.some(c => c.id === id)).map(id => ({ id, title: `Unavailable curriculum (${id})` })),
-])
+function curriculumOptionsFor(ids: string[]) {
+  return [
+    ...curricula.value,
+    ...ids.filter(id => !curricula.value.some(c => c.id === id)).map(id => ({ id, title: `Unavailable curriculum (${id})` })),
+  ]
+}
+const curriculumOptions = computed(() => curriculumOptionsFor(draft.value.curriculumIds))
+
+async function setCurricula(node: ConceptNode, ids: string[]) {
+  const saved = await persist(nodes.value.map(n => n.id === node.id ? { ...n, curriculumIds: ids } : n))
+  if (!saved) curriculumControlVersion.value++
+}
 
 function selectElement(id: string) {
   return router.push(conceptTreeLink(discipline.activeDisciplineId, id, props.readOnly))
@@ -101,10 +110,10 @@ async function copyLink(id: string) {
 }
 
 // A shared link takes precedence over this browser's previously selected discipline.
-watch(() => route.query.disciplineId, id => {
+watch(() => route.params.disciplineId, id => {
   if (typeof id === 'string' && id && id !== discipline.activeDisciplineId) discipline.setActiveDiscipline(id)
 }, { immediate: true })
-watch(() => route.query.nodeId, () => { linkFeedback.value = '' })
+watch(() => route.params.nodeId, () => { linkFeedback.value = '' })
 
 async function load() {
   const sequence = ++loadSequence
@@ -146,7 +155,7 @@ async function load() {
 }
 watch(() => discipline.activeDisciplineId, (id, previous) => {
   // Switching disciplines in the picker clears a selection from the old tree.
-  if (previous !== undefined && route.query.disciplineId !== id) {
+  if (previous !== undefined && route.params.disciplineId !== id) {
     void router.push(conceptTreeLink(id, '', props.readOnly))
   }
   void load()
@@ -318,6 +327,12 @@ function remove() {
             <Button label="Delete" icon="pi pi-trash" size="small" severity="danger" text :disabled="!editable" @click="remove" />
           </div>
           <h3>Curricula <span>{{ selected.curriculumIds.length }}</span></h3>
+          <div v-if="canManage" class="curriculum-selector">
+            <label for="linked-curricula">Linked curricula</label>
+            <MultiSelect :key="`${selected.id}-${curriculumControlVersion}`" input-id="linked-curricula" :model-value="selected.curriculumIds" :options="curriculumOptionsFor(selected.curriculumIds)" option-label="title" option-value="id" filter display="chip" placeholder="Select curricula" :disabled="!editable" @update:model-value="ids => setCurricula(selected!, ids)" />
+            <p class="hint">Choose curricula for this element. Changes save automatically.</p>
+          </div>
+          <RouterLink v-else-if="auth.isAdmin" :to="conceptTreeLink(discipline.activeDisciplineId, selected.id, false)" class="element-link">Edit curriculum links</RouterLink>
           <p v-if="!selected.curriculumIds.length" class="hint">No curricula linked yet.</p>
           <ul class="links">
             <li v-for="id in selected.curriculumIds" :key="id">
@@ -373,6 +388,9 @@ function remove() {
 
 <style scoped>
 .element-link { color: var(--p-primary-color, #34d399); font-size: .85rem; }
+.curriculum-selector { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+.curriculum-selector label { font-size: .8rem; }
+.curriculum-selector .hint { margin: 0 0 .5rem; }
 .header-actions, .layout-controls { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }
 .read-only-badge { display: inline-flex; align-items: center; gap: .4rem; font-size: .75rem; color: #a1a1aa; }
 .view-mode-link { color: var(--p-primary-color, #34d399); font-size: .8rem; }

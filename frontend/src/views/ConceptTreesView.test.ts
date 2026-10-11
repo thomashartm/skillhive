@@ -5,6 +5,7 @@ import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import PrimeVue from 'primevue/config'
 import ConceptTreesView from './ConceptTreesView.vue'
 import ConceptBranch from '../components/concepts/ConceptBranch.vue'
+import { conceptTreeRoutes, redirectLegacyConceptTree } from '../router/conceptTrees'
 
 const mocks = vi.hoisted(() => ({
   auth: { isAdmin: true },
@@ -20,7 +21,11 @@ const root = { id: 'family', parentId: '', name: 'Passing', description: '', cur
 const forest = { disciplineId: 'bjj', revision: 2, nodes: [root] }
 let router: Router
 async function render(readOnly = false, url = '/concept-trees') {
-  router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/concept-trees', component: {} }, { path: '/concept-trees/view', component: {} }, { path: '/:pathMatch(.*)*', component: {} }] })
+  router = createRouter({ history: createMemoryHistory(), routes: [
+    ...conceptTreeRoutes.map(route => ({ ...route, path: `/${route.path}`, component: {} })),
+    { path: '/:pathMatch(.*)*', component: {} },
+  ] })
+  router.beforeEach(redirectLegacyConceptTree)
   await router.push(url)
   return mount(ConceptTreesView, {
     props: { readOnly },
@@ -42,6 +47,7 @@ describe('concept tree viewing modes', () => {
     expect(wrapper.text()).toContain('Read-only view')
     expect(wrapper.findAll('.edit-element')).toHaveLength(0)
     expect(wrapper.findAll('.layout-controls')).toHaveLength(0)
+    expect(wrapper.find('.curriculum-selector').exists()).toBe(false)
     expect(wrapper.find('.forest.align-end').exists()).toBe(true)
     expect(wrapper.find('.branch.horizontal').exists()).toBe(true)
     await wrapper.get('.concept-card').trigger('click')
@@ -57,6 +63,7 @@ describe('concept tree viewing modes', () => {
     await flushPromises()
     expect(wrapper.findAll('.edit-element')).toHaveLength(0)
     expect(wrapper.findAll('.layout-controls')).toHaveLength(0)
+    expect(wrapper.find('.curriculum-selector').exists()).toBe(false)
     // A child event cannot bypass the mode guard.
     wrapper.getComponent(ConceptBranch).vm.$emit('edit', root)
     await flushPromises()
@@ -122,15 +129,15 @@ describe('concept tree URLs and curriculum associations', () => {
   it('opens a leaf in the URL discipline and retains that context in share and edit links', async () => {
     mocks.discipline.activeDisciplineId = 'jkd'
     mocks.get.mockImplementation(async (url: string) => url.includes('concept-trees') ? { ...forest, nodes: [root, branch, leaf, secondFamily] } : [])
-    const wrapper = await render(true, '/concept-trees/view?disciplineId=bjj&nodeId=leaf')
+    const wrapper = await render(true, '/concept-trees/view/bjj/leaf')
     await flushPromises()
     expect(mocks.discipline.activeDisciplineId).toBe('bjj')
     expect(mocks.get).toHaveBeenCalledWith('/api/v1/concept-trees?disciplineId=bjj')
     expect(wrapper.get('.details h2').text()).toBe('Knee cut')
     expect(wrapper.findAll('.family-chart')).toHaveLength(1)
     expect(wrapper.get('.breadcrumb').text()).toBe('Passing / Pressure / Knee cut')
-    expect(wrapper.get('a.view-mode-link').attributes('href')).toBe('/concept-trees?disciplineId=bjj&nodeId=leaf')
-    expect(wrapper.get('.details a.element-link').attributes('href')).toBe('/concept-trees/view?disciplineId=bjj&nodeId=leaf')
+    expect(wrapper.get('a.view-mode-link').attributes('href')).toBe('/concept-trees/bjj/leaf')
+    expect(wrapper.get('.details a.element-link').attributes('href')).toBe('/concept-trees/view/bjj/leaf')
     wrapper.unmount()
   })
   it('restores family and element selection on browser back and forward without refetching', async () => {
@@ -139,7 +146,7 @@ describe('concept tree URLs and curriculum associations', () => {
     await flushPromises()
     wrapper.getComponent(ConceptBranch).vm.$emit('select', 'leaf')
     await flushPromises()
-    expect(router.currentRoute.value.query.nodeId).toBe('leaf')
+    expect(router.currentRoute.value.params.nodeId).toBe('leaf')
     const filter = wrapper.findAllComponents({ name: 'Select' }).find(s => s.props('ariaLabel') === 'Filter by family')!
     filter.vm.$emit('update:modelValue', 'other')
     await flushPromises()
@@ -155,30 +162,31 @@ describe('concept tree URLs and curriculum associations', () => {
   })
   it('resolves an existing URL after a branch is moved and renamed', async () => {
     mocks.get.mockImplementation(async (url: string) => url.includes('concept-trees') ? { ...forest, nodes: [root, { ...branch, parentId: 'other', name: 'Renamed' }, leaf, secondFamily] } : [])
-    const wrapper = await render(true, '/concept-trees/view?disciplineId=bjj&nodeId=leaf')
+    const wrapper = await render(true, '/concept-trees/view/bjj/leaf')
     await flushPromises()
     expect(wrapper.get('.family-toolbar h2').text()).toBe('Guard')
     expect(wrapper.get('.breadcrumb').text()).toBe('Guard / Renamed / Knee cut')
     wrapper.unmount()
   })
   it('shows a useful message for a deleted element and allows returning to all families', async () => {
-    const wrapper = await render(true, '/concept-trees/view?disciplineId=bjj&nodeId=deleted')
+    const wrapper = await render(true, '/concept-trees/view/bjj/deleted')
     await flushPromises()
     expect(wrapper.text()).toContain('Tree element not found')
     const button = wrapper.findAll('button').find(b => b.text() === 'Show all families')!
     await button.trigger('click')
     await flushPromises()
-    expect(router.currentRoute.value.query.nodeId).toBeUndefined()
+    expect(router.currentRoute.value.params.nodeId).toBeFalsy()
     expect(wrapper.get('.concept-card').text()).toContain('Passing')
     wrapper.unmount()
   })
   it('clears the URL selection when changing disciplines and restores it on back navigation', async () => {
     mocks.get.mockImplementation(async (url: string) => url.includes('concept-trees') ? { ...forest, disciplineId: url.includes('jkd') ? 'jkd' : 'bjj' } : [])
-    const wrapper = await render(true, '/concept-trees/view?disciplineId=bjj&nodeId=family')
+    const wrapper = await render(true, '/concept-trees/view/bjj/family')
     await flushPromises()
     mocks.discipline.setActiveDiscipline('jkd')
     await flushPromises()
-    expect(router.currentRoute.value.query).toEqual({ disciplineId: 'jkd' })
+    expect(router.currentRoute.value.path).toBe('/concept-trees/view/jkd')
+    expect(router.currentRoute.value.query).toEqual({})
     expect(wrapper.find('.details').exists()).toBe(false)
     router.back()
     await flushPromises()
@@ -190,7 +198,7 @@ describe('concept tree URLs and curriculum associations', () => {
     const data = { ...forest, nodes: [root, branch, leaf].map(n => ({ ...n, curriculumIds: [] })) }
     mocks.get.mockImplementation(async (url: string) => url.includes('concept-trees') ? structuredClone(data) : url.includes('curricula') ? [{ id: 'course', title: 'Passing curriculum' }] : [])
     mocks.put.mockImplementation(async (_url, body) => ({ ...data, nodes: body.nodes, revision: body.revision + 1 }))
-    const wrapper = await render(false, `/concept-trees?disciplineId=bjj&nodeId=${id}`)
+    const wrapper = await render(false, `/concept-trees/bjj/${id}`)
     await flushPromises()
     const edit = wrapper.findAll('button').find(b => b.text() === 'Edit / link')!
     await edit.trigger('click')
@@ -208,6 +216,67 @@ describe('concept tree URLs and curriculum associations', () => {
     await wrapper.get('form.node-form').trigger('submit')
     await flushPromises()
     expect(wrapper.text()).toContain('No curricula linked yet.')
+    wrapper.unmount()
+  })
+})
+
+describe('path URLs and visible curriculum selector', () => {
+  it.each(['/concept-trees', '/concept-trees/view'])('redirects old %s query links to a path URL', async path => {
+    const wrapper = await render(path.endsWith('/view'), `${path}?disciplineId=bjj&nodeId=family`)
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe(`${path}/bjj/family`)
+    expect(router.currentRoute.value.query).toEqual({})
+    expect(wrapper.get('.details h2').text()).toBe('Passing')
+    wrapper.unmount()
+  })
+  it('handles legacy links while already viewing another element', async () => {
+    mocks.get.mockImplementation(async (url: string) => url.includes('concept-trees') ? { ...forest, nodes: [root, branch, leaf] } : [])
+    const wrapper = await render(true, '/concept-trees/view/bjj/family')
+    await flushPromises()
+    await router.push('/concept-trees/view?disciplineId=bjj&nodeId=leaf')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/concept-trees/view/bjj/leaf')
+    expect(wrapper.get('.details h2').text()).toBe('Knee cut')
+    wrapper.unmount()
+  })
+  it.each(['family', 'branch', 'leaf'])('links and unlinks curricula directly in the %s details panel', async id => {
+    const data = { ...forest, nodes: [root, branch, leaf].map(n => ({ ...n, curriculumIds: [] })) }
+    mocks.get.mockImplementation(async (url: string) => url.includes('concept-trees') ? structuredClone(data) : url.includes('curricula') ? [{ id: 'course', title: 'Passing curriculum' }] : [])
+    mocks.put.mockImplementation(async (_url, body) => ({ ...data, nodes: body.nodes, revision: body.revision + 1 }))
+    const wrapper = await render(false, `/concept-trees/bjj/${id}`)
+    await flushPromises()
+    const selector = wrapper.getComponent({ name: 'MultiSelect' })
+    expect(selector.props('inputId')).toBe('linked-curricula')
+    expect(wrapper.find('form.node-form').exists()).toBe(false)
+    selector.vm.$emit('update:modelValue', ['course'])
+    await flushPromises()
+    expect(mocks.put.mock.calls[0]![1].nodes.find((n: { id: string }) => n.id === id).curriculumIds).toEqual(['course'])
+    expect(wrapper.get('a[href="/curricula/course"]').text()).toContain('Passing curriculum')
+    selector.vm.$emit('update:modelValue', [])
+    await flushPromises()
+    expect(wrapper.text()).toContain('No curricula linked yet.')
+    expect(selector.props('modelValue')).toEqual([])
+    wrapper.unmount()
+  })
+  it('restores the saved curriculum selection if an inline change fails', async () => {
+    mocks.put.mockRejectedValue(new Error('Reload before trying again.'))
+    const wrapper = await render(false, '/concept-trees/bjj/family')
+    await flushPromises()
+    const selector = wrapper.getComponent({ name: 'MultiSelect' })
+    selector.vm.$emit('update:modelValue', [])
+    await flushPromises()
+    expect(wrapper.text()).toContain('Reload before trying again.')
+    const restored = wrapper.getComponent({ name: 'MultiSelect' })
+    expect(restored.vm === selector.vm).toBe(false)
+    expect(restored.props('modelValue')).toEqual(['course'])
+    wrapper.unmount()
+  })
+  it('offers admins a direct way to edit curriculum links from read-only details', async () => {
+    const wrapper = await render(true, '/concept-trees/view/bjj/family')
+    await flushPromises()
+    const link = wrapper.findAll('a').find(a => a.text() === 'Edit curriculum links')!
+    expect(link.attributes('href')).toBe('/concept-trees/bjj/family')
+    expect(wrapper.find('.curriculum-selector').exists()).toBe(false)
     wrapper.unmount()
   })
 })

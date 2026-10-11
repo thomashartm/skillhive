@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { authGuard } from './guards'
+import { conceptTreeRoutes, redirectLegacyConceptTree } from './conceptTrees'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -38,17 +39,7 @@ const router = createRouter({
           component: () => import('../views/TagsView.vue'),
           meta: { requiresRole: 'admin' },
         },
-        {
-          path: 'concept-trees/view',
-          name: 'concept-trees-view',
-          component: () => import('../views/ConceptTreesView.vue'),
-          props: { readOnly: true },
-        },
-        {
-          path: 'concept-trees',
-          name: 'concept-trees',
-          component: () => import('../views/ConceptTreesView.vue'),
-        },
+        ...conceptTreeRoutes,
         {
           path: 'categories',
           name: 'categories',
@@ -150,6 +141,7 @@ const router = createRouter({
   ],
 })
 
+router.beforeEach(redirectLegacyConceptTree)
 router.beforeEach(authGuard)
 
 export default router
