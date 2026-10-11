@@ -52,6 +52,8 @@
         </div>
       </div>
 
+      <CurriculumConceptLinks :curriculum-id="curriculum.id" :discipline-id="curriculum.disciplineId" />
+
       <div v-if="authStore.canEdit" class="mb-6">
         <AddElementMenu
           @add-technique="showTechniqueModal = true"
@@ -150,6 +152,7 @@ import ImageElementModal from '../components/curricula/modals/ImageElementModal.
 import ListElementModal from '../components/curricula/modals/ListElementModal.vue'
 import ReferenceElementModal from '../components/curricula/modals/ReferenceElementModal.vue'
 import MarkdownRenderer from '../components/common/MarkdownRenderer.vue'
+import CurriculumConceptLinks from '../components/concepts/CurriculumConceptLinks.vue'
 import { useCurriculumStore } from '../stores/curricula'
 import { useAuthStore } from '../stores/auth'
 import type { Curriculum, CurriculumElement, Technique, Asset } from '../types'

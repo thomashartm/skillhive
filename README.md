@@ -6,6 +6,7 @@ Training content management platform for organizing video instructionals into st
 
 - Collect and organize video links from YouTube and other platforms
 - Tag and categorize techniques with hierarchical categories
+- Build visual concept trees with technical families, branches, linked techniques and assets
 - Build ordered curricula from techniques, video assets, and text notes
 - Share public curricula with others
 - YouTube metadata auto-extraction via oEmbed
@@ -213,6 +214,7 @@ All `/api/v1/*` routes require a Firebase Auth token in the `Authorization: Bear
 | Health | `GET /healthz` |
 | Disciplines | `GET /api/v1/disciplines` |
 | Tags | `GET, POST /api/v1/tags` | `GET, PATCH, DELETE /api/v1/tags/{id}` |
+| Concept trees | `GET, PUT /api/v1/concept-trees?disciplineId=...` (PUT requires a discipline admin) |
 | Categories | `GET, POST /api/v1/categories` | `GET, PATCH, DELETE /api/v1/categories/{id}` |
 | Techniques | `GET, POST /api/v1/techniques` | `GET, PATCH, DELETE /api/v1/techniques/{id}` |
 | Assets | `GET, POST /api/v1/assets` | `GET, PATCH, DELETE /api/v1/assets/{id}` |
@@ -234,6 +236,7 @@ All `/api/v1/*` routes require a Firebase Auth token in the `Authorization: Bear
 | `/` | DashboardView | Quick stats, recent curricula, quick-save video |
 | `/login` | LoginView | Firebase Auth (Google + email/password) |
 | `/tags` | TagsView | Tag management with color picker |
+| `/concept-trees` | ConceptTreesView | Visual technical families with admin editing and branch moves |
 | `/categories` | CategoriesView | Hierarchical category tree |
 | `/techniques` | TechniquesView | Technique list with search and filters |
 | `/techniques/:id` | TechniqueDetailView | Technique detail with edit/delete |
@@ -243,6 +246,29 @@ All `/api/v1/*` routes require a Firebase Auth token in the `Authorization: Bear
 | `/curricula` | CurriculaView | User's curricula list |
 | `/curricula/public` | PublicCurriculaView | Browse public curricula |
 | `/curricula/:id` | CurriculumDetailView | Curriculum builder (add/reorder/delete elements) |
+
+### Concept trees
+
+Open **Concept trees** and select a discipline. Admins can create a family, use the Edit button on any family, node, or leaf to change its name, description, and links, and select a card to add children. A node becomes a leaf when it has no children.
+
+Every family, node, and leaf has a stable URL: `/concept-trees/view/<discipline-id>/<element-id>`. Selecting a family or element updates the address; **Copy link** copies its read-only URL for use in categories, curriculum descriptions, or other pages. Opening a link selects the correct discipline and family and highlights the element. Links survive renames and moves; deleted elements show a not-found message. Previously shared query-string links redirect to the new path format. Sign-in is still required. Browser Back and Forward restore the selection, and **Edit trees** / **Read-only preview** retain it.
+
+Select any family, node, or leaf, then use **Linked curricula** in its details panel to associate curricula from the same discipline. Changes save automatically. The same field is also available through **Edit / link → Curricula**. In read-only preview, admins can choose **Edit curriculum links** to open the editable panel. Selected elements list their curricula, and each curriculum detail page shows links back to all associated tree elements. Removing an association does not delete the curriculum.
+
+Each family has its own saved orientation (top to bottom or left to right) and alignment (left, center, or right). Set these in the toolbar above the family chart. Existing families default to a centered, top-to-bottom layout.
+
+Non-admins open the read-only rendered charts at `/concept-trees/view`. They can select elements, follow technique, asset, and curriculum links, filter families, zoom, and collapse branches. Admins can use **Read-only preview** to see the same presentation without editing or dragging controls.
+
+Move an entire branch by dragging its card onto another card, or use **Move** in the details panel. The destination can be in another family; choosing **Top level** creates a family from that branch. Deleting a branch removes its descendants and their links from the chart, while keeping the linked techniques, assets, and curricula in the library. Viewers and editors can browse the chart, collapse branches, filter families, and follow links.
+
+The API stores each discipline's forest in one document and requires its current `revision` on PUT. Concurrent stale saves return HTTP 409; reload before reapplying changes. Missing parents, cycles, and new links to another discipline are rejected. Limits are 500 nodes per discipline, 50 levels, 100 links of each kind per node, and 750 KB of serialized nodes. Deleted library items appear as unavailable links and can be removed through **Edit / link**.
+
+Run the concept-tree persistence tests against an isolated Firestore emulator:
+
+```bash
+cd backend
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8282 go test ./internal/handler -run ConceptTree -v
+```
 
 ## Deployment
 
@@ -293,6 +319,7 @@ Required GitHub secrets for deployment:
 |------------|-----------|-------|
 | `disciplines` | `name`, `slug`, `description` | Seeded, read-only |
 | `tags` | `name`, `slug`, `color`, `disciplineId`, `ownerUid` | Unique slug per discipline |
+| `conceptTrees/{disciplineId}` | `revision`, `nodes[]`, `updatedAt` | Shared forest; atomic, revision-checked admin updates |
 | `categories` | `name`, `slug`, `parentId`, `disciplineId`, `ownerUid` | Hierarchical, self-referencing |
 | `techniques` | `name`, `slug`, `description`, `categoryIds[]`, `tagIds[]`, `disciplineId`, `ownerUid` | Arrays for many-to-many |
 | `assets` | `title`, `url`, `type`, `videoType`, `thumbnailUrl`, `originator`, `techniqueIds[]`, `tagIds[]`, `disciplineId`, `ownerUid` | Video metadata via oEmbed |
