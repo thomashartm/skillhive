@@ -6,6 +6,7 @@ Training content management platform for organizing video instructionals into st
 
 - Collect and organize video links from YouTube and other platforms
 - Tag and categorize techniques with hierarchical categories
+- Build visual concept trees with technical families, branches, linked techniques and assets
 - Build ordered curricula from techniques, video assets, and text notes
 - Share public curricula with others
 - YouTube metadata auto-extraction via oEmbed
@@ -213,6 +214,7 @@ All `/api/v1/*` routes require a Firebase Auth token in the `Authorization: Bear
 | Health | `GET /healthz` |
 | Disciplines | `GET /api/v1/disciplines` |
 | Tags | `GET, POST /api/v1/tags` | `GET, PATCH, DELETE /api/v1/tags/{id}` |
+| Concept trees | `GET, PUT /api/v1/concept-trees?disciplineId=...` (PUT requires a discipline admin) |
 | Categories | `GET, POST /api/v1/categories` | `GET, PATCH, DELETE /api/v1/categories/{id}` |
 | Techniques | `GET, POST /api/v1/techniques` | `GET, PATCH, DELETE /api/v1/techniques/{id}` |
 | Assets | `GET, POST /api/v1/assets` | `GET, PATCH, DELETE /api/v1/assets/{id}` |
@@ -234,6 +236,7 @@ All `/api/v1/*` routes require a Firebase Auth token in the `Authorization: Bear
 | `/` | DashboardView | Quick stats, recent curricula, quick-save video |
 | `/login` | LoginView | Firebase Auth (Google + email/password) |
 | `/tags` | TagsView | Tag management with color picker |
+| `/concept-trees` | ConceptTreesView | Visual technical families with admin editing and branch moves |
 | `/categories` | CategoriesView | Hierarchical category tree |
 | `/techniques` | TechniquesView | Technique list with search and filters |
 | `/techniques/:id` | TechniqueDetailView | Technique detail with edit/delete |
@@ -243,6 +246,21 @@ All `/api/v1/*` routes require a Firebase Auth token in the `Authorization: Bear
 | `/curricula` | CurriculaView | User's curricula list |
 | `/curricula/public` | PublicCurriculaView | Browse public curricula |
 | `/curricula/:id` | CurriculumDetailView | Curriculum builder (add/reorder/delete elements) |
+
+### Concept trees
+
+Open **Concept trees** and select a discipline. Admins can create a family, select a card to add children or edit its name and description, and link existing techniques and assets at any level. A node becomes a leaf when it has no children.
+
+Move an entire branch by dragging its card onto another card, or use **Move** in the details panel. The destination can be in another family; choosing **Top level** creates a family from that branch. Deleting a branch removes its descendants and their links from the chart, while keeping the linked techniques and assets in the library. Viewers and editors can browse the chart, collapse branches, filter families, and follow links.
+
+The API stores each discipline's forest in one document and requires its current `revision` on PUT. Concurrent stale saves return HTTP 409; reload before reapplying changes. Missing parents, cycles, and new links to another discipline are rejected. Limits are 500 nodes per discipline, 50 levels, 100 links of each kind per node, and 750 KB of serialized nodes. Deleted library items appear as unavailable links and can be removed through **Edit / link**.
+
+Run the concept-tree persistence tests against an isolated Firestore emulator:
+
+```bash
+cd backend
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8282 go test ./internal/handler -run ConceptTree -v
+```
 
 ## Deployment
 
@@ -293,6 +311,7 @@ Required GitHub secrets for deployment:
 |------------|-----------|-------|
 | `disciplines` | `name`, `slug`, `description` | Seeded, read-only |
 | `tags` | `name`, `slug`, `color`, `disciplineId`, `ownerUid` | Unique slug per discipline |
+| `conceptTrees/{disciplineId}` | `revision`, `nodes[]`, `updatedAt` | Shared forest; atomic, revision-checked admin updates |
 | `categories` | `name`, `slug`, `parentId`, `disciplineId`, `ownerUid` | Hierarchical, self-referencing |
 | `techniques` | `name`, `slug`, `description`, `categoryIds[]`, `tagIds[]`, `disciplineId`, `ownerUid` | Arrays for many-to-many |
 | `assets` | `title`, `url`, `type`, `videoType`, `thumbnailUrl`, `originator`, `techniqueIds[]`, `tagIds[]`, `disciplineId`, `ownerUid` | Video metadata via oEmbed |

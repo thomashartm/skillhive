@@ -39,6 +39,11 @@ const router = createRouter({
           meta: { requiresRole: 'admin' },
         },
         {
+          path: 'concept-trees',
+          name: 'concept-trees',
+          component: () => import('../views/ConceptTreesView.vue'),
+        },
+        {
           path: 'categories',
           name: 'categories',
           component: () => import('../views/CategoriesView.vue'),
