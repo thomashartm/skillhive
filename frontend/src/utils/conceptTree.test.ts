@@ -3,10 +3,10 @@ import { descendants, moveNode, nodePath } from './conceptTree'
 import type { ConceptNode } from '../types/concepts'
 
 const nodes: ConceptNode[] = [
-  { id: 'a', parentId: '', name: 'Family A', description: '', techniqueIds: [], assetIds: [] },
-  { id: 'b', parentId: '', name: 'Family B', description: '', techniqueIds: [], assetIds: [] },
-  { id: 'branch', parentId: 'a', name: 'Branch', description: '', techniqueIds: ['technique'], assetIds: [] },
-  { id: 'leaf', parentId: 'branch', name: 'Leaf', description: '', techniqueIds: [], assetIds: ['asset'] },
+  { id: 'a', parentId: '', name: 'Family A', description: '', curriculumIds: [], techniqueIds: [], assetIds: [] },
+  { id: 'b', parentId: '', name: 'Family B', description: '', curriculumIds: [], techniqueIds: [], assetIds: [] },
+  { id: 'branch', parentId: 'a', name: 'Branch', description: '', curriculumIds: [], techniqueIds: ['technique'], assetIds: [] },
+  { id: 'leaf', parentId: 'branch', name: 'Leaf', description: '', curriculumIds: [], techniqueIds: [], assetIds: ['asset'] },
 ]
 
 describe('concept tree moves', () => {

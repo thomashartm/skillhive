@@ -4,9 +4,9 @@ import ConceptBranch from './ConceptBranch.vue'
 import type { ConceptNode } from '../../types/concepts'
 
 const nodes: ConceptNode[] = [
-  { id: 'family', parentId: '', name: 'Guard passing', description: '', techniqueIds: [], assetIds: [] },
-  { id: 'branch', parentId: 'family', name: 'Pressure', description: '', techniqueIds: ['technique'], assetIds: [] },
-  { id: 'leaf', parentId: 'branch', name: 'Knee cut', description: '', techniqueIds: [], assetIds: ['asset'] },
+  { id: 'family', parentId: '', name: 'Guard passing', description: '', curriculumIds: [], techniqueIds: [], assetIds: [] },
+  { id: 'branch', parentId: 'family', name: 'Pressure', description: '', curriculumIds: [], techniqueIds: ['technique'], assetIds: [] },
+  { id: 'leaf', parentId: 'branch', name: 'Knee cut', description: '', curriculumIds: [], techniqueIds: [], assetIds: ['asset'] },
 ]
 
 describe('ConceptBranch', () => {
@@ -20,7 +20,8 @@ describe('ConceptBranch', () => {
     await toggle.trigger('click')
     expect(wrapper.findAll('.concept-card')).toHaveLength(2)
     expect(toggle.attributes('aria-expanded')).toBe('false')
-    await toggle.trigger('click')
+    // Returning via a URL/history entry must reveal a collapsed descendant.
+    await wrapper.setProps({ selectedId: 'leaf' })
     expect(wrapper.findAll('.concept-card')).toHaveLength(3)
   })
   it('offers editing for every element and propagates the selected node', async () => {

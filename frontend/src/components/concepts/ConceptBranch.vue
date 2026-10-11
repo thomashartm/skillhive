@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { ConceptLayout, ConceptNode } from '../../types/concepts'
+import { descendants } from '../../utils/conceptTree'
 
 const props = defineProps<{
   node: ConceptNode
@@ -17,6 +18,9 @@ const emit = defineEmits<{
 const collapsed = ref(false)
 const dragOver = ref(false)
 const children = computed(() => props.nodes.filter(n => n.parentId === props.node.id))
+watch(() => props.selectedId, id => {
+  if (descendants(props.nodes, props.node.id).has(id)) collapsed.value = false
+})
 
 function startDrag(event: DragEvent) {
   if (!props.editable) return
@@ -50,6 +54,7 @@ function drop(event: DragEvent) {
         <strong>{{ node.name }}</strong>
         <span v-if="node.description" class="description">{{ node.description }}</span>
         <span class="counts">{{ node.techniqueIds.length }} techniques · {{ node.assetIds.length }} assets</span>
+        <span v-if="node.curriculumIds.length" class="counts">{{ node.curriculumIds.length }} {{ node.curriculumIds.length === 1 ? 'curriculum' : 'curricula' }}</span>
       </button>
       <button v-if="editable" class="edit-element" :aria-label="`Edit ${node.name}`" @click="emit('edit', node)">
         <i class="pi pi-pencil" /> Edit

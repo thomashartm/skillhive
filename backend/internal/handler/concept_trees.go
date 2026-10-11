@@ -54,6 +54,9 @@ func (h *ConceptTreeHandler) Get(w http.ResponseWriter, r *http.Request) {
 		if tree.Nodes[i].AssetIDs == nil {
 			tree.Nodes[i].AssetIDs = []string{}
 		}
+		if tree.Nodes[i].CurriculumIDs == nil {
+			tree.Nodes[i].CurriculumIDs = []string{}
+		}
 	}
 	writeJSON(w, http.StatusOK, tree)
 }
@@ -100,7 +103,7 @@ func (h *ConceptTreeHandler) Save(w http.ResponseWriter, r *http.Request) {
 		if existing.Revision != req.Revision {
 			return status.Error(codes.FailedPrecondition, "This tree was changed by another admin. Reload the trees before trying again.")
 		}
-		// Only new links need validating. A previously linked asset/technique may
+		// Only new links need validating. A previously linked library item may
 		// since have been deleted; it must not prevent unrelated tree edits.
 		oldLinks := conceptLinks(existing.Nodes)
 		for key, link := range conceptLinks(req.Nodes) {
@@ -110,7 +113,7 @@ func (h *ConceptTreeHandler) Save(w http.ResponseWriter, r *http.Request) {
 			linked, err := tx.Get(h.fs.Collection(link.collection).Doc(link.id))
 			if err != nil {
 				if status.Code(err) == codes.NotFound {
-					return status.Error(codes.InvalidArgument, "linked technique or asset no longer exists")
+					return status.Error(codes.InvalidArgument, "linked technique, asset, or curriculum no longer exists")
 				}
 				return err
 			}
@@ -145,6 +148,9 @@ func conceptLinks(nodes []model.ConceptNode) map[string]conceptLink {
 		}
 		for _, id := range node.AssetIDs {
 			links["assets/"+id] = conceptLink{"assets", id}
+		}
+		for _, id := range node.CurriculumIDs {
+			links["curricula/"+id] = conceptLink{"curricula", id}
 		}
 	}
 	return links
@@ -192,9 +198,12 @@ func validateConceptTree(req *model.SaveConceptTreeRequest) error {
 		if n.AssetIDs == nil {
 			n.AssetIDs = []string{}
 		}
-		for _, ids := range [][]string{n.TechniqueIDs, n.AssetIDs} {
+		if n.CurriculumIDs == nil {
+			n.CurriculumIDs = []string{}
+		}
+		for _, ids := range [][]string{n.TechniqueIDs, n.AssetIDs, n.CurriculumIDs} {
 			if len(ids) > 100 {
-				return fmt.Errorf("a node can link at most 100 techniques and 100 assets")
+				return fmt.Errorf("a node can link at most 100 techniques, 100 assets, and 100 curricula")
 			}
 			seen := map[string]bool{}
 			for _, id := range ids {

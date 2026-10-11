@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -12,23 +13,28 @@ import { useApi } from '../composables/useApi'
 import { useAuthStore } from '../stores/auth'
 import { useDisciplineStore } from '../stores/discipline'
 import ConceptBranch from '../components/concepts/ConceptBranch.vue'
-import type { Asset, Technique } from '../types'
+import type { Asset, Curriculum, Technique } from '../types'
 import type { ConceptLayout, ConceptNode, ConceptTree } from '../types/concepts'
-import { descendants, moveNode, nodePath } from '../utils/conceptTree'
+import { conceptTreeLink, descendants, familyFor, moveNode, nodePath } from '../utils/conceptTree'
 
 const props = withDefaults(defineProps<{ readOnly?: boolean }>(), { readOnly: false })
 const api = useApi()
 const auth = useAuthStore()
 const discipline = useDisciplineStore()
 const confirm = useConfirm()
+const route = useRoute()
+const router = useRouter()
 const tree = ref<ConceptTree | null>(null)
+const gallery = ref<HTMLElement | null>(null)
 const techniques = ref<Technique[]>([])
 const assets = ref<Asset[]>([])
+const curricula = ref<Curriculum[]>([])
 const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
-const selectedId = ref('')
-const familyId = ref('')
+const selectedId = computed(() => typeof route.query.nodeId === 'string' ? route.query.nodeId : '')
+const familyId = computed(() => familyFor(nodes.value, selectedId.value)?.id ?? '')
+const linkFeedback = ref('')
 const zoom = ref(100)
 const layoutControlVersion = ref(0)
 const dialog = ref<'edit' | 'move' | null>(null)
@@ -39,12 +45,27 @@ const destination = ref('')
 let loadSequence = 0
 
 function blankNode(parentId = ''): ConceptNode {
-  return { id: '', parentId, name: '', description: '', techniqueIds: [], assetIds: [] }
+  return { id: '', parentId, name: '', description: '', techniqueIds: [], assetIds: [], curriculumIds: [] }
 }
 const nodes = computed(() => tree.value?.nodes ?? [])
 const selected = computed(() => nodes.value.find(n => n.id === selectedId.value))
+watch([selectedId, nodes], async () => {
+  await nextTick()
+  const card = gallery.value?.querySelector<HTMLElement>('.concept-card.selected')
+  const viewport = card?.closest<HTMLElement>('.chart-viewport')
+  if (!card || !viewport) return
+  // Reveal deep links inside the chart without scrolling the whole page away.
+  const target = card.getBoundingClientRect()
+  const area = viewport.getBoundingClientRect()
+  viewport.scrollBy({
+    left: target.left - area.left - (viewport.clientWidth - target.width) / 2,
+    top: target.top - area.top - (viewport.clientHeight - target.height) / 2,
+  })
+})
 const roots = computed(() => nodes.value.filter(n => !n.parentId))
 const visibleRoots = computed(() => roots.value.filter(n => !familyId.value || n.id === familyId.value))
+const missingElement = computed(() => tree.value && selectedId.value && !selected.value)
+const modeLink = computed(() => conceptTreeLink(discipline.activeDisciplineId, selectedId.value, !props.readOnly))
 const canManage = computed(() => auth.isAdmin && !props.readOnly)
 const editable = computed(() => canManage.value && !!tree.value && !loading.value && !saving.value)
 const familyOptions = computed(() => [{ id: '', name: 'All families' }, ...roots.value])
@@ -60,6 +81,30 @@ const assetOptions = computed(() => [
   ...assets.value,
   ...draft.value.assetIds.filter(id => !assets.value.some(a => a.id === id)).map(id => ({ id, title: `Unavailable asset (${id})` })),
 ])
+const curriculumOptions = computed(() => [
+  ...curricula.value,
+  ...draft.value.curriculumIds.filter(id => !curricula.value.some(c => c.id === id)).map(id => ({ id, title: `Unavailable curriculum (${id})` })),
+])
+
+function selectElement(id: string) {
+  return router.push(conceptTreeLink(discipline.activeDisciplineId, id, props.readOnly))
+}
+async function copyLink(id: string) {
+  linkFeedback.value = ''
+  try {
+    const href = router.resolve(conceptTreeLink(discipline.activeDisciplineId, id)).href
+    await navigator.clipboard.writeText(new URL(href, window.location.origin).href)
+    linkFeedback.value = 'Link copied.'
+  } catch {
+    linkFeedback.value = 'Could not copy the link. Open the element link and copy its address.'
+  }
+}
+
+// A shared link takes precedence over this browser's previously selected discipline.
+watch(() => route.query.disciplineId, id => {
+  if (typeof id === 'string' && id && id !== discipline.activeDisciplineId) discipline.setActiveDiscipline(id)
+}, { immediate: true })
+watch(() => route.query.nodeId, () => { linkFeedback.value = '' })
 
 async function load() {
   const sequence = ++loadSequence
@@ -67,18 +112,18 @@ async function load() {
   tree.value = null
   techniques.value = []
   assets.value = []
-  selectedId.value = ''
-  familyId.value = ''
+  curricula.value = []
   dialog.value = null
   error.value = ''
   loading.value = !!id
   if (!id) return
   try {
     const query = `?disciplineId=${encodeURIComponent(id)}`
-    const [forest, techniqueData, assetData] = await Promise.all([
+    const [forest, techniqueData, assetData, curriculumData] = await Promise.all([
       api.get<ConceptTree>(`/api/v1/concept-trees${query}`),
       api.get<Technique[]>(`/api/v1/techniques${query}`),
       api.get<Asset[]>(`/api/v1/assets${query}`),
+      api.get<Curriculum[]>(`/api/v1/curricula${query}`),
     ])
     if (sequence !== loadSequence) return
     tree.value = {
@@ -87,17 +132,25 @@ async function load() {
         ...node,
         techniqueIds: node.techniqueIds ?? [],
         assetIds: node.assetIds ?? [],
+        curriculumIds: node.curriculumIds ?? [],
       })),
     }
     techniques.value = techniqueData
     assets.value = assetData
+    curricula.value = curriculumData
   } catch (e) {
     if (sequence === loadSequence) error.value = e instanceof Error ? e.message : 'Failed to load concept trees.'
   } finally {
     if (sequence === loadSequence) loading.value = false
   }
 }
-watch(() => discipline.activeDisciplineId, load, { immediate: true })
+watch(() => discipline.activeDisciplineId, (id, previous) => {
+  // Switching disciplines in the picker clears a selection from the old tree.
+  if (previous !== undefined && route.query.disciplineId !== id) {
+    void router.push(conceptTreeLink(id, '', props.readOnly))
+  }
+  void load()
+}, { immediate: true })
 watch(canManage, () => { dialog.value = null })
 
 const orientations = [
@@ -129,7 +182,6 @@ async function persist(next: ConceptNode[]): Promise<boolean> {
     const updated = await api.put<ConceptTree>(`/api/v1/concept-trees?disciplineId=${encodeURIComponent(id)}`, { revision: tree.value.revision, nodes: next })
     if (id !== discipline.activeDisciplineId || sequence !== loadSequence) return false
     tree.value = updated
-    if (familyId.value && !updated.nodes.some(n => n.id === familyId.value && !n.parentId)) familyId.value = ''
     return true
   } catch (e) {
     if (id === discipline.activeDisciplineId && sequence === loadSequence) error.value = e instanceof Error ? e.message : 'Failed to save concept trees.'
@@ -142,7 +194,7 @@ async function persist(next: ConceptNode[]): Promise<boolean> {
 function edit(node?: ConceptNode, parentId = '') {
   if (!editable.value) return
   editingId.value = node?.id ?? ''
-  draft.value = node ? { ...node, techniqueIds: [...node.techniqueIds], assetIds: [...node.assetIds] } : blankNode(parentId)
+  draft.value = node ? { ...node, techniqueIds: [...node.techniqueIds], assetIds: [...node.assetIds], curriculumIds: [...node.curriculumIds] } : blankNode(parentId)
   dialogDiscipline.value = discipline.activeDisciplineId
   dialog.value = 'edit'
 }
@@ -152,8 +204,7 @@ async function saveNode() {
   if (!node.name) return
   const next = editingId.value ? nodes.value.map(n => n.id === node.id ? node : n) : [...nodes.value, node]
   if (await persist(next)) {
-    if (!node.parentId) familyId.value = ''
-    selectedId.value = node.id
+    await selectElement(node.id)
     dialog.value = null
   }
 }
@@ -168,8 +219,7 @@ async function move(id: string, parentId: string) {
   try {
     if (nodes.value.find(n => n.id === id)?.parentId === parentId) return
     if (await persist(moveNode(nodes.value, id, parentId))) {
-      familyId.value = ''
-      selectedId.value = id
+      await selectElement(id)
       dialog.value = null
     }
   } catch (e) {
@@ -184,11 +234,11 @@ function remove() {
   const revision = tree.value?.revision
   confirm.require({
     header: `Delete ${node.name}?`,
-    message: `Delete this ${branch.size > 1 ? `branch and its ${branch.size - 1} descendants` : 'node'}? Linked techniques and assets will remain in the library.`,
+    message: `Delete this ${branch.size > 1 ? `branch and its ${branch.size - 1} descendants` : 'node'}? Linked techniques, assets, and curricula will remain in the library.`,
     acceptLabel: 'Delete', rejectLabel: 'Cancel', acceptClass: 'p-button-danger',
     accept: async () => {
       if (id !== discipline.activeDisciplineId || revision !== tree.value?.revision) return
-      if (await persist(nodes.value.filter(n => !branch.has(n.id)))) selectedId.value = ''
+      if (await persist(nodes.value.filter(n => !branch.has(n.id)))) await selectElement('')
     },
   })
 }
@@ -200,15 +250,16 @@ function remove() {
       <div><h1 class="view-title">Concept trees</h1><p class="subtitle">Map technical families, explore techniques, and connect learning assets.</p></div>
       <div class="header-actions">
         <span v-if="!canManage" class="read-only-badge"><i class="pi pi-eye" /> Read-only view</span>
-        <RouterLink v-if="auth.isAdmin" :to="props.readOnly ? '/concept-trees' : '/concept-trees/view'" class="view-mode-link">{{ props.readOnly ? 'Edit trees' : 'Read-only preview' }}</RouterLink>
+        <RouterLink v-if="auth.isAdmin" :to="modeLink" class="view-mode-link">{{ props.readOnly ? 'Edit trees' : 'Read-only preview' }}</RouterLink>
         <Button v-if="canManage" label="New family" icon="pi pi-plus" :disabled="!editable" @click="edit()" />
       </div>
     </div>
     <Message v-if="error" severity="error" :closable="false" class="feedback">{{ error }}</Message>
+    <p v-if="linkFeedback" role="status" class="hint">{{ linkFeedback }}</p>
     <Message v-if="!discipline.activeDisciplineId" severity="info" :closable="false">Select a discipline to explore its concept trees.</Message>
     <div v-else>
       <div class="toolbar">
-        <Select v-model="familyId" :options="familyOptions" option-label="name" option-value="id" aria-label="Filter by family" placeholder="All families" :disabled="loading || saving" />
+        <Select :model-value="familyId" @update:model-value="selectElement" :options="familyOptions" option-label="name" option-value="id" aria-label="Filter by family" placeholder="All families" :disabled="loading || saving" />
         <span class="tree-count">{{ roots.length }} families · {{ nodes.length }} elements</span>
         <div class="zoom-controls">
           <Button icon="pi pi-minus" text aria-label="Zoom out" :disabled="zoom <= 50" @click="zoom -= 10" />
@@ -219,16 +270,24 @@ function remove() {
       </div>
       <p class="hint">Select an element to explore its links.<template v-if="canManage"> Use Edit on any element to change its name, description, or links. Drag an element to move its branch.</template></p>
       <div v-if="loading" class="empty" role="status"><i class="pi pi-spin pi-spinner" /> Loading concept trees…</div>
+      <div v-else-if="missingElement" class="empty" role="status">
+        <h2>Tree element not found</h2>
+        <p>This element may have been deleted. You can still explore the other families in this discipline.</p>
+        <Button label="Show all families" @click="selectElement('')" />
+      </div>
       <div v-else-if="tree && !nodes.length" class="empty">
         <i class="pi pi-sitemap empty-icon" /><h2>Start with a technical family</h2>
         <p>{{ canManage ? 'Add a family, build its branches, then link techniques and assets at any level.' : 'An admin can add technical families and connect techniques and assets here.' }}</p>
         <Button v-if="canManage" label="Create first family" icon="pi pi-plus" :disabled="!editable" @click="edit()" />
       </div>
       <div v-else-if="tree" class="workspace" :class="{ 'has-selection': selected }" :aria-busy="saving">
-        <div class="tree-gallery">
+        <div ref="gallery" class="tree-gallery">
           <section v-for="root in visibleRoots" :key="root.id" class="family-chart" :aria-label="`${root.name} tree`">
             <div class="family-toolbar">
-              <h2>{{ root.name }}</h2>
+              <div class="header-actions">
+                <h2><RouterLink :to="conceptTreeLink(discipline.activeDisciplineId, root.id, props.readOnly)" class="element-link">{{ root.name }}</RouterLink></h2>
+                <Button icon="pi pi-link" text :aria-label="`Copy link to ${root.name}`" @click="copyLink(root.id)" />
+              </div>
               <div v-if="canManage" :key="layoutControlVersion" class="layout-controls">
                 <label :id="`orientation-label-${root.id}`">Orientation</label>
                 <Select :model-value="layoutFor(root).orientation" :options="orientations" option-label="label" option-value="value" :aria-labelledby="`orientation-label-${root.id}`" :disabled="!editable" @update:model-value="value => setLayout(root, { orientation: value })" />
@@ -238,14 +297,18 @@ function remove() {
             </div>
             <div class="chart-viewport" tabindex="0" role="region" :aria-label="`${root.name} chart; scroll to explore`">
               <ul class="forest" :class="`align-${layoutFor(root).alignment}`" :style="{ zoom: `${zoom}%` }">
-                <ConceptBranch :node="root" :nodes="nodes" :orientation="layoutFor(root).orientation" :selected-id="selectedId" :editable="editable" @select="selectedId = $event" @move="move" @edit="edit($event)" />
+                <ConceptBranch :node="root" :nodes="nodes" :orientation="layoutFor(root).orientation" :selected-id="selectedId" :editable="editable" @select="selectElement" @move="move" @edit="edit($event)" />
               </ul>
             </div>
           </section>
         </div>
         <aside v-if="selected" class="details" aria-label="Selected concept details">
-          <div class="detail-heading"><span>{{ !selected.parentId ? 'Technical family' : nodes.some(n => n.parentId === selected!.id) ? 'Concept node' : 'Concept leaf' }}</span><Button icon="pi pi-times" text aria-label="Close details" @click="selectedId = ''" /></div>
+          <div class="detail-heading"><span>{{ !selected.parentId ? 'Technical family' : nodes.some(n => n.parentId === selected!.id) ? 'Concept node' : 'Concept leaf' }}</span><Button icon="pi pi-times" text aria-label="Close details" @click="selectElement('')" /></div>
           <h2>{{ selected.name }}</h2>
+          <div class="header-actions">
+            <RouterLink :to="conceptTreeLink(discipline.activeDisciplineId, selected.id)" class="element-link">Element link</RouterLink>
+            <Button label="Copy link" icon="pi pi-link" text size="small" @click="copyLink(selected.id)" />
+          </div>
           <p class="breadcrumb">{{ nodePath(nodes, selected) }}</p>
           <p v-if="selected.description" class="node-description">{{ selected.description }}</p>
           <div v-if="canManage" class="actions">
@@ -254,6 +317,14 @@ function remove() {
             <Button label="Move" icon="pi pi-arrows-alt" size="small" outlined :disabled="!editable" @click="openMove" />
             <Button label="Delete" icon="pi pi-trash" size="small" severity="danger" text :disabled="!editable" @click="remove" />
           </div>
+          <h3>Curricula <span>{{ selected.curriculumIds.length }}</span></h3>
+          <p v-if="!selected.curriculumIds.length" class="hint">No curricula linked yet.</p>
+          <ul class="links">
+            <li v-for="id in selected.curriculumIds" :key="id">
+              <RouterLink v-if="curricula.some(c => c.id === id)" :to="`/curricula/${id}`"><i class="pi pi-book" aria-hidden="true" /> {{ curricula.find(c => c.id === id)?.title }}</RouterLink>
+              <span v-else class="hint">Unavailable curriculum</span>
+            </li>
+          </ul>
           <h3>Techniques <span>{{ selected.techniqueIds.length }}</span></h3>
           <p v-if="!selected.techniqueIds.length" class="hint">No techniques linked yet.</p>
           <ul class="links">
@@ -286,6 +357,8 @@ function remove() {
         <MultiSelect input-id="concept-techniques" v-model="draft.techniqueIds" :options="techniqueOptions" option-label="name" option-value="id" filter display="chip" placeholder="Link techniques" :disabled="saving" />
         <label for="concept-assets">Assets</label>
         <MultiSelect input-id="concept-assets" v-model="draft.assetIds" :options="assetOptions" option-label="title" option-value="id" filter display="chip" placeholder="Link assets" :disabled="saving" />
+        <label for="concept-curricula">Curricula</label>
+        <MultiSelect input-id="concept-curricula" v-model="draft.curriculumIds" :options="curriculumOptions" option-label="title" option-value="id" filter display="chip" placeholder="Link curricula" :disabled="saving" />
         <div class="form-actions"><Button label="Cancel" text :disabled="saving" @click="dialog = null" /><Button type="submit" label="Save" :loading="saving" :disabled="!editable || !draft.name.trim()" /></div>
       </form>
       <form v-else-if="dialog === 'move'" class="node-form" @submit.prevent="move(editingId, destination)">
@@ -299,6 +372,7 @@ function remove() {
 </template>
 
 <style scoped>
+.element-link { color: var(--p-primary-color, #34d399); font-size: .85rem; }
 .header-actions, .layout-controls { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }
 .read-only-badge { display: inline-flex; align-items: center; gap: .4rem; font-size: .75rem; color: #a1a1aa; }
 .view-mode-link { color: var(--p-primary-color, #34d399); font-size: .8rem; }
