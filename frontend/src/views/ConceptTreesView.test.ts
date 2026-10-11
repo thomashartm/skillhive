@@ -59,6 +59,15 @@ describe('concept tree viewing modes', () => {
     expect(wrapper.find('.layout-controls').exists()).toBe(true)
     wrapper.unmount()
   })
+  it('renders trees loaded from API responses containing null link arrays', async () => {
+    mocks.get.mockImplementation(async (url: string) => url.includes('concept-trees') ? { ...forest, nodes: [{ ...root, assetIds: null, techniqueIds: null }] } : [])
+    const wrapper = render(true)
+    await flushPromises()
+    expect(wrapper.get('.concept-card').text()).toContain('0 techniques · 0 assets')
+    await wrapper.get('.concept-card').trigger('click')
+    expect(wrapper.text()).toContain('No assets linked yet.')
+    wrapper.unmount()
+  })
   it('restores saved controls and chart after a rejected layout save', async () => {
     mocks.put.mockRejectedValue(new Error('Reload before trying again.'))
     const wrapper = render()

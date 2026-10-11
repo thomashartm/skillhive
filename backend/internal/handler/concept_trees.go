@@ -42,6 +42,19 @@ func (h *ConceptTreeHandler) Get(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// Firestore decodes empty nested arrays into nil slices. Keep the JSON
+	// contract consistent with Save so a reloaded chart can render every node.
+	if tree.Nodes == nil {
+		tree.Nodes = []model.ConceptNode{}
+	}
+	for i := range tree.Nodes {
+		if tree.Nodes[i].TechniqueIDs == nil {
+			tree.Nodes[i].TechniqueIDs = []string{}
+		}
+		if tree.Nodes[i].AssetIDs == nil {
+			tree.Nodes[i].AssetIDs = []string{}
+		}
+	}
 	writeJSON(w, http.StatusOK, tree)
 }
 

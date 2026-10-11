@@ -120,6 +120,11 @@ func TestIntegrationConceptTreeLifecycle(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &saved); err != nil {
 		t.Fatal(err)
 	}
+	for _, node := range saved.Nodes {
+		if node.AssetIDs == nil || node.TechniqueIDs == nil {
+			t.Fatalf("reloaded node %s contains null link arrays", node.ID)
+		}
+	}
 	if saved.Revision != 2 || saved.Nodes[2].ParentID != "b" || saved.Nodes[3].ParentID != "branch" || saved.Nodes[3].AssetIDs[0] != id {
 		t.Fatalf("bad persisted move: %+v", saved)
 	}
@@ -155,6 +160,10 @@ func TestIntegrationConceptTreeLifecycle(t *testing.T) {
 	// Delete the branch and finally the families; linked library data remains.
 	assertStatus(call(http.MethodPut, 4, nodes[:2], "admin"), 200)
 	assertStatus(call(http.MethodPut, 5, []model.ConceptNode{}, "admin"), 200)
+	var empty model.ConceptTree
+	if err := json.Unmarshal(call(http.MethodGet, 0, nil, "viewer").Body.Bytes(), &empty); err != nil || empty.Nodes == nil {
+		t.Fatalf("empty forest must render as an empty array: %+v, %v", empty, err)
+	}
 	if _, err := fs.Collection("techniques").Doc(id).Get(ctx); err != nil {
 		t.Fatalf("linked technique was removed: %v", err)
 	}
