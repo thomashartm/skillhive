@@ -15,6 +15,11 @@ const props = defineProps<{
 
 const renderedHtml = ref('')
 
+const purifyConfig = {
+  ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'b', 'i', 'u', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'code', 'pre', 'blockquote'],
+  ALLOWED_ATTR: ['href', 'target', 'rel']
+}
+
 const parseMarkdown = async (content: string) => {
   if (!content) {
     renderedHtml.value = ''
@@ -29,13 +34,10 @@ const parseMarkdown = async (content: string) => {
     }
     
     // Sanitize and return - allow common HTML tags
-    renderedHtml.value = DOMPurify.sanitize(raw as string, {
-      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'b', 'i', 'u', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'code', 'pre', 'blockquote'],
-      ALLOWED_ATTR: ['href', 'target', 'rel']
-    })
+    renderedHtml.value = DOMPurify.sanitize(raw as string, purifyConfig)
   } catch (error) {
     console.error('[MarkdownRenderer] Error:', error)
-    renderedHtml.value = content // Fallback to raw content
+    renderedHtml.value = DOMPurify.sanitize(content, purifyConfig) // Fallback to sanitized raw content
   }
 }
 
