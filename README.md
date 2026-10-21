@@ -12,10 +12,20 @@ Training content management platform for organizing video instructionals into st
 - YouTube metadata auto-extraction via oEmbed
 
 ### Dashboard View
-<img width="800" height="469" alt="dashboard" src="https://github.com/user-attachments/assets/cf89fcec-d3c2-4da8-80fa-dceb2a04b8c1" />
+<img width="800" alt="dashboard" src="docs/screenshots/dashboard.png" />
 
 ### Training Organization / Curricula 
 <img width="800" height="515" alt="curricula" src="https://github.com/user-attachments/assets/628bc616-09ae-4e06-b388-c50e8df24ae0" />
+
+### Curriculum Builder
+A curriculum is an ordered training plan. Mix text notes, techniques, and videos, give each step a duration, and drag to reorder. Linked concept tree branches show at the top.
+
+<img width="800" alt="curriculum builder" src="docs/screenshots/curriculum.png" />
+
+### Concept Trees
+Concept trees map a technical family (for example, Bottom Half Guard) as branches and leaves. Each element links to techniques, videos, and curricula, so you can see how a position fits together and jump to what to train.
+
+<img width="800" alt="concept trees" src="docs/screenshots/concept-tree.png" />
 
 ### Video Asset Management
 <img width="800" height="461" alt="assets" src="https://github.com/user-attachments/assets/6057e1d1-2684-404f-b34a-9a2fe5255141" />
