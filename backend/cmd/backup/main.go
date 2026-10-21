@@ -24,6 +24,7 @@ var collections = []string{
 	"assets",
 	"tags",
 	"curricula",
+	"conceptTrees",
 }
 
 // Collections that have known subcollections
