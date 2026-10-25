@@ -64,7 +64,7 @@ create_secret \
     "${SECRET_CORS_ORIGINS}" \
     "Allowed CORS origins for the API" \
     "CORS origins (comma-separated)" \
-    "https://skillhive.thartm.net,https://REDACTED_PROJECT_ID.web.app,http://localhost:5173"
+    "https://skillhive.thartm.net,https://${PROJECT_ID}.web.app,http://localhost:5173"
 
 echo ""
 
