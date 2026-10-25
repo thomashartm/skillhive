@@ -6,11 +6,11 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_ID: REDACTED_PROJECT_ID
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: europe-west1
   SERVICE_NAME: skillhive-api
   AR_REPOSITORY: skillhive
-  IMAGE_NAME: europe-west1-docker.pkg.dev/REDACTED_PROJECT_ID/skillhive/api
+  IMAGE_NAME: europe-west1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skillhive/api
 
 jobs:
   deploy-backend:
