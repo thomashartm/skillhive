@@ -6,8 +6,8 @@
 # =============================================================================
 # GCP Project Configuration
 # =============================================================================
-export PROJECT_ID="level-dragon-478821-t3"
-export PROJECT_NUMBER="551873236818"
+export PROJECT_ID="your-project-id"
+export PROJECT_NUMBER="your-project-number"
 export REGION="europe-west1"
 
 # =============================================================================
