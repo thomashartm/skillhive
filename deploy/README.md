@@ -159,7 +159,7 @@ Optional secrets are wired by `deploy/backend.sh` only when they exist in Secret
 # Update a specific secret
 gcloud secrets versions add skillhive-cors-origins \
   --data-file=- \
-  --project=REDACTED_PROJECT_ID <<< "https://new-origin.com"
+  --project=<PROJECT_ID> <<< "https://new-origin.com"
 
 # Redeploy to pick up changes
 ./deploy/backend.sh  # For runtime secrets
@@ -185,12 +185,12 @@ cp env.example.sh env.sh
 
 1. Check that Artifact Registry exists:
    ```bash
-   gcloud artifacts repositories list --project=REDACTED_PROJECT_ID
+   gcloud artifacts repositories list --project=<PROJECT_ID>
    ```
 
 2. Check that image was built:
    ```bash
-   gcloud artifacts docker images list europe-west1-docker.pkg.dev/REDACTED_PROJECT_ID/skillhive
+   gcloud artifacts docker images list europe-west1-docker.pkg.dev/<PROJECT_ID>/skillhive
    ```
 
 ### Frontend build fails with missing secrets
@@ -204,7 +204,7 @@ SSL provisioning can take up to 24 hours. Check status:
 gcloud run domain-mappings describe \
   --domain=skillhive.thartm.net \
   --region=europe-west1 \
-  --project=REDACTED_PROJECT_ID
+  --project=<PROJECT_ID>
 ```
 
 ## CI/CD with GitHub Actions
@@ -220,8 +220,8 @@ The repository includes a GitHub Actions workflow (`.github/workflows/deploy.yml
 
 | Secret | Value |
 |--------|-------|
-| `WIF_PROVIDER` | `projects/REDACTED_PROJECT_NUMBER/locations/global/workloadIdentityPools/github-actions/providers/github` |
-| `WIF_SERVICE_ACCOUNT` | `skillhive-deployer@REDACTED_PROJECT_ID.iam.gserviceaccount.com` |
+| `WIF_PROVIDER` | `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github-actions/providers/github` |
+| `WIF_SERVICE_ACCOUNT` | `skillhive-deployer@<PROJECT_ID>.iam.gserviceaccount.com` |
 
 These values are output by `./setup/04-setup-workload-identity.sh`.
 
@@ -232,7 +232,7 @@ If you need to deploy manually:
 ```bash
 # Login to GCP
 gcloud auth login
-gcloud config set project REDACTED_PROJECT_ID
+gcloud config set project <PROJECT_ID>
 
 # Login to Firebase
 firebase login

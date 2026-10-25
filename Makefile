@@ -46,9 +46,10 @@ dev-frontend:
 	@sleep 3
 	cd frontend && npm run dev
 
-sync-data: ## Export production Firestore data and import into local emulator
+sync-data: ## Export production Firestore data and import into local emulator (make sync-data PROD_PROJECT=<project-id>)
+	@test -n "$(PROD_PROJECT)" || { echo "Set PROD_PROJECT to the production GCP project ID"; exit 1; }
 	@echo "Exporting from production Firestore..."
-	cd backend && GCP_PROJECT=REDACTED_PROJECT_ID FIREBASE_KEY_PATH=./serviceAccountKey.json go run ./cmd/firestore-sync export
+	cd backend && GCP_PROJECT=$(PROD_PROJECT) FIREBASE_KEY_PATH=./serviceAccountKey.json go run ./cmd/firestore-sync export
 	@echo ""
 	@echo "Importing into local emulator..."
 	cd backend && FIRESTORE_EMULATOR_HOST=localhost:8181 FIREBASE_AUTH_EMULATOR_HOST=localhost:9099 go run ./cmd/firestore-sync import

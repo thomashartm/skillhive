@@ -6,8 +6,8 @@
 # =============================================================================
 # GCP Project Configuration
 # =============================================================================
-export PROJECT_ID="REDACTED_PROJECT_ID"
-export PROJECT_NUMBER="REDACTED_PROJECT_NUMBER"
+export PROJECT_ID="your-project-id"
+export PROJECT_NUMBER="your-project-number"
 export REGION="europe-west1"
 
 # =============================================================================

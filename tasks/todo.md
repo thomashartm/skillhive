@@ -93,7 +93,7 @@ Approach: pragmatic sync-HTTP fix (Option 1). True async via Cloud Tasks deferre
 
 ### Production logs — confirmed diagnosis
 
-GCP project: `REDACTED_PROJECT_ID` (display name "SkillHive"). Pulled Cloud Run logs and the Firestore doc directly via the personal `REDACTED_EMAIL` account.
+GCP project: the production project (display name "SkillHive"). Pulled Cloud Run logs and the Firestore doc directly via a personal account.
 
 **Timeline for `V5X5TxirtP77Bm4E6Ojj` on 2026-04-26:**
 
