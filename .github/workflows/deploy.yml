@@ -7,6 +7,9 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  # Not read by any step: referencing the secret makes GitHub mask the project
+  # number, which appears in Cloud Run URLs, Firebase app IDs and gcloud output.
+  PROJECT_NUMBER: ${{ secrets.GCP_PROJECT_NUMBER }}
   REGION: europe-west1
   SERVICE_NAME: skillhive-api
   AR_REPOSITORY: skillhive
@@ -143,16 +146,23 @@ jobs:
       - name: Fetch secrets from Secret Manager
         id: secrets
         run: |
-          echo "VITE_API_URL=$(gcloud secrets versions access latest --secret=skillhive-api-url)" >> $GITHUB_ENV
-          echo "VITE_FIREBASE_API_KEY=$(gcloud secrets versions access latest --secret=skillhive-firebase-api-key)" >> $GITHUB_ENV
-          echo "VITE_FIREBASE_AUTH_DOMAIN=$(gcloud secrets versions access latest --secret=skillhive-firebase-auth-domain)" >> $GITHUB_ENV
-          echo "VITE_FIREBASE_PROJECT_ID=$(gcloud secrets versions access latest --secret=skillhive-firebase-project-id)" >> $GITHUB_ENV
-          echo "VITE_FIREBASE_STORAGE_BUCKET=$(gcloud secrets versions access latest --secret=skillhive-firebase-storage-bucket)" >> $GITHUB_ENV
-          echo "VITE_FIREBASE_MESSAGING_SENDER_ID=$(gcloud secrets versions access latest --secret=skillhive-firebase-messaging-sender-id)" >> $GITHUB_ENV
-          echo "VITE_FIREBASE_APP_ID=$(gcloud secrets versions access latest --secret=skillhive-firebase-app-id)" >> $GITHUB_ENV
-          echo "VITE_LEGAL_NAME=$(gcloud secrets versions access latest --secret=skillhive-legal-name)" >> $GITHUB_ENV
-          echo "VITE_LEGAL_ADDRESS=$(gcloud secrets versions access latest --secret=skillhive-legal-address)" >> $GITHUB_ENV
-          echo "VITE_LEGAL_EMAIL=$(gcloud secrets versions access latest --secret=skillhive-legal-email)" >> $GITHUB_ENV
+          # Mask each value before it reaches GITHUB_ENV; later steps print their env.
+          fetch() {
+            local value
+            value=$(gcloud secrets versions access latest --secret="$2") || value=""
+            if [ -n "$value" ]; then echo "::add-mask::${value}"; fi
+            echo "$1=${value}" >> "$GITHUB_ENV"
+          }
+          fetch VITE_API_URL skillhive-api-url
+          fetch VITE_FIREBASE_API_KEY skillhive-firebase-api-key
+          fetch VITE_FIREBASE_AUTH_DOMAIN skillhive-firebase-auth-domain
+          fetch VITE_FIREBASE_PROJECT_ID skillhive-firebase-project-id
+          fetch VITE_FIREBASE_STORAGE_BUCKET skillhive-firebase-storage-bucket
+          fetch VITE_FIREBASE_MESSAGING_SENDER_ID skillhive-firebase-messaging-sender-id
+          fetch VITE_FIREBASE_APP_ID skillhive-firebase-app-id
+          fetch VITE_LEGAL_NAME skillhive-legal-name
+          fetch VITE_LEGAL_ADDRESS skillhive-legal-address
+          fetch VITE_LEGAL_EMAIL skillhive-legal-email
 
       - name: Install dependencies
         run: cd frontend && npm ci
