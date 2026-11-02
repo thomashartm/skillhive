@@ -159,6 +159,15 @@ function connect(connection: { source: string | null; target: string | null }, l
   selectEdge(next.id)
   condition.value = ''
 }
+function reconnect(id: string, connection: { source: string; target: string }) {
+  const d = diagram.value
+  if (!editable.value || !d) return
+  const transition = d.edges.find(e => e.id === id)
+  if (!transition || !d.nodes.some(n => n.id === connection.source) || !d.nodes.some(n => n.id === connection.target)) return
+  transition.source = connection.source
+  transition.target = connection.target
+  selectEdge(id)
+}
 async function deleteStep() {
   const d = diagram.value
   const id = nodeId.value
@@ -168,10 +177,10 @@ async function deleteStep() {
   d.edges = d.edges.filter(e => e.source !== id && e.target !== id)
   nodeId.value = ''; edgeId.value = ''; sourceId.value = ''; targetId.value = ''
 }
-function deleteTransition() {
+function deleteTransition(id: string) {
   if (!editable.value || !diagram.value) return
-  diagram.value.edges = diagram.value.edges.filter(e => e.id !== edgeId.value)
-  edgeId.value = ''
+  diagram.value.edges = diagram.value.edges.filter(e => e.id !== id)
+  if (edgeId.value === id) edgeId.value = ''
 }
 function safeMediaURL(url: string | null | undefined) {
   if (!url) return undefined
@@ -218,10 +227,10 @@ function safeMediaURL(url: string | null | undefined) {
             aria-haspopup="menu" aria-controls="add-flow-step-menu" :disabled="!editable || diagram.nodes.length >= 200" @click="stepMenu?.toggle($event)" />
           <Menu id="add-flow-step-menu" ref="stepMenu" :model="stepMenuItems" popup />
         </div>
-        <p class="text-xs text-slate-400 mb-3">{{ canEdit ? 'Drag steps to arrange them. Drag from a blue connection point on the right to a connection point on the left of another step. Select the arrow to set its condition. You can also loop back to an earlier step or the same step.' : 'Select a step to read its instructions and open its media. Select an arrow to read its condition.' }}</p>
+        <p class="text-xs text-slate-400 mb-3">{{ canEdit ? 'Drag from a blue point on the right to a point on the left to create a transition. Select an arrow to edit its condition, drag either round endpoint to reconnect it, or press Delete to remove it. Loops are allowed.' : 'Select a step to read its instructions and open its media. Select an arrow to read its condition.' }}</p>
         <div class="flow-workspace">
           <FlowCanvas :key="diagram.id" :diagram="diagram" :editable="editable" :selected-node="nodeId" :selected-edge="edgeId"
-            @select-node="selectNode" @select-edge="selectEdge" @move="moveStep" @connect="connect" />
+            @select-node="selectNode" @select-edge="selectEdge" @move="moveStep" @connect="connect" @reconnect="reconnect" @delete-edge="deleteTransition" />
           <aside class="flow-details" aria-label="Flow details">
             <div class="grid gap-2 mb-4">
               <div>
@@ -262,7 +271,7 @@ function safeMediaURL(url: string | null | undefined) {
                 <div><label for="edge-target" class="field-label">To step</label><Select v-model="edge.target" input-id="edge-target" :options="diagram.nodes" option-label="name" option-value="id" :disabled="!editable" class="w-full" /></div>
                 <div><label for="flow-condition" class="field-label">Condition</label><InputText id="flow-condition" v-model="edge.condition" :maxlength="300" :disabled="!editable" placeholder="e.g. If the grip is lost" class="w-full" /></div>
                 <p class="text-xs text-slate-400">Leave empty for an unconditional transition. Conditions describe what to check while performing the technique.</p>
-                <Button label="Delete transition" severity="danger" text :disabled="!editable" @click="deleteTransition" />
+                <Button label="Delete transition" severity="danger" text :disabled="!editable" @click="deleteTransition(edge.id)" />
               </template>
               <template v-else>
                 <p>{{ diagram.nodes.find(n => n.id === edge?.source)?.name }} → {{ diagram.nodes.find(n => n.id === edge?.target)?.name }}</p>
