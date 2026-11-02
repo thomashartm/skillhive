@@ -41,8 +41,10 @@ service cloud.firestore {
     // Techniques — owner-based CRUD
     match /techniques/{techniqueId} {
       allow read: if isAuthenticated() && resource.data.ownerUid == request.auth.uid;
-      allow create: if isAuthenticated() && setsOwnUid();
-      allow update, delete: if isOwner(resource);
+      // Flow writes go through the API's revision and graph validation.
+      allow create: if isAuthenticated() && setsOwnUid() && !request.resource.data.keys().hasAny(['flows']);
+      allow update: if isOwner(resource) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['flows']);
+      allow delete: if isOwner(resource);
     }
 
     // Assets — owner-based CRUD

@@ -12,6 +12,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/thomas/skillhive-api/internal/config"
+	"github.com/thomas/skillhive-api/internal/model"
 	"github.com/thomas/skillhive-api/internal/store"
 	"google.golang.org/api/iterator"
 )
@@ -81,6 +82,22 @@ func main() {
 
 		// Merge: for each duplicate, update asset references and delete
 		for _, dupe := range dupes {
+			source, err := fs.Collection("techniques").Doc(dupe.DocID).Get(ctx)
+			if err != nil {
+				slog.Error("failed to read duplicate", "error", err)
+				continue
+			}
+			var stored struct {
+				Flows model.TechniqueFlows `firestore:"flows"`
+			}
+			if err := source.DataTo(&stored); err != nil {
+				slog.Error("failed to read duplicate flows", "error", err)
+				continue
+			}
+			if len(stored.Flows.Diagrams) > 0 {
+				slog.Warn("skipping technique with flow diagrams; move or remove them before merging", "id", dupe.DocID)
+				continue
+			}
 			// Merge categoryIDs and tagIDs from dupe into canonical
 			mergedCatIDs := mergeStringSlice(canonical.CategoryIDs, dupe.CategoryIDs)
 			mergedTagIDs := mergeStringSlice(canonical.TagIDs, dupe.TagIDs)
@@ -114,7 +131,7 @@ func main() {
 			slog.Info("updated asset references", "from", dupe.DocID, "to", canonical.DocID, "assets", refsUpdated)
 
 			// Delete the duplicate
-			if _, err := fs.Collection("techniques").Doc(dupe.DocID).Delete(ctx); err != nil {
+			if _, err := fs.Collection("techniques").Doc(dupe.DocID).Delete(ctx, firestore.LastUpdateTime(source.UpdateTime)); err != nil {
 				slog.Error("failed to delete duplicate technique", "slug", dupe.Slug, "error", err)
 			} else {
 				slog.Info("deleted duplicate technique", "slug", dupe.Slug, "name", dupe.Name)

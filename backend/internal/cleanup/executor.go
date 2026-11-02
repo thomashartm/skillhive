@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"github.com/thomas/skillhive-api/internal/model"
 	"google.golang.org/api/iterator"
 )
 
@@ -255,13 +256,26 @@ func (e *Executor) applyMerge(ctx context.Context, entityType EntityType, from, 
 			return fmt.Errorf("delete category: %w", err)
 		}
 	case EntityTechnique:
+		source, err := e.fs.Collection("techniques").Doc(from).Get(ctx)
+		if err != nil {
+			return err
+		}
+		var stored struct {
+			Flows model.TechniqueFlows `firestore:"flows"`
+		}
+		if err := source.DataTo(&stored); err != nil {
+			return err
+		}
+		if len(stored.Flows.Diagrams) > 0 {
+			return fmt.Errorf("technique has flow diagrams; move or remove them before merging")
+		}
 		if err := e.rewriteTechniqueIDsIn(ctx, "assets", disciplineID, from, to); err != nil {
 			return fmt.Errorf("rewrite asset techniqueIds: %w", err)
 		}
 		if err := e.rewriteElementTechniqueID(ctx, disciplineID, from, to); err != nil {
 			return fmt.Errorf("rewrite curriculum element techniqueIds: %w", err)
 		}
-		if _, err := e.fs.Collection("techniques").Doc(from).Delete(ctx); err != nil {
+		if _, err := e.fs.Collection("techniques").Doc(from).Delete(ctx, firestore.LastUpdateTime(source.UpdateTime)); err != nil {
 			return fmt.Errorf("delete technique: %w", err)
 		}
 	}

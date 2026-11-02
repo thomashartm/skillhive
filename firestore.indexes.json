@@ -164,6 +164,7 @@
     }
   ],
   "fieldOverrides": [
-    { "collectionGroup": "conceptTrees", "fieldPath": "nodes", "indexes": [] }
+    { "collectionGroup": "conceptTrees", "fieldPath": "nodes", "indexes": [] },
+    { "collectionGroup": "techniques", "fieldPath": "flows", "indexes": [] }
   ]
 }

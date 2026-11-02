@@ -73,6 +73,7 @@ func main() {
 	conceptTreeHandler := handler.NewConceptTreeHandler(clients.Firestore)
 	categoryHandler := handler.NewCategoryHandler(clients.Firestore)
 	techniqueHandler := handler.NewTechniqueHandler(clients.Firestore)
+	techniqueFlowHandler := handler.NewTechniqueFlowHandler(clients.Firestore)
 	assetHandler := handler.NewAssetHandler(clients.Firestore, pipeline, enrichCtx)
 	oembedHandler := handler.NewOEmbedHandler()
 	curriculumHandler := handler.NewCurriculumHandler(clients.Firestore)
@@ -150,6 +151,8 @@ func main() {
 		r.Get("/techniques/{id}", techniqueHandler.Get)
 		r.Patch("/techniques/{id}", techniqueHandler.Update)
 		r.Delete("/techniques/{id}", techniqueHandler.Delete)
+		r.Get("/techniques/{id}/flows", techniqueFlowHandler.Get)
+		r.Put("/techniques/{id}/flows", techniqueFlowHandler.Save)
 
 		// Assets
 		r.Get("/assets", assetHandler.List)
