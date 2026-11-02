@@ -54,10 +54,15 @@
     </div>
 
     <TechniqueList
-      :key="selectedLetter"
       :techniques="filteredTechniques"
       :categories="categories"
       :loading="loading"
+      :first="listState.first"
+      :rows="listState.rows"
+      :sort-field="listState.sortField"
+      :sort-order="listState.sortOrder"
+      @page="handlePage"
+      @sort="handleSort"
       @edit="handleEdit"
       @delete="handleDelete"
       @view="handleView"
@@ -77,12 +82,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, toRefs } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
+import type { DataTablePageEvent, DataTableSortEvent } from 'primevue/datatable'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import TechniqueList from '../components/techniques/TechniqueList.vue'
@@ -113,17 +119,30 @@ const { tags } = storeToRefs(tagStore)
 
 const showDialog = ref(false)
 const selectedTechnique = ref<Technique | null>(null)
-const searchTerm = ref('')
+const listState = techniqueStore.listState
+const { searchTerm, selectedCategoryId, selectedTagId, selectedLetter } = toRefs(listState)
 const debouncedSearch = useDebouncedRef(searchTerm, 300)
-const selectedCategoryId = ref<string | null>(null)
-const selectedTagId = ref<string | null>(null)
 const alphabet = ['All', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '#']
-const selectedLetter = ref('All')
 const filteredTechniques = computed(() => techniques.value.filter(technique => {
   if (selectedLetter.value === 'All') return true
   const name = technique.name.trim().normalize('NFD').replace(/\p{M}/gu, '').toUpperCase()
   return selectedLetter.value === '#' ? !/^[A-Z]/.test(name) : name.startsWith(selectedLetter.value)
 }))
+
+watch([searchTerm, selectedCategoryId, selectedTagId, selectedLetter, activeDisciplineId], () => {
+  listState.first = 0
+})
+
+function handlePage(event: DataTablePageEvent) {
+  listState.first = event.first
+  listState.rows = event.rows
+}
+
+function handleSort(event: DataTableSortEvent) {
+  listState.sortField = typeof event.sortField === 'string' ? event.sortField : undefined
+  listState.sortOrder = event.sortOrder ?? undefined
+  listState.first = 0
+}
 
 const categoryOptions = computed(() => [
   { label: 'All Categories', value: null },
@@ -149,6 +168,9 @@ const fetchData = async () => {
   }
 
   await techniqueStore.fetchTechniques(params)
+  if (listState.first >= filteredTechniques.value.length) {
+    listState.first = Math.floor(Math.max(0, filteredTechniques.value.length - 1) / listState.rows) * listState.rows
+  }
 }
 
 // Debounced search watcher
