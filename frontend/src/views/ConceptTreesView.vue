@@ -36,6 +36,7 @@ const selectedId = computed(() => typeof route.params.nodeId === 'string' ? rout
 const familyId = computed(() => familyFor(nodes.value, selectedId.value)?.id ?? '')
 const linkFeedback = ref('')
 const zoom = ref(100)
+const search = ref('')
 const layoutControlVersion = ref(0)
 const curriculumControlVersion = ref(0)
 const dialog = ref<'edit' | 'move' | null>(null)
@@ -64,15 +65,19 @@ watch([selectedId, nodes], async () => {
   })
 })
 const roots = computed(() => nodes.value.filter(n => !n.parentId))
-const visibleRoots = computed(() => roots.value.filter(n => !familyId.value || n.id === familyId.value))
+const visibleRoots = computed(() => roots.value.filter(n => n.id === familyId.value))
+const filteredPaths = computed(() => {
+  const term = search.value.trim().toLowerCase()
+  return roots.value.filter(n => `${n.name} ${n.description}`.toLowerCase().includes(term))
+})
 const missingElement = computed(() => tree.value && selectedId.value && !selected.value)
 const modeLink = computed(() => conceptTreeLink(discipline.activeDisciplineId, selectedId.value, !props.readOnly))
 const canManage = computed(() => auth.isAdmin && !props.readOnly)
 const editable = computed(() => canManage.value && !!tree.value && !loading.value && !saving.value)
-const familyOptions = computed(() => [{ id: '', name: 'All families' }, ...roots.value])
+const familyOptions = computed(() => [{ id: '', name: 'All Concept Paths' }, ...roots.value])
 const moveOptions = computed(() => {
   const excluded = descendants(nodes.value, editingId.value)
-  return [{ id: '', name: 'Top level (new family)' }, ...nodes.value.filter(n => !excluded.has(n.id)).map(n => ({ id: n.id, name: nodePath(nodes.value, n) }))]
+  return [{ id: '', name: 'Top level (new path)' }, ...nodes.value.filter(n => !excluded.has(n.id)).map(n => ({ id: n.id, name: nodePath(nodes.value, n) }))]
 })
 const techniqueOptions = computed(() => [
   ...techniques.value,
@@ -123,6 +128,7 @@ async function load() {
   assets.value = []
   curricula.value = []
   dialog.value = null
+  search.value = ''
   error.value = ''
   loading.value = !!id
   if (!id) return
@@ -148,7 +154,7 @@ async function load() {
     assets.value = assetData
     curricula.value = curriculumData
   } catch (e) {
-    if (sequence === loadSequence) error.value = e instanceof Error ? e.message : 'Failed to load concept trees.'
+    if (sequence === loadSequence) error.value = e instanceof Error ? e.message : 'Failed to load concept paths.'
   } finally {
     if (sequence === loadSequence) loading.value = false
   }
@@ -193,7 +199,7 @@ async function persist(next: ConceptNode[]): Promise<boolean> {
     tree.value = updated
     return true
   } catch (e) {
-    if (id === discipline.activeDisciplineId && sequence === loadSequence) error.value = e instanceof Error ? e.message : 'Failed to save concept trees.'
+    if (id === discipline.activeDisciplineId && sequence === loadSequence) error.value = e instanceof Error ? e.message : 'Failed to save concept paths.'
     return false
   } finally {
     saving.value = false
@@ -255,41 +261,56 @@ function remove() {
 
 <template>
   <div class="concept-view">
+    <RouterLink v-if="selectedId" :to="conceptTreeLink(discipline.activeDisciplineId, '', props.readOnly)" class="back-to-paths"><i class="pi pi-arrow-left" aria-hidden="true" /> All Concept Paths</RouterLink>
     <div class="view-header">
-      <div><h1 class="view-title">Concept trees</h1><p class="subtitle">Map technical families, explore techniques, and connect learning assets.</p></div>
+      <div><h1 class="view-title">{{ visibleRoots[0]?.name ?? 'Concept Paths' }}</h1><p class="subtitle">{{ selectedId ? 'Explore this Concept Path and its linked learning content.' : 'Choose a Concept Path to explore its techniques, assets, and curricula.' }}</p></div>
       <div class="header-actions">
         <span v-if="!canManage" class="read-only-badge"><i class="pi pi-eye" /> Read-only view</span>
-        <RouterLink v-if="auth.isAdmin" :to="modeLink" class="view-mode-link">{{ props.readOnly ? 'Edit trees' : 'Read-only preview' }}</RouterLink>
-        <Button v-if="canManage" label="New family" icon="pi pi-plus" :disabled="!editable" @click="edit()" />
+        <RouterLink v-if="auth.isAdmin" :to="modeLink" class="view-mode-link">{{ props.readOnly ? 'Edit paths' : 'Read-only preview' }}</RouterLink>
+        <Button v-if="canManage" label="New Concept Path" icon="pi pi-plus" :disabled="!editable" @click="edit()" />
       </div>
     </div>
     <Message v-if="error" severity="error" :closable="false" class="feedback">{{ error }}</Message>
     <p v-if="linkFeedback" role="status" class="hint">{{ linkFeedback }}</p>
-    <Message v-if="!discipline.activeDisciplineId" severity="info" :closable="false">Select a discipline to explore its concept trees.</Message>
+    <Message v-if="!discipline.activeDisciplineId" severity="info" :closable="false">Select a discipline to explore its concept paths.</Message>
     <div v-else>
       <div class="toolbar">
-        <Select :model-value="familyId" @update:model-value="selectElement" :options="familyOptions" option-label="name" option-value="id" aria-label="Filter by family" placeholder="All families" :disabled="loading || saving" />
-        <span class="tree-count">{{ roots.length }} families · {{ nodes.length }} elements</span>
-        <div class="zoom-controls">
+        <Select v-if="selectedId" :model-value="familyId" @update:model-value="selectElement" :options="familyOptions" option-label="name" option-value="id" aria-label="Choose Concept Path" placeholder="All Concept Paths" :disabled="loading || saving" />
+        <InputText v-else v-model="search" class="path-search" aria-label="Search Concept Paths" placeholder="Search Concept Paths…" />
+        <span v-if="!selectedId" class="tree-count">{{ filteredPaths.length }} of {{ roots.length }} paths</span>
+        <div v-if="selected" class="zoom-controls">
           <Button icon="pi pi-minus" text aria-label="Zoom out" :disabled="zoom <= 50" @click="zoom -= 10" />
           <span>{{ zoom }}%</span>
           <Button icon="pi pi-plus" text aria-label="Zoom in" :disabled="zoom >= 150" @click="zoom += 10" />
-          <Button icon="pi pi-refresh" text label="Reload" :disabled="loading || saving" @click="load" />
         </div>
+        <Button icon="pi pi-refresh" text label="Reload" :disabled="loading || saving" @click="load" />
       </div>
-      <p class="hint">Select an element to explore its links.<template v-if="canManage"> Use Edit on any element to change its name, description, or links. Drag an element to move its branch.</template></p>
-      <div v-if="loading" class="empty" role="status"><i class="pi pi-spin pi-spinner" /> Loading concept trees…</div>
+      <p v-if="selected" class="hint">Select an element to explore its links.<template v-if="canManage"> Use Edit on any element to change its name, description, or links. Drag an element to move its branch.</template></p>
+      <div v-if="loading" class="empty" role="status"><i class="pi pi-spin pi-spinner" /> Loading concept paths…</div>
       <div v-else-if="missingElement" class="empty" role="status">
-        <h2>Tree element not found</h2>
-        <p>This element may have been deleted. You can still explore the other families in this discipline.</p>
-        <Button label="Show all families" @click="selectElement('')" />
+        <h2>Path element not found</h2>
+        <p>This element may have been deleted. You can still explore the other paths in this discipline.</p>
+        <Button label="All Concept Paths" @click="selectElement('')" />
       </div>
       <div v-else-if="tree && !nodes.length" class="empty">
-        <i class="pi pi-sitemap empty-icon" /><h2>Start with a technical family</h2>
-        <p>{{ canManage ? 'Add a family, build its branches, then link techniques and assets at any level.' : 'An admin can add technical families and connect techniques and assets here.' }}</p>
-        <Button v-if="canManage" label="Create first family" icon="pi pi-plus" :disabled="!editable" @click="edit()" />
+        <i class="pi pi-sitemap empty-icon" /><h2>Start with a Concept Path</h2>
+        <p>{{ canManage ? 'Add a path, build its branches, then link techniques and assets at any level.' : 'An admin can add concept paths and connect techniques and assets here.' }}</p>
+        <Button v-if="canManage" label="Create first path" icon="pi pi-plus" :disabled="!editable" @click="edit()" />
       </div>
-      <div v-else-if="tree" class="workspace" :class="{ 'has-selection': selected }" :aria-busy="saving">
+      <div v-else-if="tree && !selectedId">
+        <ul v-if="filteredPaths.length" class="path-grid" aria-label="Concept Paths">
+          <li v-for="path in filteredPaths" :key="path.id">
+            <RouterLink :to="conceptTreeLink(discipline.activeDisciplineId, path.id, props.readOnly)" class="path-tile">
+              <i class="pi pi-sitemap path-icon" aria-hidden="true" />
+              <h2>{{ path.name }}</h2>
+              <p>{{ path.description || 'Explore the concepts and learning content in this path.' }}</p>
+              <span class="path-open">Explore path <i class="pi pi-arrow-right" aria-hidden="true" /></span>
+            </RouterLink>
+          </li>
+        </ul>
+        <div v-else class="empty" role="status"><h2>No matching Concept Paths</h2><p>Try another name or description.</p></div>
+      </div>
+      <div v-else-if="tree && selected" class="workspace has-selection" :aria-busy="saving">
         <div ref="gallery" class="tree-gallery">
           <section v-for="root in visibleRoots" :key="root.id" class="family-chart" :aria-label="`${root.name} tree`">
             <div class="family-toolbar">
@@ -312,7 +333,7 @@ function remove() {
           </section>
         </div>
         <aside v-if="selected" class="details" aria-label="Selected concept details">
-          <div class="detail-heading"><span>{{ !selected.parentId ? 'Technical family' : nodes.some(n => n.parentId === selected!.id) ? 'Concept node' : 'Concept leaf' }}</span><Button icon="pi pi-times" text aria-label="Close details" @click="selectElement('')" /></div>
+          <div class="detail-heading"><span>{{ !selected.parentId ? 'Concept Path' : nodes.some(n => n.parentId === selected!.id) ? 'Concept node' : 'Concept leaf' }}</span><Button icon="pi pi-times" text aria-label="Close details" @click="selectElement('')" /></div>
           <h2>{{ selected.name }}</h2>
           <div class="header-actions">
             <RouterLink :to="conceptTreeLink(discipline.activeDisciplineId, selected.id)" class="element-link">Element link</RouterLink>
@@ -361,7 +382,7 @@ function remove() {
       <p v-if="saving" role="status" class="hint">Saving changes…</p>
     </div>
 
-    <Dialog :visible="canManage && dialog !== null" modal :header="dialog === 'move' ? 'Move branch' : editingId ? 'Edit concept and links' : draft.parentId ? 'Add child concept' : 'New technical family'" :style="{ width: '36rem', maxWidth: '95vw' }" :closable="!saving" @update:visible="value => { if (!value && !saving) dialog = null }">
+    <Dialog :visible="canManage && dialog !== null" modal :header="dialog === 'move' ? 'Move branch' : editingId ? 'Edit concept and links' : draft.parentId ? 'Add child concept' : 'New Concept Path'" :style="{ width: '36rem', maxWidth: '95vw' }" :closable="!saving" @update:visible="value => { if (!value && !saving) dialog = null }">
       <Message v-if="error" severity="error" :closable="false" class="feedback">{{ error }}</Message>
       <form v-if="dialog === 'edit'" class="node-form" @submit.prevent="saveNode">
         <label for="concept-name">Name</label>
@@ -377,9 +398,9 @@ function remove() {
         <div class="form-actions"><Button label="Cancel" text :disabled="saving" @click="dialog = null" /><Button type="submit" label="Save" :loading="saving" :disabled="!editable || !draft.name.trim()" /></div>
       </form>
       <form v-else-if="dialog === 'move'" class="node-form" @submit.prevent="move(editingId, destination)">
-        <p>The element, all descendants, and their links move together. Choose any node or make this branch a new family.</p>
+        <p>The element, all descendants, and their links move together. Choose any node or make this branch a new path.</p>
         <label id="destination-label" for="concept-destination">Destination</label>
-        <Select label-id="concept-destination" aria-labelledby="destination-label" placeholder="Top level (new family)" v-model="destination" :options="moveOptions" option-label="name" option-value="id" filter :disabled="saving" />
+        <Select label-id="concept-destination" aria-labelledby="destination-label" placeholder="Top level (new path)" v-model="destination" :options="moveOptions" option-label="name" option-value="id" filter :disabled="saving" />
         <div class="form-actions"><Button label="Cancel" text :disabled="saving" @click="dialog = null" /><Button type="submit" label="Move branch" :loading="saving" :disabled="!editable || destination === nodes.find(n => n.id === editingId)?.parentId" /></div>
       </form>
     </Dialog>
@@ -387,6 +408,17 @@ function remove() {
 </template>
 
 <style scoped>
+.back-to-paths { display: inline-flex; align-items: center; gap: .5rem; margin-bottom: 1rem; color: var(--p-primary-color, #34d399); font-size: .85rem; }
+.path-search { width: min(100%, 24rem); }
+.path-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 1rem; list-style: none; padding: 0; margin: 1.25rem 0; }
+.path-tile { display: flex; flex-direction: column; align-items: flex-start; gap: .75rem; height: 100%; padding: 1.5rem; border: 1px solid #35353e; border-radius: 12px; background: #1c1c22; color: #f4f4f5; text-decoration: none; overflow-wrap: anywhere; }
+.path-tile:hover { border-color: var(--p-primary-color, #34d399); background: #202027; }
+.path-tile:focus-visible { outline: 2px solid var(--p-primary-color, #34d399); outline-offset: 3px; }
+.path-icon { color: var(--p-primary-color, #34d399); font-size: 1.4rem; padding: .75rem; background: #27272f; border-radius: 10px; }
+.path-tile h2 { font-size: 1.15rem; margin: .25rem 0 0; }
+.path-tile p { margin: 0 0 .5rem; color: #a1a1aa; font-size: .85rem; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.path-open { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; margin-top: auto; color: var(--p-primary-color, #34d399); font-size: .8rem; }
+
 .element-link { color: var(--p-primary-color, #34d399); font-size: .85rem; }
 .curriculum-selector { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
 .curriculum-selector label { font-size: .8rem; }
@@ -395,7 +427,6 @@ function remove() {
 .read-only-badge { display: inline-flex; align-items: center; gap: .4rem; font-size: .75rem; color: #a1a1aa; }
 .view-mode-link { color: var(--p-primary-color, #34d399); font-size: .8rem; }
 .tree-gallery { min-width: 0; }
-.family-chart + .family-chart { border-top: 1px solid #35353e; }
 .family-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; padding: 1rem; background: #1c1c22; }
 .family-toolbar h2 { font-size: .95rem; margin: 0; overflow-wrap: anywhere; }
 .layout-controls { font-size: .75rem; }

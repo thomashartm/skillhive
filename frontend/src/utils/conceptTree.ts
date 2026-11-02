@@ -2,7 +2,7 @@ import type { ConceptNode } from '../types/concepts'
 
 // IDs, rather than names or parent paths, keep links stable after renames/moves.
 export function conceptTreeLink(disciplineId: string, nodeId = '', readOnly = true): string {
-  const base = `/concept-trees${readOnly ? '/view' : ''}`
+  const base = `/concept-paths${readOnly ? '/view' : ''}`
   if (!disciplineId) return base
   return `${base}/${encodeURIComponent(disciplineId)}${nodeId ? `/${encodeURIComponent(nodeId)}` : ''}`
 }

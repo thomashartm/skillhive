@@ -20,14 +20,14 @@ watch(() => [props.curriculumId, props.disciplineId], async () => {
       .filter(node => node.curriculumIds?.includes(props.curriculumId))
       .map(node => ({ id: node.id, label: nodePath(tree.nodes, node) }))
   } catch {
-    if (sequence === current) error.value = 'Could not load linked concept trees.'
+    if (sequence === current) error.value = 'Could not load linked concept paths.'
   }
 }, { immediate: true })
 </script>
 
 <template>
-  <section v-if="links.length || error" class="concept-links" aria-label="Linked concept trees">
-    <h2>Concept trees</h2>
+  <section v-if="links.length || error" class="concept-links" aria-label="Linked concept paths">
+    <h2>Concept Paths</h2>
     <p v-if="error" role="status">{{ error }}</p>
     <ul v-else>
       <li v-for="link in links" :key="link.id">

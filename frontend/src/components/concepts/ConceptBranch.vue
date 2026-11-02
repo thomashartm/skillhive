@@ -49,7 +49,7 @@ function drop(event: DragEvent) {
         @drop.prevent.stop="drop"
       >
         <span class="kind"><i :class="!node.parentId ? 'pi pi-sitemap' : children.length ? 'pi pi-folder' : 'pi pi-circle'" />
-          {{ !node.parentId ? 'Family' : children.length ? 'Node' : 'Leaf' }}
+          {{ !node.parentId ? 'Path' : children.length ? 'Node' : 'Leaf' }}
         </span>
         <strong>{{ node.name }}</strong>
         <span v-if="node.description" class="description">{{ node.description }}</span>

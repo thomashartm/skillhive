@@ -6,7 +6,7 @@ Training content management platform for organizing video instructionals into st
 
 - Collect and organize video links from YouTube and other platforms
 - Tag and categorize techniques with hierarchical categories
-- Build visual concept trees with technical families, branches, linked techniques and assets
+- Build visual concept paths with technical families, branches, linked techniques and assets
 - Build ordered curricula from techniques, video assets, and text notes
 - Share public curricula with others
 - YouTube metadata auto-extraction via oEmbed
@@ -18,14 +18,14 @@ Training content management platform for organizing video instructionals into st
 <img width="800" height="515" alt="curricula" src="https://github.com/user-attachments/assets/628bc616-09ae-4e06-b388-c50e8df24ae0" />
 
 ### Curriculum Builder
-A curriculum is an ordered training plan. Mix text notes, techniques, and videos, give each step a duration, and drag to reorder. Linked concept tree branches show at the top.
+A curriculum is an ordered training plan. Mix text notes, techniques, and videos, give each step a duration, and drag to reorder. Linked concept path branches show at the top.
 
 <img width="800" alt="curriculum builder" src="docs/screenshots/curriculum.png" />
 
-### Concept Trees
-Concept trees map a technical family (for example, Bottom Half Guard) as branches and leaves. Each element links to techniques, videos, and curricula, so you can see how a position fits together and jump to what to train.
+### Concept Paths
+Concept Paths map a technical family (for example, Bottom Half Guard) as branches and leaves. Each element links to techniques, videos, and curricula, so you can see how a position fits together and jump to what to train.
 
-<img width="800" alt="concept trees" src="docs/screenshots/concept-tree.png" />
+<img width="800" alt="concept paths" src="docs/screenshots/concept-tree.png" />
 
 ### Video Asset Management
 <img width="800" height="461" alt="assets" src="https://github.com/user-attachments/assets/6057e1d1-2684-404f-b34a-9a2fe5255141" />
@@ -224,7 +224,7 @@ All `/api/v1/*` routes require a Firebase Auth token in the `Authorization: Bear
 | Health | `GET /healthz` |
 | Disciplines | `GET /api/v1/disciplines` |
 | Tags | `GET, POST /api/v1/tags` | `GET, PATCH, DELETE /api/v1/tags/{id}` |
-| Concept trees | `GET, PUT /api/v1/concept-trees?disciplineId=...` (PUT requires a discipline admin) |
+| Concept Paths | `GET, PUT /api/v1/concept-trees?disciplineId=...` (PUT requires a discipline admin) |
 | Categories | `GET, POST /api/v1/categories` | `GET, PATCH, DELETE /api/v1/categories/{id}` |
 | Techniques | `GET, POST /api/v1/techniques` | `GET, PATCH, DELETE /api/v1/techniques/{id}` |
 | Assets | `GET, POST /api/v1/assets` | `GET, PATCH, DELETE /api/v1/assets/{id}` |
@@ -246,7 +246,7 @@ All `/api/v1/*` routes require a Firebase Auth token in the `Authorization: Bear
 | `/` | DashboardView | Quick stats, recent curricula, quick-save video |
 | `/login` | LoginView | Firebase Auth (Google + email/password) |
 | `/tags` | TagsView | Tag management with color picker |
-| `/concept-trees` | ConceptTreesView | Visual technical families with admin editing and branch moves |
+| `/concept-paths` | ConceptTreesView | Searchable path tiles; select a path to open its tree and admin editor |
 | `/categories` | CategoriesView | Hierarchical category tree |
 | `/techniques` | TechniquesView | Technique list with search and filters |
 | `/techniques/:id` | TechniqueDetailView | Technique detail with edit/delete |
@@ -257,17 +257,17 @@ All `/api/v1/*` routes require a Firebase Auth token in the `Authorization: Bear
 | `/curricula/public` | PublicCurriculaView | Browse public curricula |
 | `/curricula/:id` | CurriculumDetailView | Curriculum builder (add/reorder/delete elements) |
 
-### Concept trees
+### Concept Paths
 
-Open **Concept trees** and select a discipline. Admins can create a family, use the Edit button on any family, node, or leaf to change its name, description, and links, and select a card to add children. A node becomes a leaf when it has no children.
+Open **Concept Paths** and select a discipline. Browse or search the path tiles, then select one to open its tree. **All Concept Paths** returns to the tile list. Admins can create a path, use the Edit button on any family, node, or leaf to change its name, description, and links, and select a card to add children. A node becomes a leaf when it has no children.
 
-Every family, node, and leaf has a stable URL: `/concept-trees/view/<discipline-id>/<element-id>`. Selecting a family or element updates the address; **Copy link** copies its read-only URL for use in categories, curriculum descriptions, or other pages. Opening a link selects the correct discipline and family and highlights the element. Links survive renames and moves; deleted elements show a not-found message. Previously shared query-string links redirect to the new path format. Sign-in is still required. Browser Back and Forward restore the selection, and **Edit trees** / **Read-only preview** retain it.
+Every family, node, and leaf has a stable URL: `/concept-paths/view/<discipline-id>/<element-id>`. Selecting a family or element updates the address; **Copy link** copies its read-only URL for use in categories, curriculum descriptions, or other pages. Opening a link selects the correct discipline and family and highlights the element. Links survive renames and moves; deleted elements show a not-found message. Previously shared `/concept-trees` URLs and query-string links redirect to the new path format. Sign-in is still required. Browser Back and Forward restore the selection, and **Edit paths** / **Read-only preview** retain it.
 
 Select any family, node, or leaf, then use **Linked curricula** in its details panel to associate curricula from the same discipline. Changes save automatically. The same field is also available through **Edit / link → Curricula**. In read-only preview, admins can choose **Edit curriculum links** to open the editable panel. Selected elements list their curricula, and each curriculum detail page shows links back to all associated tree elements. Removing an association does not delete the curriculum.
 
 Each family has its own saved orientation (top to bottom or left to right) and alignment (left, center, or right). Set these in the toolbar above the family chart. Existing families default to a centered, top-to-bottom layout.
 
-Non-admins open the read-only rendered charts at `/concept-trees/view`. They can select elements, follow technique, asset, and curriculum links, filter families, zoom, and collapse branches. Admins can use **Read-only preview** to see the same presentation without editing or dragging controls.
+Non-admins browse the read-only path tiles at `/concept-paths/view`. Opening a tile renders only that path. They can select elements, follow technique, asset, and curriculum links, switch paths, zoom, and collapse branches. Admins can use **Read-only preview** to see the same presentation without editing or dragging controls.
 
 Move an entire branch by dragging its card onto another card, or use **Move** in the details panel. The destination can be in another family; choosing **Top level** creates a family from that branch. Deleting a branch removes its descendants and their links from the chart, while keeping the linked techniques, assets, and curricula in the library. Viewers and editors can browse the chart, collapse branches, filter families, and follow links.
 

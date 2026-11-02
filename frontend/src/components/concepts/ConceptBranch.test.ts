@@ -13,7 +13,7 @@ describe('ConceptBranch', () => {
   it('renders three levels, emits selection, and collapses a branch accessibly', async () => {
     const wrapper = mount(ConceptBranch, { props: { node: nodes[0]!, nodes, selectedId: '', editable: true } })
     expect(wrapper.findAll('.concept-card')).toHaveLength(3)
-    expect(wrapper.findAll('.kind').map(n => n.text())).toEqual(['Family', 'Node', 'Leaf'])
+    expect(wrapper.findAll('.kind').map(n => n.text())).toEqual(['Path', 'Node', 'Leaf'])
     await wrapper.findAll('.concept-card')[2]!.trigger('click')
     expect(wrapper.emitted('select')).toEqual([['leaf']])
     const toggle = wrapper.get('[aria-label="Collapse Pressure"]')
