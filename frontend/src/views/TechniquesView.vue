@@ -39,8 +39,23 @@
       />
     </div>
 
+    <div class="alphabet-filter" role="group" aria-label="Filter techniques by first letter">
+      <Button
+        v-for="letter in alphabet"
+        :key="letter"
+        :label="letter"
+        :aria-label="letter === '#' ? 'Names starting with numbers or other characters' : undefined"
+        :aria-pressed="selectedLetter === letter"
+        :severity="selectedLetter === letter ? 'primary' : 'secondary'"
+        :outlined="selectedLetter !== letter"
+        size="small"
+        @click="selectedLetter = letter"
+      />
+    </div>
+
     <TechniqueList
-      :techniques="techniques"
+      :key="selectedLetter"
+      :techniques="filteredTechniques"
       :categories="categories"
       :loading="loading"
       @edit="handleEdit"
@@ -102,6 +117,13 @@ const searchTerm = ref('')
 const debouncedSearch = useDebouncedRef(searchTerm, 300)
 const selectedCategoryId = ref<string | null>(null)
 const selectedTagId = ref<string | null>(null)
+const alphabet = ['All', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '#']
+const selectedLetter = ref('All')
+const filteredTechniques = computed(() => techniques.value.filter(technique => {
+  if (selectedLetter.value === 'All') return true
+  const name = technique.name.trim().normalize('NFD').replace(/\p{M}/gu, '').toUpperCase()
+  return selectedLetter.value === '#' ? !/^[A-Z]/.test(name) : name.startsWith(selectedLetter.value)
+}))
 
 const categoryOptions = computed(() => [
   { label: 'All Categories', value: null },
@@ -237,6 +259,17 @@ watch(activeDisciplineId, () => {
 </script>
 
 <style scoped>
+.alphabet-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.alphabet-filter :deep(button) {
+  min-width: 2rem;
+}
+
 .filter-bar {
   display: flex;
   gap: 0.75rem;
