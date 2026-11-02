@@ -4,10 +4,15 @@
     :loading="loading"
     striped-rows
     paginator
-    :rows="10"
+    :first="first"
+    :rows="rows"
+    :sort-field="sortField"
+    :sort-order="sortOrder"
     :rows-per-page-options="[10, 25, 50]"
     responsive-layout="scroll"
     class="technique-list"
+    @page="emit('page', $event)"
+    @sort="emit('sort', $event)"
   >
     <template #empty>
       <div class="text-center py-8 text-slate-400">
@@ -76,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import DataTable from 'primevue/datatable'
+import DataTable, { type DataTablePageEvent, type DataTableSortEvent } from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import type { Technique, Category } from '../../types'
@@ -88,6 +93,10 @@ interface Props {
   techniques: Technique[]
   categories: Category[]
   loading?: boolean
+  first: number
+  rows: number
+  sortField?: string
+  sortOrder?: number
 }
 
 const props = defineProps<Props>()
@@ -97,6 +106,8 @@ const emit = defineEmits<{
   delete: [technique: Technique]
   view: [technique: Technique]
   filterCategory: [categoryId: string]
+  page: [event: DataTablePageEvent]
+  sort: [event: DataTableSortEvent]
 }>()
 
 const truncateText = (text: string | undefined, maxLength: number): string => {

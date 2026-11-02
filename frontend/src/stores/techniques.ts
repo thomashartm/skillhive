@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { reactive, ref } from 'vue'
 import type { Technique } from '../types'
 import { useApi } from '../composables/useApi'
 import { useDisciplineStore } from './discipline'
@@ -7,6 +7,16 @@ import { useDisciplineStore } from './discipline'
 export const useTechniqueStore = defineStore('techniques', () => {
   const techniques = ref<Technique[]>([])
   const loading = ref(false)
+  const listState = reactive({
+    searchTerm: '',
+    selectedCategoryId: null as string | null,
+    selectedTagId: null as string | null,
+    selectedLetter: 'All',
+    first: 0,
+    rows: 10,
+    sortField: undefined as string | undefined,
+    sortOrder: undefined as number | undefined,
+  })
 
   async function fetchTechniques(params?: {
     categoryId?: string
@@ -74,5 +84,5 @@ export const useTechniqueStore = defineStore('techniques', () => {
     techniques.value = techniques.value.filter((t) => t.id !== id)
   }
 
-  return { techniques, loading, fetchTechniques, getTechnique, createTechnique, updateTechnique, deleteTechnique }
+  return { techniques, loading, listState, fetchTechniques, getTechnique, createTechnique, updateTechnique, deleteTechnique }
 })
