@@ -20,7 +20,7 @@ vi.mock('primevue/useconfirm', () => ({ useConfirm: () => ({ require: vi.fn() })
 const root = { id: 'family', parentId: '', name: 'Passing', description: '', curriculumIds: ['course'], techniqueIds: ['tech'], assetIds: ['asset'], layout: { orientation: 'horizontal', alignment: 'end' } }
 const forest = { disciplineId: 'bjj', revision: 2, nodes: [root] }
 let router: Router
-async function render(readOnly = false, url = '/concept-trees') {
+async function render(readOnly = false, url = '/concept-paths/bjj/family') {
   router = createRouter({ history: createMemoryHistory(), routes: [
     ...conceptTreeRoutes.map(route => ({ ...route, path: `/${route.path}`, component: {} })),
     { path: '/:pathMatch(.*)*', component: {} },
@@ -129,15 +129,15 @@ describe('concept tree URLs and curriculum associations', () => {
   it('opens a leaf in the URL discipline and retains that context in share and edit links', async () => {
     mocks.discipline.activeDisciplineId = 'jkd'
     mocks.get.mockImplementation(async (url: string) => url.includes('concept-trees') ? { ...forest, nodes: [root, branch, leaf, secondFamily] } : [])
-    const wrapper = await render(true, '/concept-trees/view/bjj/leaf')
+    const wrapper = await render(true, '/concept-paths/view/bjj/leaf')
     await flushPromises()
     expect(mocks.discipline.activeDisciplineId).toBe('bjj')
     expect(mocks.get).toHaveBeenCalledWith('/api/v1/concept-trees?disciplineId=bjj')
     expect(wrapper.get('.details h2').text()).toBe('Knee cut')
     expect(wrapper.findAll('.family-chart')).toHaveLength(1)
     expect(wrapper.get('.breadcrumb').text()).toBe('Passing / Pressure / Knee cut')
-    expect(wrapper.get('a.view-mode-link').attributes('href')).toBe('/concept-trees/bjj/leaf')
-    expect(wrapper.get('.details a.element-link').attributes('href')).toBe('/concept-trees/view/bjj/leaf')
+    expect(wrapper.get('a.view-mode-link').attributes('href')).toBe('/concept-paths/bjj/leaf')
+    expect(wrapper.get('.details a.element-link').attributes('href')).toBe('/concept-paths/view/bjj/leaf')
     wrapper.unmount()
   })
   it('restores family and element selection on browser back and forward without refetching', async () => {
@@ -147,7 +147,7 @@ describe('concept tree URLs and curriculum associations', () => {
     wrapper.getComponent(ConceptBranch).vm.$emit('select', 'leaf')
     await flushPromises()
     expect(router.currentRoute.value.params.nodeId).toBe('leaf')
-    const filter = wrapper.findAllComponents({ name: 'Select' }).find(s => s.props('ariaLabel') === 'Filter by family')!
+    const filter = wrapper.findAllComponents({ name: 'Select' }).find(s => s.props('ariaLabel') === 'Choose Concept Path')!
     filter.vm.$emit('update:modelValue', 'other')
     await flushPromises()
     expect(wrapper.get('.details h2').text()).toBe('Guard')
@@ -162,30 +162,30 @@ describe('concept tree URLs and curriculum associations', () => {
   })
   it('resolves an existing URL after a branch is moved and renamed', async () => {
     mocks.get.mockImplementation(async (url: string) => url.includes('concept-trees') ? { ...forest, nodes: [root, { ...branch, parentId: 'other', name: 'Renamed' }, leaf, secondFamily] } : [])
-    const wrapper = await render(true, '/concept-trees/view/bjj/leaf')
+    const wrapper = await render(true, '/concept-paths/view/bjj/leaf')
     await flushPromises()
     expect(wrapper.get('.family-toolbar h2').text()).toBe('Guard')
     expect(wrapper.get('.breadcrumb').text()).toBe('Guard / Renamed / Knee cut')
     wrapper.unmount()
   })
   it('shows a useful message for a deleted element and allows returning to all families', async () => {
-    const wrapper = await render(true, '/concept-trees/view/bjj/deleted')
+    const wrapper = await render(true, '/concept-paths/view/bjj/deleted')
     await flushPromises()
-    expect(wrapper.text()).toContain('Tree element not found')
-    const button = wrapper.findAll('button').find(b => b.text() === 'Show all families')!
+    expect(wrapper.text()).toContain('Path element not found')
+    const button = wrapper.findAll('button').find(b => b.text() === 'All Concept Paths')!
     await button.trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.params.nodeId).toBeFalsy()
-    expect(wrapper.get('.concept-card').text()).toContain('Passing')
+    expect(wrapper.get('.path-tile').text()).toContain('Passing')
     wrapper.unmount()
   })
   it('clears the URL selection when changing disciplines and restores it on back navigation', async () => {
     mocks.get.mockImplementation(async (url: string) => url.includes('concept-trees') ? { ...forest, disciplineId: url.includes('jkd') ? 'jkd' : 'bjj' } : [])
-    const wrapper = await render(true, '/concept-trees/view/bjj/family')
+    const wrapper = await render(true, '/concept-paths/view/bjj/family')
     await flushPromises()
     mocks.discipline.setActiveDiscipline('jkd')
     await flushPromises()
-    expect(router.currentRoute.value.path).toBe('/concept-trees/view/jkd')
+    expect(router.currentRoute.value.path).toBe('/concept-paths/view/jkd')
     expect(router.currentRoute.value.query).toEqual({})
     expect(wrapper.find('.details').exists()).toBe(false)
     router.back()
@@ -198,7 +198,7 @@ describe('concept tree URLs and curriculum associations', () => {
     const data = { ...forest, nodes: [root, branch, leaf].map(n => ({ ...n, curriculumIds: [] })) }
     mocks.get.mockImplementation(async (url: string) => url.includes('concept-trees') ? structuredClone(data) : url.includes('curricula') ? [{ id: 'course', title: 'Passing curriculum' }] : [])
     mocks.put.mockImplementation(async (_url, body) => ({ ...data, nodes: body.nodes, revision: body.revision + 1 }))
-    const wrapper = await render(false, `/concept-trees/bjj/${id}`)
+    const wrapper = await render(false, `/concept-paths/bjj/${id}`)
     await flushPromises()
     const edit = wrapper.findAll('button').find(b => b.text() === 'Edit / link')!
     await edit.trigger('click')
@@ -221,21 +221,21 @@ describe('concept tree URLs and curriculum associations', () => {
 })
 
 describe('path URLs and visible curriculum selector', () => {
-  it.each(['/concept-trees', '/concept-trees/view'])('redirects old %s query links to a path URL', async path => {
+  it.each(['/concept-trees', '/concept-trees/view', '/concept-paths', '/concept-paths/view'])('redirects old %s query links to a path URL', async path => {
     const wrapper = await render(path.endsWith('/view'), `${path}?disciplineId=bjj&nodeId=family`)
     await flushPromises()
-    expect(router.currentRoute.value.path).toBe(`${path}/bjj/family`)
+    expect(router.currentRoute.value.path).toBe(`${path.replace('concept-trees', 'concept-paths')}/bjj/family`)
     expect(router.currentRoute.value.query).toEqual({})
     expect(wrapper.get('.details h2').text()).toBe('Passing')
     wrapper.unmount()
   })
   it('handles legacy links while already viewing another element', async () => {
     mocks.get.mockImplementation(async (url: string) => url.includes('concept-trees') ? { ...forest, nodes: [root, branch, leaf] } : [])
-    const wrapper = await render(true, '/concept-trees/view/bjj/family')
+    const wrapper = await render(true, '/concept-paths/view/bjj/family')
     await flushPromises()
-    await router.push('/concept-trees/view?disciplineId=bjj&nodeId=leaf')
+    await router.push('/concept-paths/view?disciplineId=bjj&nodeId=leaf')
     await flushPromises()
-    expect(router.currentRoute.value.fullPath).toBe('/concept-trees/view/bjj/leaf')
+    expect(router.currentRoute.value.fullPath).toBe('/concept-paths/view/bjj/leaf')
     expect(wrapper.get('.details h2').text()).toBe('Knee cut')
     wrapper.unmount()
   })
@@ -243,7 +243,7 @@ describe('path URLs and visible curriculum selector', () => {
     const data = { ...forest, nodes: [root, branch, leaf].map(n => ({ ...n, curriculumIds: [] })) }
     mocks.get.mockImplementation(async (url: string) => url.includes('concept-trees') ? structuredClone(data) : url.includes('curricula') ? [{ id: 'course', title: 'Passing curriculum' }] : [])
     mocks.put.mockImplementation(async (_url, body) => ({ ...data, nodes: body.nodes, revision: body.revision + 1 }))
-    const wrapper = await render(false, `/concept-trees/bjj/${id}`)
+    const wrapper = await render(false, `/concept-paths/bjj/${id}`)
     await flushPromises()
     const selector = wrapper.getComponent({ name: 'MultiSelect' })
     expect(selector.props('inputId')).toBe('linked-curricula')
@@ -260,7 +260,7 @@ describe('path URLs and visible curriculum selector', () => {
   })
   it('restores the saved curriculum selection if an inline change fails', async () => {
     mocks.put.mockRejectedValue(new Error('Reload before trying again.'))
-    const wrapper = await render(false, '/concept-trees/bjj/family')
+    const wrapper = await render(false, '/concept-paths/bjj/family')
     await flushPromises()
     const selector = wrapper.getComponent({ name: 'MultiSelect' })
     selector.vm.$emit('update:modelValue', [])
@@ -272,11 +272,59 @@ describe('path URLs and visible curriculum selector', () => {
     wrapper.unmount()
   })
   it('offers admins a direct way to edit curriculum links from read-only details', async () => {
-    const wrapper = await render(true, '/concept-trees/view/bjj/family')
+    const wrapper = await render(true, '/concept-paths/view/bjj/family')
     await flushPromises()
     const link = wrapper.findAll('a').find(a => a.text() === 'Edit curriculum links')!
-    expect(link.attributes('href')).toBe('/concept-trees/bjj/family')
+    expect(link.attributes('href')).toBe('/concept-paths/bjj/family')
     expect(wrapper.find('.curriculum-selector').exists()).toBe(false)
+    wrapper.unmount()
+  })
+})
+
+
+describe('Concept Paths directory', () => {
+  it.each([false, true])('lists tiles and renders only the opened path (readOnly %s)', async readOnly => {
+    mocks.get.mockImplementation(async (url: string) => url.includes('concept-trees') ? { ...forest, nodes: [root, branch, leaf, secondFamily] } : [])
+    const wrapper = await render(readOnly, readOnly ? '/concept-paths/view' : '/concept-paths')
+    await flushPromises()
+    expect(wrapper.get('h1').text()).toBe('Concept Paths')
+    expect(wrapper.findAll('.path-tile')).toHaveLength(2)
+    expect(wrapper.findComponent(ConceptBranch).exists()).toBe(false)
+    expect(wrapper.find('.zoom-controls').exists()).toBe(false)
+    await wrapper.get('.path-tile').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe(readOnly ? '/concept-paths/view/bjj/family' : '/concept-paths/bjj/family')
+    expect(wrapper.findAll('.family-chart')).toHaveLength(1)
+    expect(wrapper.findAll('.concept-card').map(card => card.text()).join(' ')).toContain('Knee cut')
+    expect(wrapper.findAll('.concept-card').map(card => card.text()).join(' ')).not.toContain('Guard')
+    await wrapper.get('a.back-to-paths').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('.path-tile')).toHaveLength(2)
+    expect(wrapper.findComponent(ConceptBranch).exists()).toBe(false)
+    router.back()
+    await flushPromises()
+    expect(wrapper.findAll('.family-chart')).toHaveLength(1)
+    wrapper.unmount()
+  })
+  it('filters tiles by name or description and recovers from no matches', async () => {
+    mocks.get.mockImplementation(async (url: string) => url.includes('concept-trees') ? { ...forest, nodes: [root, { ...secondFamily, description: 'Frames and escapes' }] } : [])
+    const wrapper = await render(true, '/concept-paths/view')
+    await flushPromises()
+    const search = wrapper.get('input[aria-label="Search Concept Paths"]')
+    await search.setValue('  FRAMES ')
+    expect(wrapper.findAll('.path-tile')).toHaveLength(1)
+    expect(wrapper.get('.path-tile').text()).toContain('Guard')
+    await search.setValue('missing')
+    expect(wrapper.findAll('.path-tile')).toHaveLength(0)
+    expect(wrapper.text()).toContain('No matching Concept Paths')
+    await search.setValue('pass')
+    expect(wrapper.get('.path-tile').text()).toContain('Passing')
+    wrapper.unmount()
+  })
+  it.each(['/concept-trees', '/concept-trees/view', '/concept-trees/bjj/family', '/concept-trees/view/bjj/family'])('keeps old bookmarks working: %s', async path => {
+    const wrapper = await render(path.includes('/view'), `${path}?keep=yes#links`)
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe(`${path.replace('concept-trees', 'concept-paths')}?keep=yes#links`)
     wrapper.unmount()
   })
 })

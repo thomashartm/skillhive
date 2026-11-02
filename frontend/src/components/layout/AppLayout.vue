@@ -17,7 +17,7 @@ const mobileMenuOpen = ref(false)
 const baseNavItems = [
   { label: 'Dashboard', icon: 'pi pi-home', to: '/', exact: true },
   { label: 'Curricula', icon: 'pi pi-book', to: '/curricula', exact: true },
-  { label: 'Concept trees', icon: 'pi pi-sitemap', to: '/concept-trees' },
+  { label: 'Concept Paths', icon: 'pi pi-sitemap', to: '/concept-paths' },
   { label: 'Techniques', icon: 'pi pi-bolt', to: '/techniques' },
   { label: 'Assets', icon: 'pi pi-video', to: '/assets' },
   { label: 'Categories', icon: 'pi pi-folder', to: '/categories' },
@@ -25,8 +25,8 @@ const baseNavItems = [
 ]
 
 const navItems = computed(() => {
-  const items = baseNavItems.map(item => item.to === '/concept-trees' && !authStore.isAdmin
-    ? { ...item, to: '/concept-trees/view' }
+  const items = baseNavItems.map(item => item.to === '/concept-paths' && !authStore.isAdmin
+    ? { ...item, to: '/concept-paths/view' }
     : item)
   if (authStore.isAdmin) {
     items.push({ label: 'Admin', icon: 'pi pi-users', to: '/admin', exact: true })
@@ -35,7 +35,7 @@ const navItems = computed(() => {
 })
 
 function isActive(item: { to: string; exact?: boolean }) {
-  if (item.to.startsWith('/concept-trees')) return route.path.startsWith('/concept-trees')
+  if (item.to.startsWith('/concept-paths')) return route.path.startsWith('/concept-paths')
   if (item.exact) return route.path === item.to
   return route.path.startsWith(item.to)
 }
