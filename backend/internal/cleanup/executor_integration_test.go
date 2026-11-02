@@ -4,11 +4,35 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"cloud.google.com/go/firestore"
 )
+
+func TestIntegration_MergePreservesTechniqueWithFlows(t *testing.T) {
+	fs, ctx := newEmulatorClient(t)
+	id := "flow_merge_" + uniqueSuffix()
+	source := fs.Collection("techniques").Doc(id)
+	target := fs.Collection("techniques").Doc(id + "_target")
+	for _, ref := range []*firestore.DocumentRef{source, target} {
+		if _, err := ref.Set(ctx, map[string]any{"disciplineId": id}); err != nil {
+			t.Fatal(err)
+		}
+		defer ref.Delete(ctx)
+	}
+	if _, err := source.Update(ctx, []firestore.Update{{Path: "flows", Value: map[string]any{"revision": 1, "diagrams": []map[string]any{{"id": "flow", "name": "Keep me"}}}}}); err != nil {
+		t.Fatal(err)
+	}
+	err := NewExecutor(fs).applyMerge(ctx, EntityTechnique, id, id+"_target")
+	if err == nil || !strings.Contains(err.Error(), "flow diagrams") {
+		t.Fatalf("want flow preservation error, got %v", err)
+	}
+	if _, err := source.Get(ctx); err != nil {
+		t.Fatalf("source was lost: %v", err)
+	}
+}
 
 // newEmulatorClient returns a Firestore client connected to the local
 // emulator. Tests skip cleanly if FIRESTORE_EMULATOR_HOST is not set so the

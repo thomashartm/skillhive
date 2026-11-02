@@ -182,6 +182,8 @@
       />
     </div>
 
+    <TechniqueFlows v-if="technique" :key="technique.id" :technique-id="technique.id" :discipline-id="technique.disciplineId" />
+
     <TechniqueForm
       :visible="showEditDialog"
       :technique="technique"
@@ -211,6 +213,7 @@ import Card from 'primevue/card'
 import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
 import MarkdownRenderer from '../components/common/MarkdownRenderer.vue'
+import TechniqueFlows from '../components/flows/TechniqueFlows.vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import TechniqueForm from '../components/techniques/TechniqueForm.vue'
