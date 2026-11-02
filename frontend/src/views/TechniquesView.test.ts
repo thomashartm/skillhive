@@ -40,6 +40,23 @@ async function render() {
 }
 
 describe('technique alphabet filter', () => {
+  it('shows descriptions and accessible category filters with each technique', async () => {
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url.includes('/techniques?')) return [{ ...techniques[0], description: 'Control the wrist and extend the elbow.', categoryIds: ['submissions'] }]
+      if (url.includes('/categories?')) return [{ id: 'submissions', name: 'Submissions' }]
+      return []
+    })
+    const wrapper = await render()
+    const row = wrapper.get('.technique-name').element.closest('tr')!
+    expect(row.textContent).toContain('Control the wrist and extend the elbow.')
+    expect(wrapper.get('.technique-name').attributes('href')).toBe('/techniques/0')
+    expect(wrapper.get('[role="status"]').text()).toBe('1 technique')
+    await wrapper.get('button[aria-label="Filter by Submissions"]').trigger('click')
+    await flushPromises()
+    expect(mocks.get).toHaveBeenLastCalledWith('/api/v1/techniques?disciplineId=bjj&categoryId=submissions')
+    wrapper.unmount()
+  })
+
   it('restores B, page size 50, page position, and sorting after detail and browser Back', async () => {
     const bridges = Array.from({ length: 120 }, (_, i) => ({ id: `b${i}`, name: `Bridge ${String(i).padStart(3, '0')}`, categoryIds: [], tagIds: [] }))
     mocks.get.mockImplementation(async (url: string) => url.includes('/techniques?') ? [...techniques, ...bridges] : [])

@@ -4,7 +4,7 @@
       <h1 class="view-title">Techniques</h1>
       <Button
         v-if="authStore.canEdit"
-        label="New Technique"
+        label="Add technique"
         icon="pi pi-plus"
         size="small"
         @click="openCreateDialog"
@@ -15,6 +15,7 @@
       <InputText
         v-model="searchTerm"
         placeholder="Search techniques..."
+        aria-label="Search techniques"
         class="filter-search"
       />
       <Dropdown
@@ -23,6 +24,7 @@
         option-label="label"
         option-value="value"
         placeholder="Category"
+        aria-label="Category"
         :show-clear="true"
         class="filter-dropdown"
         @change="handleFilterChange"
@@ -33,6 +35,7 @@
         option-label="label"
         option-value="value"
         placeholder="Tag"
+        aria-label="Tag"
         :show-clear="true"
         class="filter-dropdown"
         @change="handleFilterChange"
@@ -47,11 +50,15 @@
         :aria-label="letter === '#' ? 'Names starting with numbers or other characters' : undefined"
         :aria-pressed="selectedLetter === letter"
         :severity="selectedLetter === letter ? 'primary' : 'secondary'"
-        :outlined="selectedLetter !== letter"
+        text
         size="small"
         @click="selectedLetter = letter"
       />
     </div>
+
+    <p class="results-summary" role="status">
+      {{ loading ? 'Loading techniques…' : `${filteredTechniques.length} ${filteredTechniques.length === 1 ? 'technique' : 'techniques'}` }}
+    </p>
 
     <TechniqueList
       :techniques="filteredTechniques"
@@ -281,15 +288,28 @@ watch(activeDisciplineId, () => {
 </script>
 
 <style scoped>
+.techniques-view { max-width: 72rem; margin-inline: auto; }
+.results-summary { color: #a1a1aa; font-size: 0.8rem; margin: 1.25rem 0 0.5rem; }
+
 .alphabet-filter {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
-  margin-bottom: 1rem;
+  gap: 0.125rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #27272a;
 }
 
 .alphabet-filter :deep(button) {
   min-width: 2rem;
+  color: #a1a1aa;
+  border: 0;
+  border-bottom: 2px solid transparent;
+}
+
+.alphabet-filter :deep(button[aria-pressed="true"]) {
+  color: #6ee7b7;
+  border-bottom-color: #6ee7b7;
+  background: #6ee7b710;
 }
 
 .filter-bar {
@@ -300,11 +320,14 @@ watch(activeDisciplineId, () => {
 }
 
 .filter-search {
-  width: 16rem;
+  flex: 1;
+  min-width: 14rem;
+  background: #ffffff04;
 }
 
 .filter-dropdown {
   width: 12rem;
+  background: #ffffff04;
 }
 
 @media (max-width: 768px) {
@@ -315,6 +338,7 @@ watch(activeDisciplineId, () => {
   .filter-search,
   .filter-dropdown {
     width: 100%;
+    min-width: 0;
   }
 }
 </style>

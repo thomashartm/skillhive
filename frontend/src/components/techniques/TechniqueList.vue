@@ -2,7 +2,6 @@
   <DataTable
     :value="techniques"
     :loading="loading"
-    striped-rows
     paginator
     :first="first"
     :rows="rows"
@@ -16,63 +15,54 @@
   >
     <template #empty>
       <div class="text-center py-8 text-slate-400">
-        No techniques found
+        <p>No techniques found</p>
+        <p class="text-sm mt-2">Try another letter or adjust your search.</p>
       </div>
     </template>
 
     <Column field="name" header="Name" sortable>
       <template #body="{ data }">
         <a
+          :href="`/techniques/${data.id}`"
           class="technique-name"
-          @click.prevent="emit('view', data)"
+          @click.exact.prevent="emit('view', data)"
         >
           {{ data.name }}
         </a>
-      </template>
-    </Column>
-
-    <Column field="description" header="Description">
-      <template #body="{ data }">
-        <span class="text-sm text-slate-400">
-          {{ truncateText(data.description, 80) }}
-        </span>
-      </template>
-    </Column>
-
-    <Column header="Categories" style="width: 200px">
-      <template #body="{ data }">
-        <div class="flex flex-wrap gap-1">
-          <span
+        <p v-if="data.description" class="technique-description">{{ data.description }}</p>
+        <div v-if="data.categoryIds?.length" class="technique-categories">
+          <button
             v-for="cat in resolveCategories(data.categoryIds)"
             :key="cat.id"
+            type="button"
             class="category-chip"
+            :aria-label="`Filter by ${cat.name}`"
             @click.stop="emit('filterCategory', cat.id)"
           >
             {{ cat.name }}
-          </span>
-          <span v-if="!data.categoryIds?.length" class="text-xs text-slate-500">&mdash;</span>
+          </button>
         </div>
       </template>
     </Column>
 
-    <Column v-if="authStore.canEdit" header="" style="width: 80px">
+    <Column v-if="authStore.canEdit" header="" class="technique-actions-column">
       <template #body="{ data }">
-        <div class="flex gap-1 justify-end">
+        <div class="technique-actions">
           <Button
-            icon="pi pi-pencil"
+            label="Edit"
+            :aria-label="`Edit ${data.name}`"
             severity="secondary"
             size="small"
             text
             @click="emit('edit', data)"
-            v-tooltip.top="'Edit'"
           />
           <Button
-            icon="pi pi-trash"
+            label="Delete"
+            :aria-label="`Delete ${data.name}`"
             severity="danger"
             size="small"
             text
             @click="emit('delete', data)"
-            v-tooltip.top="'Delete'"
           />
         </div>
       </template>
@@ -110,12 +100,6 @@ const emit = defineEmits<{
   sort: [event: DataTableSortEvent]
 }>()
 
-const truncateText = (text: string | undefined, maxLength: number): string => {
-  if (!text) return ''
-  if (text.length <= maxLength) return text
-  return text.substring(0, maxLength) + '...'
-}
-
 const resolveCategories = (categoryIds: string[] | undefined): Category[] => {
   if (!categoryIds || !categoryIds.length) return []
   return props.categories.filter(c => categoryIds.includes(c.id))
@@ -128,32 +112,66 @@ const resolveCategories = (categoryIds: string[] | undefined): Category[] => {
 }
 
 .technique-name {
-  font-weight: 400;
-  font-size: 0.875rem;
+  font-weight: 600;
+  font-size: 1rem;
   color: #e2e8f0;
   cursor: pointer;
   text-decoration: none;
 }
 
-.technique-name:hover {
+.technique-name:hover, .technique-name:focus-visible {
   color: var(--primary-color);
 }
 
+.technique-description {
+  color: #a1a1aa;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  max-width: 80ch;
+  margin-top: 0.25rem;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.technique-categories { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem; }
 .category-chip {
-  display: inline-block;
-  padding: 0.1rem 0.5rem;
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0;
+  font: inherit;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  background: none;
+  border: 0;
   cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s ease, color 0.15s ease;
+  text-align: left;
 }
 
-.category-chip:hover {
-  background: rgba(255, 255, 255, 0.15);
+.category-chip:hover, .category-chip:focus-visible {
   color: var(--primary-color);
+  text-decoration: underline;
+}
+
+.technique-actions { display: flex; justify-content: flex-end; }
+:deep(.technique-actions-column) { width: 8rem; }
+:deep(.p-datatable-thead > tr > th) {
+  background: transparent;
+  color: #a1a1aa;
+  font-weight: 400;
+  font-size: 0.8rem;
+  padding: 0.5rem 0.25rem;
+  border-color: #27272a;
+}
+:deep(.p-datatable-tbody > tr) { background: transparent; }
+:deep(.p-datatable-tbody > tr > td) {
+  padding: 1rem 0.25rem;
+  vertical-align: top;
+  border-color: #27272a;
+}
+:deep(.p-paginator) { background: transparent; padding-top: 1rem; }
+@media (max-width: 600px) {
+  .technique-actions { flex-direction: column; align-items: flex-end; }
+  :deep(.technique-actions-column) { width: 4rem; }
 }
 </style>
