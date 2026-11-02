@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
+import Menu from 'primevue/menu'
 import Message from 'primevue/message'
 import { useConfirm } from 'primevue/useconfirm'
 import FlowCanvas from './FlowCanvas.vue'
@@ -34,11 +35,17 @@ const edgeId = ref('')
 const sourceId = ref('')
 const targetId = ref('')
 const condition = ref('')
+const stepMenu = ref<InstanceType<typeof Menu>>()
 let loadSequence = 0
 const canEdit = computed(() => ['editor', 'admin'].includes(auth.getRoleForDiscipline(props.disciplineId)))
 const editable = computed(() => canEdit.value && loaded.value && !loading.value && !saving.value)
 const dirty = computed(() => JSON.stringify(flows.value.diagrams) !== baseline.value)
 const diagram = computed(() => flows.value.diagrams.find(d => d.id === diagramId.value))
+const stepMenuItems = computed(() => stepTypes.map(type => ({
+  label: `Add ${type.label.toLowerCase()}`, icon: type.icon,
+  disabled: !editable.value || (diagram.value?.nodes.length ?? 0) >= 200,
+  command: () => addStep(type.value),
+})))
 const node = computed(() => diagram.value?.nodes.find(n => n.id === nodeId.value))
 const edge = computed(() => diagram.value?.edges.find(e => e.id === edgeId.value))
 const media = computed(() => assets.value.find(a => a.id === node.value?.assetId))
@@ -207,15 +214,16 @@ function safeMediaURL(url: string | null | undefined) {
           <Button label="Delete diagram" severity="danger" text :disabled="!editable" @click="deleteDiagram" />
         </div>
         <div v-if="canEdit" class="flex flex-wrap gap-2 mb-2" role="group" aria-label="Add a step">
-          <Button v-for="type in stepTypes" :key="type.value" :label="`Add ${type.label.toLowerCase()}`" icon="pi pi-plus" severity="secondary" size="small"
-            :disabled="!editable || diagram.nodes.length >= 200" @click="addStep(type.value)" />
+          <Button label="Add step" aria-label="Add a step" icon="pi pi-plus" severity="secondary" size="small"
+            aria-haspopup="menu" aria-controls="add-flow-step-menu" :disabled="!editable || diagram.nodes.length >= 200" @click="stepMenu?.toggle($event)" />
+          <Menu id="add-flow-step-menu" ref="stepMenu" :model="stepMenuItems" popup />
         </div>
-        <p class="text-xs text-slate-400 mb-3">{{ canEdit ? 'Drag steps to arrange them. Connect the right dot to a left dot, then select the arrow to set its condition. Loops are allowed.' : 'Select a step to read its instructions and open its media. Select an arrow to read its condition.' }}</p>
+        <p class="text-xs text-slate-400 mb-3">{{ canEdit ? 'Drag steps to arrange them. Drag from a blue connection point on the right to a connection point on the left of another step. Select the arrow to set its condition. You can also loop back to an earlier step or the same step.' : 'Select a step to read its instructions and open its media. Select an arrow to read its condition.' }}</p>
         <div class="flow-workspace">
           <FlowCanvas :key="diagram.id" :diagram="diagram" :editable="editable" :selected-node="nodeId" :selected-edge="edgeId"
             @select-node="selectNode" @select-edge="selectEdge" @move="moveStep" @connect="connect" />
           <aside class="flow-details" aria-label="Flow details">
-            <div class="grid grid-cols-2 gap-2 mb-4">
+            <div class="grid gap-2 mb-4">
               <div>
                 <label for="step-selector" class="field-label">Step</label>
                 <Select :model-value="nodeId" input-id="step-selector" :options="diagram.nodes" option-label="name" option-value="id" placeholder="Select step" class="w-full" @update:model-value="selectNode" />
@@ -262,8 +270,9 @@ function safeMediaURL(url: string | null | undefined) {
               </template>
             </div>
             <p v-else class="text-sm text-slate-400">Select a step or transition to see its details.</p>
-            <form v-if="canEdit && diagram.nodes.length" class="transition-form" @submit.prevent="connect({ source: sourceId, target: targetId }, condition)">
-              <h3 class="font-semibold mb-3">Add transition</h3>
+            <details v-if="canEdit && diagram.nodes.length" class="transition-form">
+              <summary class="cursor-pointer text-sm font-semibold">Connect using fields</summary>
+              <form class="mt-3" @submit.prevent="connect({ source: sourceId, target: targetId }, condition)">
               <label for="new-source" class="field-label">From step</label>
               <Select v-model="sourceId" input-id="new-source" :options="diagram.nodes" option-label="name" option-value="id" :disabled="!editable" placeholder="Choose starting step" class="w-full mb-2" />
               <label for="new-target" class="field-label">To step</label>
@@ -271,7 +280,8 @@ function safeMediaURL(url: string | null | undefined) {
               <label for="new-condition" class="field-label">Condition (optional)</label>
               <InputText id="new-condition" v-model="condition" :maxlength="300" :disabled="!editable" class="w-full mb-3" placeholder="e.g. Opponent resists" />
               <Button type="submit" label="Add transition" severity="secondary" size="small" :disabled="!editable || !sourceId || !targetId || diagram.edges.length >= 400" />
-            </form>
+              </form>
+            </details>
           </aside>
         </div>
       </template>
@@ -281,8 +291,8 @@ function safeMediaURL(url: string | null | undefined) {
 
 <style scoped>
 .field-label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.35rem; }
-.flow-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1rem; }
-.flow-details { padding: 1rem; border: 1px solid #334155; min-width: 0; max-height: 720px; overflow: auto; overflow-wrap: anywhere; }
+.flow-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 1rem; }
+.flow-details { padding: 0.75rem; border: 1px solid #334155; min-width: 0; max-height: 720px; overflow: auto; overflow-wrap: anywhere; }
 .transition-form { border-top: 1px solid #334155; margin-top: 1.25rem; padding-top: 1rem; }
 .empty-flow { padding: 2rem; border: 1px dashed #475569; color: #94a3b8; text-align: center; }
 .linked-media { padding: 0.75rem; background: #0f172a; }

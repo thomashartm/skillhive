@@ -42,6 +42,20 @@ beforeEach(() => {
 })
 
 describe('technique flow editing', () => {
+  it('adds the chosen step type from the Add step menu', async () => {
+    const { wrapper } = await render()
+    await wrapper.get('button[aria-label="Add a step"]').trigger('click')
+    await flushPromises()
+    const decision = wrapper.findAll('[role="menuitem"]').find(item => item.text().includes('Add decision'))
+    expect(decision).toBeDefined()
+    await decision!.get('a').trigger('click')
+    await flushPromises()
+    expect(wrapper.get<HTMLInputElement>('#step-name').element.value).toBe('Decision')
+    await wrapper.get('button[aria-label="Save diagrams"]').trigger('click')
+    await flushPromises()
+    expect(mocks.put.mock.calls[0]![1].diagrams[0].nodes.at(-1)).toMatchObject({ type: 'decision', name: 'Decision' })
+    wrapper.unmount()
+  })
   it('saves a conditional loop and preserves step details and positions', async () => {
     const { wrapper } = await render()
     await wrapper.getComponent(FlowCanvas).vm.$emit('select-edge', 'retry')

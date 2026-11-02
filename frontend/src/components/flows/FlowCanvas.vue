@@ -73,12 +73,12 @@ function connect(connection: Connection) {
       @node-click="emit('select-node', $event.node.id)" @edge-click="emit('select-edge', $event.edge.id)">
       <template #node-step="{ data, connectable }">
         <div class="flow-step" :class="`step-${data.type}`">
-          <Handle type="target" :position="Position.Left" :connectable="connectable" />
+          <Handle type="target" :position="Position.Left" :connectable="connectable" :title="editable ? 'Drop a connection here' : undefined" :aria-label="`Connect to ${data.name}`" />
           <span class="step-type">{{ data.type }}</span>
           <div class="step-name">{{ data.name }}</div>
           <div v-if="data.label" class="step-label">{{ data.label }}</div>
           <i v-if="data.assetId" class="pi pi-image step-media" aria-label="Linked media" />
-          <Handle type="source" :position="Position.Right" :connectable="connectable" />
+          <Handle type="source" :position="Position.Right" :connectable="connectable" :title="editable ? 'Drag to connect to another step' : undefined" :aria-label="`Connect from ${data.name}`" />
         </div>
       </template>
       <template #edge-transition="edgeProps"><FlowTransitionEdge v-bind="edgeProps" /></template>
@@ -102,7 +102,9 @@ function connect(connection: Connection) {
 .step-label { color: #cbd5e1; font-size: 12px; overflow-wrap: anywhere; }
 .step-media { position: absolute; right: 8px; top: 10px; font-size: 12px; color: #7dd3fc; }
 :deep(.vue-flow__node.selected .flow-step), :deep(.vue-flow__node:focus-visible .flow-step) { outline: 3px solid #38bdf8; outline-offset: 3px; }
-:deep(.vue-flow__handle) { width: 12px; height: 12px; background: #e2e8f0; border-color: #0f172a; }
+:deep(.vue-flow__handle) { width: 18px; height: 18px; background: #e2e8f0; border: 2px solid #0f172a; }
+:deep(.vue-flow__handle.source) { background: #38bdf8; }
+:deep(.vue-flow__handle.connectable:hover), :deep(.vue-flow__handle.valid) { box-shadow: 0 0 0 4px #38bdf866; }
 :deep(.vue-flow__edge-textbg) { opacity: 1; }
 @media (max-width: 700px) { .flow-canvas { height: 420px; } }
 </style>
