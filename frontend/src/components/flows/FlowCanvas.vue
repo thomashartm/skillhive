@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { VueFlow, Handle, Position, MarkerType, Panel, type Node, type Edge, type NodeChange, type EdgeChange, type NodeDragEvent, type Connection, type VueFlowStore } from '@vue-flow/core'
+import { VueFlow, Handle, Position, ConnectionMode, MarkerType, Panel, type Node, type Edge, type NodeChange, type EdgeChange, type NodeDragEvent, type EdgeUpdateEvent, type Connection, type VueFlowStore } from '@vue-flow/core'
 import Button from 'primevue/button'
 import FlowTransitionEdge from './FlowTransitionEdge.vue'
 import type { FlowDiagram, FlowNode } from '../../types/flows'
@@ -13,6 +13,8 @@ const emit = defineEmits<{
   'select-edge': [id: string]
   move: [id: string, position: { x: number; y: number }]
   connect: [connection: Connection]
+  reconnect: [id: string, connection: Connection]
+  'delete-edge': [id: string]
 }>()
 let canvas: VueFlowStore | undefined
 const nodes = computed<Node<FlowNode>[]>(() => props.diagram.nodes.map(node => ({
@@ -30,6 +32,7 @@ const edges = computed<Edge[]>(() => {
     lanes.set(key, lane + 1)
     return { id: edge.id, source: edge.source, target: edge.target, type: 'transition',
       data: { condition: edge.condition, lane }, selected: edge.id === props.selectedEdge,
+      updatable: props.editable && edge.id === props.selectedEdge,
       markerEnd: { type: MarkerType.ArrowClosed, color: '#94a3b8' }, ariaLabel: edge.condition || 'Transition',
     }
   })
@@ -63,25 +66,40 @@ function fit() {
 function connect(connection: Connection) {
   if (props.editable) emit('connect', connection)
 }
+function reconnect(event: EdgeUpdateEvent) {
+  if (props.editable) emit('reconnect', event.edge.id, event.connection)
+}
+function deleteSelected(event?: KeyboardEvent) {
+  if (!props.editable || !props.selectedEdge) return
+  if (event) {
+    if (!['Delete', 'Backspace'].includes(event.key)) return
+    if (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable="true"]')) return
+    event.preventDefault()
+  }
+  emit('delete-edge', props.selectedEdge)
+}
 </script>
 
 <template>
-  <div class="flow-canvas" aria-label="Technique flow diagram">
+  <div class="flow-canvas" role="region" tabindex="0" aria-label="Technique flow diagram" @keydown="deleteSelected">
     <VueFlow :id="diagram.id" :nodes="nodes" :edges="edges" :nodes-draggable="editable" :nodes-connectable="editable"
-      :edges-updatable="false" :delete-key-code="null" :min-zoom="0.15" :max-zoom="2"
+      :connection-mode="ConnectionMode.Strict" :edges-updatable="editable" :edge-updater-radius="12" :delete-key-code="null" :min-zoom="0.15" :max-zoom="2"
       :node-extent="[[-100000, -100000], [100000, 100000]]" @init="canvas = $event" @nodes-initialized="fit" @nodes-change="move" @edges-change="selectTransition" @node-drag-stop="dragStopped" @selection-drag-stop="dragStopped" @connect="connect"
-      @node-click="emit('select-node', $event.node.id)" @edge-click="emit('select-edge', $event.edge.id)">
+      @node-click="emit('select-node', $event.node.id)" @edge-click="emit('select-edge', $event.edge.id)" @edge-update="reconnect" @pane-click="emit('select-edge', '')">
       <template #node-step="{ data, connectable }">
         <div class="flow-step" :class="`step-${data.type}`">
-          <Handle type="target" :position="Position.Left" :connectable="connectable" />
+          <Handle type="target" :position="Position.Left" :connectable="connectable" :title="editable ? 'Drop a connection here' : undefined" :aria-label="`Connect to ${data.name}`" />
           <span class="step-type">{{ data.type }}</span>
           <div class="step-name">{{ data.name }}</div>
           <div v-if="data.label" class="step-label">{{ data.label }}</div>
           <i v-if="data.assetId" class="pi pi-image step-media" aria-label="Linked media" />
-          <Handle type="source" :position="Position.Right" :connectable="connectable" />
+          <Handle type="source" :position="Position.Right" :connectable="connectable" :title="editable ? 'Drag to connect to another step' : undefined" :aria-label="`Connect from ${data.name}`" />
         </div>
       </template>
       <template #edge-transition="edgeProps"><FlowTransitionEdge v-bind="edgeProps" /></template>
+      <Panel v-if="editable && selectedEdge" position="top-right">
+        <Button icon="pi pi-trash" label="Delete transition" severity="danger" size="small" @click="deleteSelected()" />
+      </Panel>
       <Panel position="bottom-left" class="flex gap-1">
         <Button icon="pi pi-plus" aria-label="Zoom in" severity="secondary" size="small" @click="canvas?.zoomIn()" />
         <Button icon="pi pi-minus" aria-label="Zoom out" severity="secondary" size="small" @click="canvas?.zoomOut()" />
@@ -102,7 +120,11 @@ function connect(connection: Connection) {
 .step-label { color: #cbd5e1; font-size: 12px; overflow-wrap: anywhere; }
 .step-media { position: absolute; right: 8px; top: 10px; font-size: 12px; color: #7dd3fc; }
 :deep(.vue-flow__node.selected .flow-step), :deep(.vue-flow__node:focus-visible .flow-step) { outline: 3px solid #38bdf8; outline-offset: 3px; }
-:deep(.vue-flow__handle) { width: 12px; height: 12px; background: #e2e8f0; border-color: #0f172a; }
+:deep(.vue-flow__handle) { width: 18px; height: 18px; background: #e2e8f0; border: 2px solid #0f172a; }
+:deep(.vue-flow__handle.source) { background: #38bdf8; }
+:deep(.vue-flow__handle.connectable:hover), :deep(.vue-flow__handle.valid) { box-shadow: 0 0 0 4px #38bdf866; }
+:deep(.vue-flow__edgeupdater) { fill: #0f172a; stroke: #38bdf8; stroke-width: 2; cursor: grab; }
+:deep(.vue-flow__edgeupdater:hover) { fill: #38bdf8; }
 :deep(.vue-flow__edge-textbg) { opacity: 1; }
 @media (max-width: 700px) { .flow-canvas { height: 420px; } }
 </style>

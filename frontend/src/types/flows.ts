@@ -29,9 +29,9 @@ export interface TechniqueFlows {
   diagrams: FlowDiagram[]
 }
 
-export const stepTypes: { label: string; value: FlowStepType }[] = [
-  { label: 'Start', value: 'start' },
-  { label: 'Action', value: 'action' },
-  { label: 'Decision', value: 'decision' },
-  { label: 'Finish', value: 'finish' },
+export const stepTypes: { label: string; value: FlowStepType; icon: string }[] = [
+  { label: 'Start', value: 'start', icon: 'pi pi-play' },
+  { label: 'Action', value: 'action', icon: 'pi pi-bolt' },
+  { label: 'Decision', value: 'decision', icon: 'pi pi-share-alt' },
+  { label: 'Finish', value: 'finish', icon: 'pi pi-flag' },
 ]

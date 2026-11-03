@@ -42,6 +42,46 @@ beforeEach(() => {
 })
 
 describe('technique flow editing', () => {
+  it('reconnects either endpoint while preserving the transition ID and condition', async () => {
+    const { wrapper } = await render()
+    const canvas = wrapper.getComponent(FlowCanvas)
+    canvas.vm.$emit('reconnect', 'retry', { source: 'start', target: 'decision' })
+    await flushPromises()
+    await wrapper.get('button[aria-label="Save diagrams"]').trigger('click')
+    await flushPromises()
+    expect(mocks.put.mock.calls[0]![1].diagrams[0].edges).toEqual([
+      { id: 'retry', source: 'start', target: 'decision', condition: 'Grip lost' },
+    ])
+    canvas.vm.$emit('reconnect', 'retry', { source: 'start', target: 'missing' })
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('Unsaved changes')
+    wrapper.unmount()
+  })
+
+  it('deletes a transition from the canvas without deleting its steps', async () => {
+    const { wrapper } = await render()
+    wrapper.getComponent(FlowCanvas).vm.$emit('delete-edge', 'retry')
+    await flushPromises()
+    await wrapper.get('button[aria-label="Save diagrams"]').trigger('click')
+    await flushPromises()
+    expect(mocks.put.mock.calls[0]![1].diagrams[0].edges).toEqual([])
+    expect(mocks.put.mock.calls[0]![1].diagrams[0].nodes).toEqual(initial.diagrams[0]!.nodes)
+    wrapper.unmount()
+  })
+  it('adds the chosen step type from the Add step menu', async () => {
+    const { wrapper } = await render()
+    await wrapper.get('button[aria-label="Add a step"]').trigger('click')
+    await flushPromises()
+    const decision = wrapper.findAll('[role="menuitem"]').find(item => item.text().includes('Add decision'))
+    expect(decision).toBeDefined()
+    await decision!.get('a').trigger('click')
+    await flushPromises()
+    expect(wrapper.get<HTMLInputElement>('#step-name').element.value).toBe('Decision')
+    await wrapper.get('button[aria-label="Save diagrams"]').trigger('click')
+    await flushPromises()
+    expect(mocks.put.mock.calls[0]![1].diagrams[0].nodes.at(-1)).toMatchObject({ type: 'decision', name: 'Decision' })
+    wrapper.unmount()
+  })
   it('saves a conditional loop and preserves step details and positions', async () => {
     const { wrapper } = await render()
     await wrapper.getComponent(FlowCanvas).vm.$emit('select-edge', 'retry')
@@ -95,6 +135,8 @@ describe('technique flow editing', () => {
     expect(wrapper.get('strong').text()).toBe('Grip')
     expect(wrapper.get('a[href="/assets/video"]').text()).toContain('Grip lesson')
     wrapper.getComponent(FlowCanvas).vm.$emit('connect', { source: 'start', target: 'start' })
+    wrapper.getComponent(FlowCanvas).vm.$emit('reconnect', 'retry', { source: 'start', target: 'start' })
+    wrapper.getComponent(FlowCanvas).vm.$emit('delete-edge', 'retry')
     await flushPromises()
     expect(wrapper.text()).not.toContain('Unsaved changes')
     expect(mocks.put).not.toHaveBeenCalled()
